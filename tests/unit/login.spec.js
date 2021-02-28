@@ -7,9 +7,16 @@ import { Environment } from '@/odoojs/env'
 import { Model } from '@/odoojs/models'
 
 describe('login', () => {
+  it('get env before login ', async () => {
+    const odoo = new ODOO({ baseURL })
+    const fn = async () => {
+      odoo.env
+    }
+    return assert.isRejected(fn())
+  })
+
   it('login', async () => {
     const odoo = new ODOO({ baseURL })
-    expect(odoo.env).to.be.undefined
     await odoo.login({ db, login, password })
 
     expect(odoo.version.slice(0, 4)).to.equal('13.0')
@@ -20,28 +27,21 @@ describe('login', () => {
     expect(odoo.env.registry).to.include.keys('res.users')
     expect(odoo.env.db).to.equal(db)
   })
-})
 
-describe('login', () => {
   it('login no password', async () => {
     const odoo = new ODOO({ baseURL })
     const fn = async () => {
       await odoo.login({ db, login: 'admin', password: undefined })
     }
-    return assert.isRejected(fn(), Error)
+    return assert.isRejected(fn())
   })
-})
 
-describe('login', () => {
   it('logout', async () => {
     const odoo = new ODOO({ baseURL })
     await odoo.login({ db, login, password })
     const success = await odoo.logout()
     expect(success).to.be.true
   })
-})
-
-describe('login', () => {
   it('logout without login', async () => {
     const odoo = new ODOO({ baseURL })
     const success = await odoo.logout()

@@ -23,7 +23,7 @@ describe('execute', async () => {
     const fn = async () => {
       await odoo.execute('res.users', 'search')
     }
-    return assert.isRejected(fn(), Error)
+    return assert.isRejected(fn())
   })
 
   it('search with wrong args', async () => {
@@ -31,7 +31,7 @@ describe('execute', async () => {
     const fn = async () => {
       await odoo.execute('res.users', 'search', false)
     }
-    return assert.isRejected(fn(), Error)
+    return assert.isRejected(fn())
   })
 
   it('search with wrong model', async () => {
@@ -39,7 +39,7 @@ describe('execute', async () => {
     const fn = async () => {
       await odoo.execute('wrong.model', 'search', [])
     }
-    return assert.isRejected(fn(), Error)
+    return assert.isRejected(fn())
   })
 
   it('wrong method', async () => {
@@ -47,6 +47,6 @@ describe('execute', async () => {
     const fn = async () => {
       await odoo.execute('res.users', 'wrong_method', [])
     }
-    return assert.isRejected(fn(), Error)
+    return assert.isRejected(fn())
   })
 })
