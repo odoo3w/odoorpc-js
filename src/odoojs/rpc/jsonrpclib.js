@@ -6,6 +6,8 @@ class Proxy0 {
     this._timeout = timeout
     this._baseURL = baseURL
     this._service = this._get_service()
+    this._respond = undefined
+    this._sid = undefined
   }
 
   _get_service() {
@@ -14,9 +16,20 @@ class Proxy0 {
       timeout: this._timeout
     })
 
+    const that = this
+
     service.interceptors.request.use(
       config => {
+        // console.log('sid', that._sid)
         // console.log('request config', config) // for debug
+        // if run test, not cookie,
+        // so wo set sid to call odoo
+
+        if (that._sid) {
+          // console.log('sid req: ', that._sid)
+          config.headers['X-Openerp-Session-Id'] = that._sid
+        }
+
         return config
       },
       error => {
@@ -28,10 +41,25 @@ class Proxy0 {
 
     service.interceptors.response.use(
       response => {
-        // console.log('response ', response) // for debug
+        const url = response.config.url
+        if (url === '/web/session/authenticate') {
+          // if run test, not cookie,
+          // so wo set sid to call odoo
+
+          const headers = response.headers
+          const cookie = headers['set-cookie']
+          // console.log('cookie ', cookie) // for debug
+          if (cookie) {
+            // console.log('cookie ok', cookie) // for debug
+            const cookie2 = cookie[0]
+            const session_id = cookie2.slice(11, 51)
+            that._sid = session_id
+          }
+        }
+
         const res = response.data
         // console.log('response data:', res) // for debug
-
+        that._respond = response
         return res
       },
       error => {

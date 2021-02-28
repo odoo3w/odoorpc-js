@@ -26,8 +26,61 @@ export class IncrementalRecords {
   }
 }
 
-export class Model {
+export class BaseModel {
   constructor() {
+    // 定义 迭代方法
+    this[Symbol.iterator] = () => {
+      let index = 0
+      const that = this
+      return {
+        next() {
+          const one = that.iterator_next(index)
+          if (one === undefined) {
+            return { value: undefined, done: true }
+          } else {
+            // console.log(index, one.id, one.$display_name, that.ids)
+            index++
+            return { value: one, done: false }
+          }
+        }
+      }
+    }
+  }
+
+  static get env() {
+    return this._env
+  }
+
+  get env() {
+    return this.constructor._env
+  }
+
+  get _odoo() {
+    return this.constructor._odoo
+  }
+
+  get _name() {
+    return this.constructor._name
+  }
+
+  get _columns() {
+    return this.constructor._columns
+  }
+
+  iterator_next(/*index*/) {
+    // to be rewrite by child
+  }
+}
+
+// to be set by child
+BaseModel._env = undefined
+BaseModel._odoo = undefined
+BaseModel._name = undefined
+BaseModel._columns = {}
+
+export class Model extends BaseModel {
+  constructor() {
+    super()
     this._env_local = null
     this._from_record = null
     this._ids = []
@@ -38,30 +91,14 @@ export class Model {
       this._values[field] = {}
       this._values_to_write[field] = {}
     })
+  }
 
-    // 定义 迭代方法
-    this[Symbol.iterator] = () => {
-      let index = 0
-      const that = this
-      return {
-        next() {
-          if (index < that.ids.length) {
-            const one_record = that.constructor._browse_iterated(
-              that.env,
-              that.ids[index],
-              that
-            )
-            index++
-            return { value: one_record, done: false }
-          } else {
-            return { value: undefined, done: true }
-          }
-        }
-      }
+  iterator_next(index) {
+    if (index < this.ids.length) {
+      return this.constructor._browse_iterated(this.env, this.ids[index], this)
+    } else {
+      return undefined
     }
-
-    // this.with_context = this._with_context
-    // this.with_env = this._with_env
   }
 
   get env() {
@@ -93,9 +130,9 @@ export class Model {
     // 访问网络, 返回的 是 promise
     const { from_record } = payload
 
-    await this._init_ok_promise
+    await this.init()
     const records = new this()
-    await records._init_ok_promise
+    await records.init()
     records._env_local = env
     records._ids = _normalize_ids(ids)
 
@@ -118,36 +155,58 @@ export class Model {
   }
 
   static async browse(ids) {
+    if (ids === undefined) {
+      throw 'call browse without ids'
+    }
     return this._browse(this.env, ids)
   }
 
-  static with_context() {
-    //
+  static with_context(context, kwargs = {}) {
+    const context2 = context ? context : this.env.context
+    const context3 = { ...context2, ...kwargs }
+    return this.with_env(this.env.copy(context3))
   }
 
-  _with_context() {
-    //
+  async with_context(context, kwargs = {}) {
+    const context2 = context ? context : this.env.context
+    const context3 = { ...context2, ...kwargs }
+    return this.with_env(this.env.copy(context3))
   }
 
-  static with_env() {
-    //
+  static with_env(env) {
+    const CLS = this
+    class Cls extends CLS {
+      constructor() {
+        super()
+      }
+    }
+
+    Cls._env = env
+
+    return Cls
   }
 
-  _with_env() {
-    //
+  async with_env(env) {
+    // const res = this.constructor._browse_iterated(env, this.ids, this)
+    const res = this.constructor._browse(env, this.ids)
+    return res
   }
 
   async _init_values(paylaod = {}) {
     //
-    // console.log('_init_values 1, ', this, this.env)
+    // console.log('_init_values 1, ', this, this.ids)
 
     const { context = this.env.context } = paylaod
 
     // console.log('_init_values 1, ', this)
     const columns = this.constructor._columns
-    const basic_fields = Object.keys(columns).reduce((acc, cur) => {
+    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
       // 应该特殊处理 二进制字段
-      acc = [...acc, cur]
+      const Field = columns[field_name]
+      // console.log(field_name, Field)
+      if (Field.type !== 'binary') {
+        acc = [...acc, field_name]
+      }
       return acc
     }, [])
 
@@ -158,19 +217,82 @@ export class Model {
         context,
         load: '_classic_write'
       })
+
+      // console.log('read 999:', result)
+
+      const ids_fetched = new Set()
+
       result.forEach(row => {
         Object.keys(row).forEach(field_name => {
+          ids_fetched.add(row.id)
           if (field_name !== 'id') {
             this._values[field_name][row.id] = row[field_name]
           }
         })
       })
+
+      const ids_all = new Set(this.ids)
+
+      const ids_in_error = [
+        ...new Set([...ids_all].filter(n => !ids_fetched.has(n)))
+      ]
+
+      if (ids_in_error.length) {
+        const str = `There is no '${this._name}' record with IDs ${ids_in_error}.`
+        throw str
+      }
+    } else {
+      //
     }
 
     // console.log('_init_values 1, ', result)
   }
 
+  /*
+  __getattr__
+  js 里非常不容易实现 __getattr__
+  这里代替解决方案是:
+  1 odoo.models.Model 的 基本方法, 这里明文声明函数, 如 create, read, search, onchange 等
+  2 这里有 execute, execute_kw 函数, 可以调用 未定义的 method
+  3 各自模型里 自定义的 方法, 使用 execute, execute_kw 间接调用
+  4 考虑 做 addons, 自定义 常用 model
+  */
+
+  // 切片方法, 等同于 __getitem__
+  slice(start, end) {
+    const new_ids = this.ids.slice(start, end)
+    const res = this.constructor._browse_iterated(this.env, new_ids, this)
+    return res
+  }
+
+  // __init__ ?
+
+  // __eq__ 相等
+
+  // __ne__ 不相等
+
+  // 迭代 __iter__
+  // 在构造函数中实现
+
+  // __nonzero__ 非空
+  get isNotNull() {
+    return this.ids.length ? true : false
+  }
+
+  // 长度
+  get length() {
+    return this.ids.length
+  }
+
+  // __iadd__
+
+  // __isub__
+
+  // for  odoo call
+
   static async execute_kw(method, args = [], kwargs = {}) {
+    await this.init()
+
     const kwargs2 = { ...kwargs }
     if (!Object.keys(kwargs).includes('context')) {
       kwargs2.context = this.env.context
@@ -193,12 +315,30 @@ export class Model {
   }
 
   async execute(method, ...args) {
-    return this.execute_kw(method, [this.ids, ...args], {})
+    return this.execute_kw(method, [...args], {})
+  }
+
+  static async read(ids, fields, kwargs) {
+    const method = 'read'
+    return this.execute_kw(method, [ids, fields], kwargs)
   }
 
   async read(fields, kwargs) {
     const method = 'read'
     return this.execute_kw(method, [fields], kwargs)
+  }
+
+  async write(vals) {
+    const method = 'write'
+    return this.execute(method, vals)
+  }
+
+  static async create(vals) {
+    return this.execute('create', vals)
+  }
+
+  static async search(domain, kwargs = {}) {
+    return this.execute_kw('search', [domain], kwargs)
   }
 }
 

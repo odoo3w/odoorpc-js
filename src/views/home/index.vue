@@ -10,6 +10,13 @@
         {{ odoo.version }}
       </div>
 
+      <div>
+        {{ image }}
+      </div>
+      <div>
+        <img :src="image" alt="" />
+      </div>
+
       <Row>
         <i-col :xs="2" :sm="4" :md="6" :lg="8">.</i-col>
         <i-col :xs="20" :sm="16" :md="12" :lg="8">
@@ -66,7 +73,8 @@ export default {
 
   data() {
     return {
-      odoo
+      odoo,
+      image: ''
     }
   },
   computed: {},
@@ -80,6 +88,8 @@ export default {
     console.log('+++++++++++++++++++++')
     await this.test1()
     console.log('+++++++++++++++++++++')
+    // const a = [11, 22, 33, 44]
+    // console.log(a.slice(1, 3))
   },
 
   methods: {
@@ -113,40 +123,69 @@ export default {
       // // console.log(odoo)
       // const Model = odoo.env.model('res.users')
 
+      // const Ptn = odoo.env.model('sale.order')
       const Ptn = odoo.env.model('res.partner')
-      // console.log('Ptn', Ptn)
-      // console.log('Ptn 1', Ptn.env)
+      console.log('Ptn', Ptn)
+      // console.log('Ptn env', Ptn.env.context)
 
-      // // // console.log('Ptn env', Ptn.env)
-      // // // console.log('Ptn name', Ptn.$name)
-      // // // console.log('Ptn company_id', Ptn.$company_id)
-      // // // // console.log('Ptn create', Ptn.create)
-      // // // // console.log('Ptn browse', Ptn.browse)
-      // const ptn_promise = Ptn.browse([1, 2, 3])
-      // // console.log('ptn_promise', ptn_promise)
-      // const ptn = await ptn_promise
+      // await Ptn.init()
+      // const info = await Ptn.execute('fields_view_get')
+      // console.log('Ptn', info)
 
-      const ptn = await Ptn._browse(odoo.env, [1, 2, 3])
+      // Object.keys(Ptn._columns).forEach(item => {
+      //   const F = Ptn._columns[item]
+      //   console.log(F.name, typeof F.states, F.states)
+      // })
 
-      console.log('--1--')
-      console.log('ptn', ptn._ids, ptn.$name)
-      console.log('--2--')
+      // const context = { ...Ptn.env.context, default_ss: 1 }
+      // // const P2 = Ptn.with_context(context)
+      // // console.log('Ptn env', Ptn.env.context)
+      // // console.log('P2 env', P2.env.context)
+
+      // // // // console.log('Ptn env', Ptn.env)
+      // // // // console.log('Ptn name', Ptn.$name)
+      // // // // console.log('Ptn company_id', Ptn.$company_id)
+      // // // // // console.log('Ptn create', Ptn.create)
+      // // // // // console.log('Ptn browse', Ptn.browse)
+      const ptn_promise = Ptn.browse([1, 2, 3])
+      // // // // console.log('ptn_promise', ptn_promise)
+      const ptn = await ptn_promise
+      console.log('ptn', ptn)
+      console.log('ptn', ptn.$name)
+      const a = ptn.slice(1, 2)
+      console.log('ptn a', a)
+
+      // console.log('ptn', ptn.$image_1920)
+
+      // this.image = ptn.$image_1920
+
+      // const p2 = ptn.with_context(context)
+      // console.log('p2', p2)
+      // console.log('p2', p2.$name)
+
+      // ptn.$name = 'asdafafs'
+
+      // const ptn = await Ptn._browse(odoo.env, [1, 2, 3])
+
+      // console.log('--1--')
+      // console.log('ptn', ptn._ids, ptn.$name)
+      // console.log('--2--')
 
       // for (const p of ptn) {
       //   console.log('p', p._ids, p.$name)
       // }
 
-      const pp = ptn[Symbol.iterator]()
-      // // console.log('Ptn ptn', pp)
-      const p1 = pp.next().value
-      console.log('ptn', ptn._ids, ptn.$name)
-      console.log('pp1', p1._ids, p1.$name)
-      console.log('--3--')
-      const p2 = pp.next().value
-      console.log('ptn', ptn._ids, ptn.$name)
-      console.log('pp1', p1._ids, p1.$name)
-      console.log('pp2', p2._ids, p2.$name)
-      console.log('--4--')
+      // const pp = ptn[Symbol.iterator]()
+      // // // console.log('Ptn ptn', pp)
+      // const p1 = pp.next().value
+      // console.log('ptn', ptn._ids, ptn.$name)
+      // console.log('pp1', p1._ids, p1.$name)
+      // console.log('--3--')
+      // const p2 = pp.next().value
+      // console.log('ptn', ptn._ids, ptn.$name)
+      // console.log('pp1', p1._ids, p1.$name)
+      // console.log('pp2', p2._ids, p2.$name)
+      // console.log('--4--')
 
       // for ( const p of ptn){
 

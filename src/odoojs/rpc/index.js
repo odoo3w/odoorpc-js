@@ -36,7 +36,7 @@ class ConnectorJSONRPC extends Connector {
 
       this.version = new Promise((resolve, reject) => {
         version_info.then(vinfo => {
-          console.log('_get_proxies, version', vinfo)
+          // console.log('_get_proxies, version', vinfo)
           const result = vinfo.result
           if (result.server_version) {
             resolve(result.server_version)

@@ -10,9 +10,17 @@ export class ODOO {
     this._password = undefined
     // this._db = DB(this)
     // this._report = Report(this)
-
+    this._version = undefined
     const protocol = 'jsonrpc'
     this._connector = new rpc.PROTOCOLS[protocol]({ baseURL, timeout })
+
+    this._connector.version.then(version => {
+      this._version = version
+    })
+  }
+
+  get baseURL() {
+    return this._baseURL
   }
 
   get env() {
@@ -20,14 +28,20 @@ export class ODOO {
     return this._env
   }
 
+  async init() {
+    // this._connector.version is promise
+    this._version = await this._connector.version
+  }
+
   get version() {
-    // is promise
-    return this._connector.version
+    return this._version
   }
 
   async json_call(url, payload) {
     const data = await this._connector.proxy_json.call(url, payload)
     if (data.error) {
+      // TBD
+      throw data.error
       // raise error.RPCError(
       //   data['error']['data']['message'],
       //   data['error'])
@@ -40,11 +54,13 @@ export class ODOO {
     // """Check if a user is logged. Otherwise, an error is raised."""
     // TBD localstorage get
     if (!this._env || !this._password || !this._login) {
+      throw 'Login required'
       //     raise error.InternalError("Login required")
     }
   }
 
   async login(payload) {
+    await this.init()
     const { db, login = 'admin', password = 'admin' } = payload || {}
     const data = await this.json_call('/web/session/authenticate', {
       db: db,
@@ -61,12 +77,13 @@ export class ODOO {
       this._password = password
       // TBD localstorage set
     } else {
+      throw 'Wrong login ID or password'
       // raise error.RPCError("Wrong login ID or password")
     }
   }
 
   async logout() {
-    if (!self._env) {
+    if (!this._env) {
       return false
     }
 
