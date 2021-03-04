@@ -1,6 +1,6 @@
 import { expect, assert } from 'chai'
 
-import { db, login, get_odoo } from './config'
+import { BASE_URL, DB, USER, PSW, get_odoo } from './config'
 
 import { Environment } from '@/odoojs/env'
 import { Model } from '@/odoojs/models'
@@ -24,13 +24,13 @@ describe('env', () => {
 
   it('db', async () => {
     const odoo = await get_odoo()
-    expect(odoo.env.db).to.be.equal(db)
+    expect(odoo.env.db).to.be.equal(DB)
   })
 
   it('user', async () => {
     const odoo = await get_odoo()
     const user = await odoo.env.user
-    expect(user.$login).to.be.equal(login)
+    expect(user.$login).to.be.equal(USER)
   })
 
   it('registry', async () => {

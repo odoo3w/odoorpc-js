@@ -1,6 +1,6 @@
 import { expect, assert } from 'chai'
 
-import { db, login, get_odoo } from './config'
+import { USER, get_odoo } from './config'
 
 import { Environment } from '@/odoojs/env'
 import { Model } from '@/odoojs/models'
@@ -9,7 +9,7 @@ describe('field read', async () => {
   it('char', async () => {
     const odoo = await get_odoo()
     const user = await odoo.env.user
-    expect(user.$login).to.be.equal(login)
+    expect(user.$login).to.be.equal(USER)
   })
   it('boolean', async () => {
     const odoo = await get_odoo()

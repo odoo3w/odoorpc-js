@@ -1,4 +1,4 @@
-import jsonrpclib from './jsonrpclib'
+import jsonrpclib from './jsonrpclib.js'
 
 class Connector {
   constructor(payload) {

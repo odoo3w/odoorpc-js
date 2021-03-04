@@ -7,6 +7,10 @@ export const image2url = (model, res_id, field) => {
   return `${baseURL}${imgUrl}?model=${model}&id=${res_id}&field=${field}`
 }
 
+export const new_list = len => {
+  return Array.from(new Array(len).keys())
+}
+
 export function sleep(millisecond) {
   return new Promise(resolve => {
     setTimeout(() => {

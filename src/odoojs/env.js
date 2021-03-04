@@ -1,5 +1,5 @@
-import { Model } from './models'
-import { generate_field } from './fields'
+import { Model } from './models.js'
+import { generate_field } from './fields.js'
 
 const FIELDS_RESERVED = ['id', 'ids', '__odoo__', '__osv__', '__data__', 'env']
 
@@ -25,16 +25,16 @@ export class Environment {
     return this.context.lang
   }
 
-  async ref(xml_id) {
-    const [model, id_] = await this._odoo.execute(
-      'ir.model.data',
-      'xmlid_to_res_model_res_id',
-      xml_id,
-      true
-    )
-
-    const Model = this.model(model)
-    return Model.browse(id_)
+  async ref(xml_id, payload = {}) {
+    const args = ['ir.model.data', 'xmlid_to_res_model_res_id', xml_id, true]
+    const [model, id_] = await this._odoo.execute(...args)
+    const { return_model } = payload
+    if (return_model) {
+      const Model = this.model(model)
+      return Model.browse(id_)
+    } else {
+      return { _name: model, id: id_ }
+    }
   }
 
   get uid() {
@@ -91,6 +91,8 @@ export class Environment {
         return acc
       }, {})
 
+      // this is a bug in odoorpc
+      // 'display_name' field is ok,
       // if (!cols.name) {
       //   const field_data = { type: 'text', string: 'Name', readonly: true }
       //   const Field = generate_field('name', field_data)
@@ -110,7 +112,7 @@ export class Environment {
     class Cls extends Model {
       constructor() {
         super()
-
+        this._set_ok_promises = []
         const _defineGetter = () => {
           const cols = this.constructor._columns
           Object.keys(cols).forEach(item => {
@@ -121,7 +123,11 @@ export class Environment {
             })
 
             my_prototype.__defineSetter__(`$${item}`, function(value) {
-              return Field.setValue(this, value)
+              // console.log('set field', item, value)
+              const set_ok = Field.setValue(this, value)
+              // // set_o is a promise
+              this._set_ok_promises.push(set_ok)
+              // console.log('set ok', set_ok)
             })
           })
         }
@@ -138,13 +144,21 @@ export class Environment {
 
       static async init() {
         // step 4: an api,  wait for class columns init finished
-        // console.log('env, cls init')
         return this._init_ok_promise
       }
 
       async init() {
         // step 6: an api, wait for instance columns init finished
         return this._init_ok_promise
+      }
+
+      async wait_set() {
+        // this._set_ok_promises is promise list
+        //  wait for all fields set trigger onchange finished
+        while (this._set_ok_promises.length) {
+          const one = this._set_ok_promises.shift()
+          await one
+        }
       }
     }
 
@@ -153,7 +167,6 @@ export class Environment {
     Cls._env = this
     Cls._odoo = this._odoo
     Cls._name = model
-
     Cls._columns = {}
 
     // step 2: all columns from odoo call fields_get

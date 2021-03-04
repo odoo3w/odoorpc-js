@@ -2,7 +2,7 @@ import axios from 'axios'
 
 class Proxy0 {
   constructor(payload) {
-    const { baseURL, timeout = 50000 } = payload
+    const { baseURL, timeout = 500000 } = payload
     this._timeout = timeout
     this._baseURL = baseURL
     this._service = this._get_service()

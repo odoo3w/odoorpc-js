@@ -1,5 +1,5 @@
-import { Environment } from './env'
-import rpc from './rpc'
+import { Environment } from './env.js'
+import rpc from './rpc/index.js'
 
 export class ODOO {
   constructor(payload) {
@@ -17,6 +17,10 @@ export class ODOO {
     this._connector.version.then(version => {
       this._version = version
     })
+
+    // odoorpc2 append
+    this._session_info = {}
+    this._virtual_id = 1
   }
 
   get baseURL() {
@@ -29,6 +33,9 @@ export class ODOO {
   }
 
   async init() {
+    // new ODOO() maybe call server to get server version
+    // this async method to wait return
+
     // this._connector.version is promise
     this._version = await this._connector.version
   }
@@ -37,7 +44,19 @@ export class ODOO {
     return this._version
   }
 
+  get session_info() {
+    return this._session_info
+  }
+
+  _get_virtual_id() {
+    // new a o2m field, need an unique virtual id
+    const int_virtual_id = this._virtual_id
+    this._virtual_id = this._virtual_id + 1
+    return `virtual_${int_virtual_id}`
+  }
+
   async json_call(url, payload) {
+    // JSON a keyword in js. so rename json_call
     const data = await this._connector.proxy_json.call(url, payload)
     if (data.error) {
       // TBD
@@ -71,6 +90,7 @@ export class ODOO {
     const uid = data.result.uid
 
     if (uid) {
+      this._session_info = data.result
       const context = data.result.user_context
       this._env = new Environment(this, db, uid, { context })
       this._login = login

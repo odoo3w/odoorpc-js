@@ -1,6 +1,6 @@
 import { expect, assert } from 'chai'
 
-import { db, login, get_odoo } from './config'
+import { get_odoo } from './config'
 
 import { Environment } from '@/odoojs/env'
 import { Model } from '@/odoojs/models'

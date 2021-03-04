@@ -12,21 +12,32 @@
 import odoo from '@/api'
 
 class Parent {
-  constructor() {}
-}
-
-Parent._odoo = 'parent class odoo'
-
-const new_Child = name => {
-  class Child extends Parent {
-    constructor() {
-      super()
-    }
+  constructor() {
+    this.a = 'parent a'
+  }
+  fn1() {
+    console.log('Parent fn1')
   }
 
-  Child._odoo = `Child class ${name} odoo`
+  fn() {
+    this.fn1()
+    console.log('Parent fn')
+    console.log('Parent fn, this.b', this.b)
+  }
+}
 
-  return Child
+class Child extends Parent {
+  constructor() {
+    super()
+    this.b = 'child b'
+  }
+  fn1() {
+    console.log('CHild fn1')
+  }
+  fn() {
+    super.fn()
+    console.log('Child')
+  }
 }
 
 export default {
@@ -36,76 +47,74 @@ export default {
   },
 
   async created() {
-    //
-    this.test2()
+    await odoo.login({ db: 'T2', login: 'admin', password: '123456' })
+    await this.test_so()
   },
   methods: {
     //
-    async test1() {
-      const C1 = new_Child('Ch1')
-      console.log(C1._odoo)
-    },
-    async test2() {
-      await odoo.login({ db: 'T2', login: 'admin', password: '123456' })
-      const Menu = odoo.env.model('ir.ui.menu')
-
-      // const menu_ids = await Menu.search([['name', '=', 'General Settings']])
-      const menu_ids = await Menu.search([['action', '>', 'ir.']])
-
-      console.log(menu_ids)
-      const menus = await Menu.browse(menu_ids[0])
-      console.log(await menus.$action)
-
-      // const SO = odoo.env.model('res.partner')
-      // await Ptn.init()
-
-      // const user = await odoo.env.user
-
-      // const user = await odoo.env.user
-      // const companys = await user.$company_ids
-      // // console.log(company)
-      // expect(companys).to.be.an.instanceof(Model)
-      // expect(companys._name).to.be.equal('res.company')
-      // const message_follower_ids = await user.$message_follower_ids
-
-      // console.log(user._columns.company_ids)
-      // console.log(user._columns.message_follower_ids)
-
-      // console.log(await user.$company_ids)
-      // console.log(await user.$message_follower_ids)
-
-      // const SO = odoo.env.model('ir.sequence.date_range')
-      // await SO.init()
-
-      // console.log(SO._columns)
-
-      // Object.keys(SO._columns).forEach(item => {
-      //   console.log(SO._columns[item])
-      //   // if (SO._columns[item].type === 'datetime') {
-      //   //   console.log(SO._columns[item])
-      //   // }
-      // })
-
-      // const so_ids = await SO.search([])
-
-      // const so = await SO.browse(so_ids)
-      // console.log(so.id, so.$date_to, so.$date_from)
-
-      // for (const so of sos) {
-      //   console.log(so.id, so.$date_to, so.$date_from)
-      // }
-
-      // console.log(sos.$validity_date)
-      // console.log(sos.$effective_date)
-      // console.log(sos.$activity_date_deadline)
-
-      // validity_date
-      // effective_date
-      // activity_date_deadline
-
+    test1() {
       //
-      // const img = user.$login_date
-      // console.log(img)
+      const ch = new Child()
+      ch.fn()
+    },
+    async test_so() {
+      const SO = odoo.env.model('sale.order')
+      // const view_form_xml_id = 'sale_order'
+      const view_form_xml_id = 'sale.view_order_form'
+
+      const so_ids = await SO.search([])
+      const so = await SO.browse(so_ids, { view_form_xml_id })
+      const amount_total = so.$amount_total
+      console.log('amount_total1', amount_total)
+
+      const sols = await so.$order_line
+      // console.log(sols)
+      const sol1 = await sols.new()
+      console.log(sol1, sol1.$price_unit)
+      const price_subtotal = sol1.$price_subtotal
+      console.log('price_subtotal', price_subtotal)
+      const prd_selection = await so.get_selection('order_line.product_id')
+      console.log('prd_selection', prd_selection)
+
+      const product = await sol1.$product_id
+
+      console.log('product', product.id)
+
+      sol1.$product_id = prd_selection[0][0]
+      await sol1.wait_set()
+      const product1 = await sol1.$product_id
+      console.log('product2', product.id)
+
+      // const price = sol1.$price_unit
+      // sol1.$price_unit = price + 0.1
+      // console.log(sol1, sol1.$price_unit)
+
+      // await sol1.wait_set()
+
+      // console.log('price_subtotal', sol1.$price_subtotal)
+      // console.log('amount_total2', so.$amount_total)
+      // console.log('amount_total2', so._values.amount_total)
+      // console.log('amount_total2', so._values_to_write.amount_total)
+
+      // // expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
+      // // expect(so.$amount_total).to.be.not.equal(amount_total)
+      // // const amount_total2 = so.$amount_total
+      // await so.commit()
+
+      // console.log('amount_total3', so.$amount_total)
+      // console.log('amount_total3', so._values.amount_total)
+      // console.log('amount_total3', so._values_to_write.amount_total)
+
+      // expect(so.$amount_total).to.be.equal(amount_total2)
+    },
+
+    async test2() {
+      const Ptn = odoo.env.model('res.partner')
+      const p1 = await Ptn.browse(1)
+      const p2 = await Ptn.browse(3)
+
+      const s = Object.is(p1._columns, p2._columns)
+      console.log(s)
     }
   }
 }
