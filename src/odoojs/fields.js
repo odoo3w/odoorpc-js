@@ -39,21 +39,21 @@ const merge_tuples_one = (old_tuples, tuple_in) => {
   }
 
   const newval = tuple_in
-  let to_append = tuple_in
+  let to_append = [...tuple_in]
 
   const to_ret2 = old_tuples.reduce((to_ret, oldval) => {
     if ([6, 5].includes(oldval[0])) {
       // 1st, for m2m, # new=4,3, old=6,5
-      to_ret.push(oldval)
+      to_ret = [...to_ret, oldval]
     } else if (newval[1] != oldval[1]) {
       // 2nd, id not equ
       // for m2m or o2m, # new=4,3,2,1,0, old=4,3,2,1,0, id not equ
-      to_ret.push(oldval)
+      to_ret = [...to_ret, oldval]
     } else if (oldval[0] == 0) {
       // id equ.  new=0,
       if (newval[0] == 0) {
         // 3rd,  new=0, old=0, id equ
-        to_append = newval
+        to_append = [...newval]
       } else if ([2, 3].includes(newval[0])) {
         // 4th, for o2m, new line then delete, this a extend for odoo
         to_append = null
@@ -64,10 +64,10 @@ const merge_tuples_one = (old_tuples, tuple_in) => {
     } else if ([1, 4].includes(oldval[0])) {
       if ([1, 2, 3].includes(newval[0])) {
         // 6th, old line, then edit or del
-        to_append = newval
+        to_append = [...newval]
       } else if (newval[0] == 4) {
         // 7th,  few goto here. old then add,
-        to_append = oldval
+        to_append = [...oldval]
       } else {
         // 8th, never goto here. old then ...
         to_append = null
@@ -75,10 +75,10 @@ const merge_tuples_one = (old_tuples, tuple_in) => {
     } else if ([2, 3].includes(oldval[0])) {
       if (newval[0] == 4) {
         // 9th, del then add
-        to_append = newval
+        to_append = [...newval]
       } else {
         // 10th, never goto here. old=2,3.  new= 1,2,3. del then del
-        to_append = oldval
+        to_append = [...oldval]
       }
     } else {
       // never goto here
@@ -88,17 +88,16 @@ const merge_tuples_one = (old_tuples, tuple_in) => {
     return to_ret
   }, [])
 
-  if (to_append) {
-    to_ret2.push(to_append)
-  }
+  const to_ret3 = to_append ? [...to_ret2, to_append] : [...to_ret2]
 
-  return to_ret2
+  return to_ret3
 }
 
 const merge_tuples = (old_tuples, new_tuples) => {
   const acc_init = [...old_tuples]
   return new_tuples.reduce((acc, cur) => {
-    acc = merge_tuples_one(acc, cur)
+    const ret = merge_tuples_one(acc, cur)
+    acc = [...ret]
     return acc
   }, acc_init)
 }
@@ -176,11 +175,14 @@ class BaseField {
     return value
   }
 
-  _get_for_onchange(instance) {
-    return this._value(instance)
+  get_for_onchange(instance) {
+    return this._getValue(instance)
   }
 
-  _value(instance) {
+  getValue(instance) {
+    return this._getValue(instance)
+  }
+  _getValue(instance) {
     let value = instance._values[this.name][instance.id]
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
@@ -189,48 +191,24 @@ class BaseField {
     return value
   }
 
-  value(instance) {
-    return this._value(instance)
-  }
   async setValue(instance, value) {
     return this._setValue(instance, value)
   }
-  async _setValue(instance, value) {
-    // console.log(
-    //   ' field set:',
-    //   this.name,
-    //   instance.constructor._name,
-    //   instance.id,
-    //   value
-    // )
-    //
 
+  async _setValue(instance, value) {
     // value = this.check_value(value)
     instance._values_to_write[this.name][instance.id] = value
-
-    // console.log(' fg, ', instance.field_onchange)
 
     if (!instance.field_onchange) {
       return new Promise(resolve => resolve(this.name))
     }
 
-    // if (instance._from_record) {
-    //   instance._update_parent()
-    // }
+    await instance.trigger_onchange(this.name)
 
-    await instance._trigger_onchange(this.name)
-
-    // if (instance._from_record) {
-    //   const [parent, field] = instance._from_record
-    //   const name2 = `${field.name}.${this.name}`
-    //   if (parent.field_onchange[name2]) {
-    //     await parent._trigger_onchange(field.name)
-    //   }
-    // }
     return new Promise(resolve => resolve(this.name))
   }
 
-  _commit(/* instance */) {
+  commit(/* instance */) {
     // only a skeleton, to be overrid for o2m
   }
 }
@@ -240,7 +218,7 @@ class Binary extends BaseField {
     super(name, data)
   }
 
-  value(instance) {
+  getValue(instance) {
     const url = image2url(
       instance.constructor._odoo.baseURL,
       instance.constructor._name,
@@ -269,8 +247,8 @@ class Date2 extends BaseField {
     super(name, data)
   }
 
-  value(instance) {
-    const value = this._value(instance)
+  getValue(instance) {
+    const value = this._getValue(instance)
     return value ? new Date(value) : value
   }
 }
@@ -280,8 +258,8 @@ class Datetime extends BaseField {
     super(name, data)
   }
 
-  value(instance) {
-    const value = this._value(instance)
+  getValue(instance) {
+    const value = this._getValue(instance)
     function parseDate(dateString) {
       const [date, time] = dateString.split(' ')
       return new Date(`${date}T${time}.000Z`) // Z = UTC
@@ -295,8 +273,8 @@ class Float extends BaseField {
     super(name, data)
   }
 
-  value(instance) {
-    const value = this._value(instance)
+  getValue(instance) {
+    const value = this._getValue(instance)
     return value ? value : 0.0
   }
 }
@@ -307,8 +285,8 @@ class Integer extends BaseField {
     this.selection = data.selection || false
   }
 
-  value(instance) {
-    const value = this._value(instance)
+  getValue(instance) {
+    const value = this._getValue(instance)
     return value ? value : 0
   }
 }
@@ -327,7 +305,7 @@ class Many2many extends BaseField {
     this.domain = data.domain || false
   }
 
-  _get_for_onchange(instance) {
+  get_for_onchange(instance) {
     // in _values:  (6, 0, ids)
     // in _values_to_write:  (5,), (4,id), (3,id)
 
@@ -345,12 +323,14 @@ class Many2many extends BaseField {
     return tuples
   }
 
-  async value(instance) {
+  async getValue(instance) {
     let ids = instance._values[this.name][instance.id]
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
       const values = value_in_writed
       ids = tuples2ids(values, ids || [])
+    } else {
+      ids = [...ids]
     }
 
     const Relation = instance.env.model(this.relation)
@@ -386,8 +366,8 @@ class Many2one extends BaseField {
     this.domain = data.domain || false
   }
 
-  async value(instance) {
-    const id_ = this._value(instance)
+  async getValue(instance) {
+    const id_ = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
 
     const get_env = () => {
@@ -420,7 +400,6 @@ class One2many extends BaseField {
   }
 
   async _init_storage(instance) {
-    //
     if (!instance._values_relation) {
       instance._values_relation = {}
     }
@@ -467,7 +446,7 @@ class One2many extends BaseField {
     return null
   }
 
-  async value(instance) {
+  async getValue(instance) {
     const get_relation = async () => {
       let ids = instance._values[this.name][instance.id]
       if (ids === null) {
@@ -479,7 +458,11 @@ class One2many extends BaseField {
         const orig_ids = res[0][this.name] || []
         instance._values[this.name][instance.id] = orig_ids
         ids = [...orig_ids]
+      } else {
+        // copy for ids
+        ids = [...ids]
       }
+
       const value_in_writed = instance._values_to_write[this.name][instance.id]
       if (value_in_writed !== undefined) {
         const values = value_in_writed
@@ -513,94 +496,7 @@ class One2many extends BaseField {
     return relation
   }
 
-  _get_for_onchange(instance, kwargs = {}) {
-    // in _values:  [(4, id1, ),(4, id2, )]
-    // in _values_to_write:  (0,id,{}), (1,id, {}), (2,id)
-    //
-
-    const { for_parent } = kwargs
-
-    const ids_old = instance._values[this.name][instance.id] || []
-    let tuples = ids_old.map(id_ => [4, id_, 0])
-    const value_in_writed = instance._values_to_write[this.name][instance.id]
-
-    console.log(
-      '_get_for_onchange 0',
-      instance._name,
-      instance.id,
-      this.name,
-      for_parent,
-      value_in_writed
-    )
-
-    if (value_in_writed !== undefined) {
-      const tuple_in_write = value_in_writed || []
-
-      tuples = merge_tuples(tuples, tuple_in_write)
-    }
-
-    if (for_parent) {
-      return tuples
-    }
-
-    const relation = this._get_storage_records(instance)
-    if (!relation) {
-      return tuples
-    }
-
-    console.log(
-      '_get_for_onchange',
-      instance._name,
-      instance.id,
-      this.name,
-      for_parent,
-      tuples
-    )
-    const value2 = tuples.reduce((acc, tup) => {
-      if (tup[0] !== 0 && tup[0] !== 1) {
-        acc = [...acc, tup]
-      } else {
-        const index = relation.ids.findIndex(id_ => id_ === tup[1])
-        const relation2 = relation.slice(index, index + 1)
-        const tup_vals2 = relation2._get_values_for_onchange({
-          for_relation: true
-        })
-        const new_tup = [tup[0], tup[1], tup_vals2]
-        acc = [...acc, new_tup]
-      }
-      return acc
-    }, [])
-
-    console.log(
-      '_get_for_onchange 2',
-      instance._name,
-      instance.id,
-      this.name,
-      for_parent,
-      value2
-    )
-
-    return value2
-
-    // value2 = []
-    // for tup in value:
-    //     if tup[0] not in [0, 1]:
-    //         value2.append(tup)
-    //         continue
-
-    //     # tup_op, tup_id, tup_vals = tup
-    //     relation2 = relation[relation.ids.index(tup[1])]
-    //     tup_vals2 = relation2._get_values_for_onchange(for_relation=True)
-    //     new_tup = (tup[0], tup[1], tup_vals2)
-    //     value2.append(new_tup)
-
-    // # print('_get_for_onchange 4', value2)
-
-    // return value2
-
-    // return tuples
-  }
-
+  // set value ?
   _update_relation(instance, o2m_id, values) {
     const op = !is_virtual_id(o2m_id) ? 1 : 0
     const new_value = [[op, o2m_id, values]]
@@ -650,7 +546,49 @@ class One2many extends BaseField {
     return this._get_for_CU(instance, value)
   }
 
-  _commit(instance) {
+  get_for_onchange(instance, for_parent) {
+    // in _values:  [(4, id1, ),(4, id2, )]
+    // in _values_to_write:  (0,id,{}), (1,id, {}), (2,id)
+
+    const ids_old = instance._values[this.name][instance.id] || []
+
+    let tuples = ids_old.map(id_ => [4, id_, 0])
+    const value_in_writed = instance._values_to_write[this.name][instance.id]
+
+    if (value_in_writed !== undefined) {
+      const tuple_in_write = value_in_writed || []
+      const merged = merge_tuples([...tuples], tuple_in_write)
+      tuples = [...merged]
+    }
+
+    if (for_parent) {
+      return tuples
+    }
+
+    const relation = this._get_storage_records(instance)
+    if (!relation) {
+      return tuples
+    }
+
+    const value2 = tuples.reduce((acc, tup) => {
+      if (tup[0] !== 0 && tup[0] !== 1) {
+        acc = [...acc, tup]
+      } else {
+        const index = relation.ids.findIndex(id_ => id_ === tup[1])
+        const relation2 = relation.slice(index, index + 1)
+        const tup_vals2 = relation2._get_values_for_onchange({
+          for_relation: true
+        })
+        const new_tup = [tup[0], tup[1], tup_vals2]
+        acc = [...acc, new_tup]
+      }
+      return acc
+    }, [])
+
+    return value2
+  }
+
+  commit(instance) {
     const storage = this._get_storage_sync(instance)
     if (!(storage && storage.records)) {
       return
@@ -671,7 +609,7 @@ class One2many extends BaseField {
   }
 }
 
-export class Reference extends BaseField {
+class Reference extends BaseField {
   constructor(name, data) {
     super(name, data)
     this.context = data.context || {}
@@ -679,8 +617,8 @@ export class Reference extends BaseField {
     this.selection = data.selection || false
   }
 
-  value(instance) {
-    const value = this._value(instance)
+  getValue(instance) {
+    const value = this._getValue(instance)
 
     if (value) {
       const [relation2, o_id2] = value.split(',')
@@ -710,19 +648,19 @@ export class Reference extends BaseField {
   }
 }
 
-export class Text extends BaseField {
+class Text extends BaseField {
   constructor(name, data) {
     super(name, data)
   }
 }
 
-export class Html extends Text {
+class Html extends Text {
   constructor(name, data) {
     super(name, data)
   }
 }
 
-export class Unknown extends BaseField {
+class Unknown extends BaseField {
   constructor(name, data) {
     super(name, data)
   }
@@ -751,4 +689,10 @@ export const generate_field = (name, data) => {
 
   const field = new Field(name, data)
   return field
+}
+
+export const fields_for_test = {
+  merge_tuples,
+  merge_tuples_one,
+  One2many
 }

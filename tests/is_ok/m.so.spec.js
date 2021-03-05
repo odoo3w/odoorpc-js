@@ -49,10 +49,8 @@ describe('sale.order', async () => {
   //   expect(pi_new.id).to.be.not.equal(pi_old.id)
   //   // so onchange ok
   //   // console.log(pi_old.id, pi_new.id)
-
   //   // // console.log(ss)
   // })
-
   // it('edit sale order line', async () => {
   //   const odoo = await get_odoo()
   //   const SO = odoo.env.model('sale.order')
@@ -68,7 +66,6 @@ describe('sale.order', async () => {
   //   sol1.$price_unit = price + 0.1
   //   await sol1.wait_set()
   //   console.log('amount_total2', so.$amount_total)
-
   //   expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
   //   expect(so.$amount_total).to.be.not.equal(amount_total)
   //   const amount_total2 = so.$amount_total
@@ -79,31 +76,29 @@ describe('sale.order', async () => {
   //   // const so1 = await SO.browse(so_ids1)
   //   // expect(so1.$amount_total).to.be.equal(amount_total2)
   // })
-
-  it('edit sale order line', async () => {
-    const odoo = await get_odoo()
-    const SO = odoo.env.model('sale.order')
-    const view_form_xml_id = 'sale.view_order_form'
-    const so_ids = await SO.search([])
-    const so = await SO.browse(so_ids, { view_form_xml_id })
-    const amount_total = so.$amount_total
-    console.log('amount_total1', amount_total)
-    const sols = await so.$order_line
-    const sol1 = sols.slice(0, 1)
-    const price_subtotal = sol1.$price_subtotal
-    const price = sol1.$price_unit
-    sol1.$price_unit = price + 0.1
-    await sol1.wait_set()
-    console.log('amount_total2', so.$amount_total)
-
-    expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
-    expect(so.$amount_total).to.be.not.equal(amount_total)
-    const amount_total2 = so.$amount_total
-    await so.commit()
-    expect(so.$amount_total).to.be.equal(amount_total2)
-    console.log('amount_total3', so.$amount_total)
-    // const so_ids1 = await SO.search([])
-    // const so1 = await SO.browse(so_ids1)
-    // expect(so1.$amount_total).to.be.equal(amount_total2)
-  })
+  // it('edit sale order line', async () => {
+  //   const odoo = await get_odoo()
+  //   const SO = odoo.env.model('sale.order')
+  //   const view_form_xml_id = 'sale.view_order_form'
+  //   const so_ids = await SO.search([])
+  //   const so = await SO.browse(so_ids, { view_form_xml_id })
+  //   const amount_total = so.$amount_total
+  //   console.log('amount_total1', amount_total)
+  //   const sols = await so.$order_line
+  //   const sol1 = sols.slice(0, 1)
+  //   const price_subtotal = sol1.$price_subtotal
+  //   const price = sol1.$price_unit
+  //   sol1.$price_unit = price + 0.1
+  //   await sol1.wait_set()
+  //   console.log('amount_total2', so.$amount_total)
+  //   expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
+  //   expect(so.$amount_total).to.be.not.equal(amount_total)
+  //   const amount_total2 = so.$amount_total
+  //   await so.commit()
+  //   expect(so.$amount_total).to.be.equal(amount_total2)
+  //   console.log('amount_total3', so.$amount_total)
+  //   // const so_ids1 = await SO.search([])
+  //   // const so1 = await SO.browse(so_ids1)
+  //   // expect(so1.$amount_total).to.be.equal(amount_total2)
+  // })
 })

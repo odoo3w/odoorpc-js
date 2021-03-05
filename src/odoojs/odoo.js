@@ -48,6 +48,23 @@ export class ODOO {
     return this._session_info
   }
 
+  get current_company_id() {
+    return this._session_info.user_companies.current_company[0]
+  }
+
+  get allowed_company_ids() {
+    const cids_str = this.get_cookie('cids')
+    const cids = cids_str
+      ? cids_str.split(',').map(item => Number(item))
+      : this._session_info.user_companies.allowed_companies.map(item => item[0])
+    return cids
+  }
+
+  set allowed_company_ids(cids = []) {
+    const cids_str = cids.join(',')
+    this.set_cookie('cids', cids_str || String(this.current_company_id))
+  }
+
   _get_virtual_id() {
     // new a o2m field, need an unique virtual id
     const int_virtual_id = this._virtual_id
@@ -78,24 +95,103 @@ export class ODOO {
     }
   }
 
-  async login(payload) {
+  // def get_session_info(self):
+  // data = self.json('/web/session/get_session_info', {})
+  // return data['result']
+
+  get_cookie(c_name) {
+    var cookies = document.cookie ? document.cookie.split('; ') : []
+    console.log('document.cookie ', document.cookie)
+    console.log('cookies ', cookies)
+    for (var i = 0, l = cookies.length; i < l; i++) {
+      var parts = cookies[i].split('=')
+      var name = parts.shift()
+      var cookie = parts.join('=')
+
+      if (c_name && c_name === name) {
+        return cookie
+      }
+    }
+    return ''
+  }
+
+  // set cids,
+  // odoo.set_cookie('cids', hash.cids || String(main_company_id));
+
+  set_cookie(name, value, ttl) {
+    ttl = ttl || 24 * 60 * 60 * 365
+    document.cookie = [
+      name + '=' + value,
+      'path=/',
+      'max-age=' + ttl,
+      'expires=' + new Date(new Date().getTime() + ttl * 1000).toGMTString()
+    ].join(';')
+  }
+
+  async get_session_info() {
+    await this.init()
+
+    try {
+      const data = await this.json_call('/web/session/get_session_info', {})
+      console.log(' get_session_info ok ')
+      // console.log(' get_session_info ok ', data.result)
+
+      return data
+    } catch (error) {
+      console.log(' get_session_info error ')
+      // console.log(' get_session_info error ', error)
+      return null
+    }
+  }
+
+  async authenticate(payload) {
     await this.init()
     const { db, login = 'admin', password = 'admin' } = payload || {}
-    const data = await this.json_call('/web/session/authenticate', {
-      db: db,
-      login: login,
-      password: password
-    })
+
+    try {
+      const data = await this.json_call('/web/session/authenticate', {
+        db: db,
+        login: login,
+        password: password
+      })
+      console.log(' authenticate ok ')
+      // console.log(' authenticate ok ', data.result)
+
+      return data
+    } catch (error) {
+      console.log(' authenticate error ')
+      // console.log(' authenticate error ', error)
+      return null
+    }
+  }
+
+  async login(payload) {
+    await this.init()
+
+    let data
+    data = await this.get_session_info()
+
+    if (!data) {
+      // console.log('login with psw: ', data.result)
+      data = await this.authenticate(payload)
+    }
+
+    console.log('login: ', data.result)
 
     const uid = data.result.uid
 
     if (uid) {
+      const { db, login = 'admin', password = 'admin' } = payload || {}
       this._session_info = data.result
       const context = data.result.user_context
       this._env = new Environment(this, db, uid, { context })
       this._login = login
       this._password = password
       // TBD localstorage set
+
+      // read cids , to set allowed company_ids
+      // const cids = this.get_cookie('cids')
+      // console.log('cids', cids)
     } else {
       throw 'Wrong login ID or password'
       // raise error.RPCError("Wrong login ID or password")

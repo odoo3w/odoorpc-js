@@ -11,6 +11,30 @@ export const new_list = len => {
   return Array.from(new Array(len).keys())
 }
 
+export const get_cookie = function(c_name) {
+  var cookies = document.cookie ? document.cookie.split('; ') : []
+  for (var i = 0, l = cookies.length; i < l; i++) {
+    var parts = cookies[i].split('=')
+    var name = parts.shift()
+    var cookie = parts.join('=')
+
+    if (c_name && c_name === name) {
+      return cookie
+    }
+  }
+  return ''
+}
+
+export const set_cookie = function(name, value, ttl) {
+  ttl = ttl || 24 * 60 * 60 * 365
+  document.cookie = [
+    name + '=' + value,
+    'path=/',
+    'max-age=' + ttl,
+    'expires=' + new Date(new Date().getTime() + ttl * 1000).toGMTString()
+  ].join(';')
+}
+
 export function sleep(millisecond) {
   return new Promise(resolve => {
     setTimeout(() => {

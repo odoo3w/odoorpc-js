@@ -1,3 +1,7 @@
+// Array and Object 注意 使用时, 复制一份
+// 1 使用者: 如果本地可能有修改 那么 应该复制一份, 而不是直接使用 旧的
+// 2 授权者: 把一个 Array 给了别人, 如果不想被修改, 那么给一个副本, 不要给原件
+
 import xml2json from './xml2json.js'
 
 // NORMALIZED_TYPES = (int, str, bytes)
@@ -14,7 +18,7 @@ const _normalize_ids = ids => {
   }
 
   if (Array.isArray(ids)) {
-    return ids
+    return [...ids]
   }
 
   return [ids]
@@ -188,7 +192,6 @@ export class Model extends BaseModel {
   //
 
   async new() {
-    //
     if (!this._from_record) {
       return null
     }
@@ -285,6 +288,9 @@ export class Model extends BaseModel {
       await records._init_values_for_edit({ partial_ids: real_ids })
       await records._init_values_for_virtual(virtual_ids)
       await records._init_values_to_write_for_edit()
+    } else {
+      // never goto here
+      throw 'some errer'
     }
 
     return records
@@ -422,18 +428,9 @@ export class Model extends BaseModel {
       vals_init.id = this.id
     }
 
-    console.log(
-      '_get_values_for_onchange, ',
-      this._name,
-      this.id,
-      for_parent,
-      for_relation,
-      vals_init
-    )
-
     const vals = columns.reduce(
       (acc, field) => {
-        acc[field] = this._columns[field]._get_for_onchange(this, for_parent)
+        acc[field] = this._columns[field].get_for_onchange(this, for_parent)
         return acc
       },
       { ...vals_init }
@@ -443,8 +440,8 @@ export class Model extends BaseModel {
   }
 
   // ok
-  async _trigger_onchange(field_name) {
-    console.log('_trigger_onchange,11 ', this._name, this.id, field_name)
+  async trigger_onchange(field_name) {
+    // console.log('trigger_onchange,11 ', this._name, this.id, field_name)
 
     if (!this.field_onchange) {
       return
@@ -480,7 +477,7 @@ export class Model extends BaseModel {
       const [parent, field] = this._from_record
       const name2 = `${field.name}.${field_name}`
       if (parent.field_onchange[name2]) {
-        await parent._trigger_onchange(field.name)
+        await parent.trigger_onchange(field.name)
       }
     }
 
@@ -492,7 +489,7 @@ export class Model extends BaseModel {
     //
     // const onchange_domain = onchange.domain || {}
     // TBD domain
-    log(' after onchange,', onchange)
+    // log(' after onchange,', onchange)
     const onchange_value = onchange.value
     Object.keys(onchange_value).forEach(field => {
       const meta = this._columns[field]
@@ -508,6 +505,7 @@ export class Model extends BaseModel {
 
   // ok
   _update_parent() {
+    // call before onchange and after onchange
     if (!this._from_record) {
       return
     }
@@ -544,6 +542,7 @@ export class Model extends BaseModel {
     }, {})
   }
 
+  // call by commit
   async _commit_create() {
     await this.wait_set()
     const vals = this._get_values_for_create()
@@ -561,7 +560,7 @@ export class Model extends BaseModel {
       if (this._values_to_write[fld][this.id] !== undefined) {
         delete this._values_to_write[fld][this.id]
       }
-      this._columns[fld]._commit(this)
+      this._columns[fld].commit(this)
     })
 
     this._ids = [id_]
@@ -569,6 +568,7 @@ export class Model extends BaseModel {
     return id_
   }
 
+  // call by commit
   async _commit_write() {
     await this.wait_set()
     const vals = this._get_values_for_write()
@@ -586,7 +586,7 @@ export class Model extends BaseModel {
         delete this._values_to_write[fld][this.id]
       }
 
-      this._columns[fld]._commit(this)
+      this._columns[fld].commit(this)
     })
 
     await this._init_values_for_edit()
@@ -702,7 +702,7 @@ export class Model extends BaseModel {
 
   // for odoo call
 
-  // ok
+  // ok call by get_selection
   static async _get_domain(field, kwargs = {}) {
     /*
     // # 仅被 get_selection 使用
@@ -791,7 +791,7 @@ export class Model extends BaseModel {
     }
   }
 
-  // ok
+  // ok // call by _browse
   static async _get_field_onchange(view_form_xml_id, from_record) {
     if (from_record) {
       const [parent, field] = from_record
@@ -832,7 +832,7 @@ export class Model extends BaseModel {
     return field_onchange
   }
 
-  // ok
+  // ok // call by _get_field_onchange
   static _onchange_spec(view_info) {
     const result = {}
     const process = (node, info, prefix) => {
@@ -884,7 +884,7 @@ export class Model extends BaseModel {
     }
   }
 
-  // ok
+  // ok , call by _onchange2
   async _default_get_onchange(values = {}, field_onchange = {}) {
     const fields = Object.keys(field_onchange).filter(
       fld => fld.split('.').length === 1

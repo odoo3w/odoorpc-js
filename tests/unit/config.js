@@ -10,7 +10,8 @@ global.DOMParser = window.DOMParser
 import { ODOO } from '@/odoojs'
 
 export const BASE_URL = 'http://192.168.56.103:8069'
-export const DB = 'T2'
+// export const DB = 'T2'
+export const DB = 'erpapp'
 export const USER = 'admin'
 export const PSW = '123456'
 

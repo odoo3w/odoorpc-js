@@ -13,6 +13,7 @@ class Proxy0 {
   _get_service() {
     const service = axios.create({
       baseURL: this._baseURL,
+      // withCredentials: true,
       timeout: this._timeout
     })
 
@@ -41,12 +42,19 @@ class Proxy0 {
 
     service.interceptors.response.use(
       response => {
+        // const headers = response.headers
+        // console.log('headers ', headers) // for debug
+
         const url = response.config.url
-        if (url === '/web/session/authenticate') {
+        const url_auth = '/web/session/authenticate'
+        const url_info = '/web/session/get_session_info'
+
+        if (url === url_auth || url === url_info) {
           // if run test, not cookie,
           // so wo set sid to call odoo
 
           const headers = response.headers
+          // console.log('headers ', headers) // for debug
           const cookie = headers['set-cookie']
           // console.log('cookie ', cookie) // for debug
           if (cookie) {

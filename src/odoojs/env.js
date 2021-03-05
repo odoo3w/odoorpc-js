@@ -119,7 +119,7 @@ export class Environment {
             const Field = cols[item]
             const my_prototype = this.constructor.prototype
             my_prototype.__defineGetter__(`$${item}`, function() {
-              return Field.value(this)
+              return Field.getValue(this)
             })
 
             my_prototype.__defineSetter__(`$${item}`, function(value) {
