@@ -10,7 +10,7 @@ describe('model', async () => {
     const odoo = await get_odoo()
     const Partner = odoo.env.model('res.partner')
     expect(Partner._name).to.be.equal('res.partner')
-    await Partner.init()
+    await Partner.awaiter
     expect(Partner._columns).to.include.keys('name')
   })
   it('model browse', async () => {

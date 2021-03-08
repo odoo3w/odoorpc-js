@@ -76,7 +76,7 @@ describe('field', async () => {
     // console.log('prd_selection', prd_selection)
     // console.log('prd_selection', prd_selection[0][0])
     // sol_new.$product_id = prd_selection[0][0]
-    // await sol_new.wait_set()
+    // await sol_new.awaiter
     // // 查看  onchange 的结果
     // console.log('so._values.order_line', so._values.order_line)
     // console.log(
@@ -117,7 +117,7 @@ describe('field', async () => {
   //   const price_subtotal = sol1.$price_subtotal
   //   const price = sol1.$price_unit
   //   sol1.$price_unit = price + 0.1
-  //   await sol1.wait_set()
+  //   await sol1.awaiter
   //   console.log('amount_total2', so.$amount_total)
   //   expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
   //   expect(so.$amount_total).to.be.not.equal(amount_total)

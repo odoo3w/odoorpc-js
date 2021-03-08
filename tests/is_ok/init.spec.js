@@ -26,7 +26,7 @@ describe('odoorpc init', () => {
   it('version by init', async () => {
     const odoo = new ODOO({ baseURL: BASE_URL })
     expect(odoo.version).to.be.undefined
-    await odoo.init()
+    await odoo.awaiter
     expect(odoo.version.slice(0, 4)).to.equal('13.0')
   })
 })

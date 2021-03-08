@@ -44,7 +44,7 @@ describe('sale.order', async () => {
   //   so.$note = 'wewerwer'
   //   so.$partner_id = 3
   //   // // console.log(ss)
-  //   await so.wait_set()
+  //   await so.awaiter
   //   const pi_new = await so.$partner_invoice_id
   //   expect(pi_new.id).to.be.not.equal(pi_old.id)
   //   // so onchange ok
@@ -64,7 +64,7 @@ describe('sale.order', async () => {
   //   const price_subtotal = sol1.$price_subtotal
   //   const price = sol1.$price_unit
   //   sol1.$price_unit = price + 0.1
-  //   await sol1.wait_set()
+  //   await sol1.awaiter
   //   console.log('amount_total2', so.$amount_total)
   //   expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
   //   expect(so.$amount_total).to.be.not.equal(amount_total)
@@ -89,7 +89,7 @@ describe('sale.order', async () => {
   //   const price_subtotal = sol1.$price_subtotal
   //   const price = sol1.$price_unit
   //   sol1.$price_unit = price + 0.1
-  //   await sol1.wait_set()
+  //   await sol1.awaiter
   //   console.log('amount_total2', so.$amount_total)
   //   expect(sol1.$price_subtotal).to.be.not.equal(price_subtotal)
   //   expect(so.$amount_total).to.be.not.equal(amount_total)

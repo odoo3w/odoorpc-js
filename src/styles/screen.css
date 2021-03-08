@@ -1,0 +1,19 @@
+@media screen and (min-width: 100px) {
+  .screen-mini {
+    display: block;
+  }
+
+  .screen-max {
+    display: none;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .screen-mini {
+    display: none;
+  }
+
+  .screen-max {
+    display: block;
+  }
+}

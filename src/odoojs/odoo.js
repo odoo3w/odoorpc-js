@@ -7,16 +7,23 @@ export class ODOO {
     this._baseURL = baseURL
     this._env = undefined
     this._login = undefined
-    this._password = undefined
+
     // this._db = DB(this)
     // this._report = Report(this)
     this._version = undefined
+    this._awaiters = []
+
     const protocol = 'jsonrpc'
     this._connector = new rpc.PROTOCOLS[protocol]({ baseURL, timeout })
 
-    this._connector.version.then(version => {
-      this._version = version
+    const version = new Promise(resolve => {
+      this._connector.version.then(version => {
+        this._version = version
+        resolve(true)
+      })
     })
+
+    this._awaiters.push(version)
 
     // odoorpc2 append
     this._session_info = {}
@@ -32,12 +39,23 @@ export class ODOO {
     return this._env
   }
 
-  async init() {
-    // new ODOO() maybe call server to get server version
-    // this async method to wait return
+  // async init() {
+  //   // new ODOO() maybe call server to get server version
+  //   // this async method to wait return
 
-    // this._connector.version is promise
-    this._version = await this._connector.version
+  //   // this._connector.version is promise
+  //   this._version = await this._connector.version
+  // }
+
+  get awaiter() {
+    const _wait_awaiter = async () => {
+      // this._awaiters is promise list, wait for 1:version finished
+      while (this._awaiters.length) {
+        const one = this._awaiters.shift()
+        await one
+      }
+    }
+    return _wait_awaiter()
   }
 
   get version() {
@@ -86,18 +104,23 @@ export class ODOO {
     }
   }
 
+  check_logged_user() {
+    try {
+      this._check_logged_user()
+      return true
+    } catch (erorr) {
+      return false
+    }
+  }
   _check_logged_user() {
     // """Check if a user is logged. Otherwise, an error is raised."""
     // TBD localstorage get
-    if (!this._env || !this._password || !this._login) {
+    // console.log(' _check_logged_user,')
+    if (!this._env || !this._login) {
       throw 'Login required'
       //     raise error.InternalError("Login required")
     }
   }
-
-  // def get_session_info(self):
-  // data = self.json('/web/session/get_session_info', {})
-  // return data['result']
 
   get_cookie(c_name) {
     var cookies = document.cookie ? document.cookie.split('; ') : []
@@ -129,7 +152,7 @@ export class ODOO {
   }
 
   async get_session_info() {
-    await this.init()
+    await this.awaiter
 
     try {
       const data = await this.json_call('/web/session/get_session_info', {})
@@ -145,7 +168,7 @@ export class ODOO {
   }
 
   async authenticate(payload) {
-    await this.init()
+    await this.awaiter
     const { db, login = 'admin', password = 'admin' } = payload || {}
 
     try {
@@ -165,48 +188,71 @@ export class ODOO {
     }
   }
 
+  init_odoo(result) {
+    //
+    this._session_info = { ...result }
+    const db = result.db
+    const login = result.username
+    const uid = result.uid
+    const context = result.user_context
+    this._env = new Environment(this, db, uid, { context })
+    this._login = login
+  }
+
   async login(payload) {
-    await this.init()
+    console.log('login')
+    await this.awaiter
 
-    let data
-    data = await this.get_session_info()
+    const data = await this.authenticate(payload)
+    // console.log('login: ', data.result)
+    const result = data.result
 
-    if (!data) {
-      // console.log('login with psw: ', data.result)
-      data = await this.authenticate(payload)
-    }
-
-    console.log('login: ', data.result)
+    this.init_odoo(result)
+    console.log('login ok')
+    // read cids , to set allowed company_ids
+    // const cids = this.get_cookie('cids')
+    // console.log('cids', cids)
 
     const uid = data.result.uid
+    return uid
+  }
 
-    if (uid) {
-      const { db, login = 'admin', password = 'admin' } = payload || {}
-      this._session_info = data.result
-      const context = data.result.user_context
-      this._env = new Environment(this, db, uid, { context })
-      this._login = login
-      this._password = password
-      // TBD localstorage set
+  async session_check() {
+    console.log('session_check')
+    try {
+      const is_ok = this.check_logged_user()
+      console.log('session_check,check_logged_user', is_ok)
+      if (is_ok) {
+        await this._session_check()
+      } else {
+        const data = await this.get_session_info()
+        // console.log('get_session_info:', data.result)
+        this.init_odoo(data.result)
+      }
+      return true
+    } catch (erorr) {
+      this._env = null
+      this._login = null
 
-      // read cids , to set allowed company_ids
-      // const cids = this.get_cookie('cids')
-      // console.log('cids', cids)
-    } else {
-      throw 'Wrong login ID or password'
-      // raise error.RPCError("Wrong login ID or password")
+      return false
     }
   }
 
+  async _session_check() {
+    await this.json_call('/web/session/check', {})
+  }
+
   async logout() {
+    console.log('logout, 1', this._env)
     if (!this._env) {
       return false
     }
+    console.log('logout, 2')
 
     await this.json_call('/web/session/destroy', {})
     this._env = null
     this._login = null
-    this._password = null
+
     return true
   }
 

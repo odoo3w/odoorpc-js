@@ -179,6 +179,10 @@ class BaseField {
     return this._getValue(instance)
   }
 
+  value(instance) {
+    return this.getValue(instance)
+  }
+
   getValue(instance) {
     return this._getValue(instance)
   }
@@ -294,6 +298,21 @@ class Integer extends BaseField {
 class Selection2 extends BaseField {
   constructor(name, data) {
     super(name, data)
+    this.selection = data.selection || []
+  }
+
+  valueName(instance) {
+    const value = this._getValue(instance)
+    if (!value) {
+      return null
+    }
+
+    const ops = this.selection.reduce((acc, cur) => {
+      acc[cur[0]] = cur[1]
+      return acc
+    }, {})
+
+    return ops[value]
   }
 }
 
@@ -323,7 +342,11 @@ class Many2many extends BaseField {
     return tuples
   }
 
-  async getValue(instance) {
+  value(instance) {
+    return this._getValue(instance)
+  }
+
+  _getValue(instance) {
     let ids = instance._values[this.name][instance.id]
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
@@ -332,7 +355,11 @@ class Many2many extends BaseField {
     } else {
       ids = [...ids]
     }
+    return ids
+  }
 
+  async getValue(instance) {
+    const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
 
     const get_env = () => {
@@ -364,6 +391,19 @@ class Many2one extends BaseField {
     this.relation = data.relation || false
     this.context = data.context || {}
     this.domain = data.domain || false
+  }
+
+  value(instance) {
+    return this._getValue(instance)
+  }
+
+  valueName(instance) {
+    const id_ = this._getValue(instance)
+    if (!id_) {
+      return null
+    }
+    const value = instance._values_relation[this.name]._values.display_name[id_]
+    return value
   }
 
   async getValue(instance) {
@@ -399,51 +439,25 @@ class One2many extends BaseField {
     this.relation_field = data.relation_field || false
   }
 
-  async _init_storage(instance) {
-    if (!instance._values_relation) {
-      instance._values_relation = {}
-    }
-    if (!instance._values_relation[this.name]) {
-      instance._values_relation[this.name] = {}
-      const storage = instance._values_relation[this.name]
-      storage.records = null
-      storage._values = {}
-      storage._values_to_write = {}
-
-      const Relation = instance.env.model(this.relation)
-      await Relation.init()
-
-      Object.keys(Relation._columns).forEach(field => {
-        storage._values[field] = {}
-        storage._values_to_write[field] = {}
-      })
-    }
-  }
-
   _get_storage_records(instance) {
-    if (instance._values_relation) {
-      if (instance._values_relation[this.name]) {
-        const storage = instance._values_relation[this.name]
-        return storage.records
-      }
-    }
-    return null
+    const storage = instance._values_relation[this.name] || {}
+    return storage.records
   }
 
-  async _get_storage(instance) {
-    await this._init_storage(instance)
-    const storage = instance._values_relation[this.name]
-    return storage
+  value(instance) {
+    return this._getValue(instance)
   }
 
-  _get_storage_sync(instance) {
-    if (instance._values_relation) {
-      if (instance._values_relation[this.name]) {
-        const storage = instance._values_relation[this.name]
-        return storage
-      }
+  _getValue(instance) {
+    let ids = instance._values[this.name][instance.id] || []
+    const value_in_writed = instance._values_to_write[this.name][instance.id]
+    if (value_in_writed !== undefined) {
+      const values = value_in_writed
+      ids = tuples2ids(values, ids || [])
+    } else {
+      ids = [...ids]
     }
-    return null
+    return ids
   }
 
   async getValue(instance) {
@@ -486,7 +500,18 @@ class One2many extends BaseField {
       return get_relation()
     }
 
-    const storage = await this._get_storage(instance)
+    const get_storage = () => {
+      //
+      const storage1 = instance._values_relation[this.name]
+      if (!storage1) {
+        instance._values_relation[this.name] = {}
+      }
+      const storage2 = instance._values_relation[this.name]
+      return storage2
+    }
+
+    const storage = get_storage()
+
     if (storage.records) {
       return storage.records
     }
@@ -589,7 +614,8 @@ class One2many extends BaseField {
   }
 
   commit(instance) {
-    const storage = this._get_storage_sync(instance)
+    const storage = instance._values_relation[this.name]
+
     if (!(storage && storage.records)) {
       return
     }
