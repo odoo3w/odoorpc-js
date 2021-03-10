@@ -20,38 +20,6 @@ const _normalize_ids = ids => {
   return [ids]
 }
 
-const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
-  const to_replaced = {
-    '\\(': '[',
-    '\\)': ']',
-    False: 'false',
-    True: 'true'
-  }
-
-  let domain2 = domain
-  Object.keys(to_replaced).forEach(item => {
-    domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
-  })
-
-  const kwargs = { ...globals_dict, ...locals_dict }
-
-  const fn_str = []
-  fn_str.push('() => {')
-  Object.keys(kwargs).forEach(item => {
-    fn_str.push(`const ${item} = ${kwargs[item]}`)
-  })
-  fn_str.push(`return ${domain2}`)
-  fn_str.push('}')
-
-  const fn_str2 = fn_str.join('\n')
-  // console.log(fn_str2)
-  const fn = eval(fn_str2)
-  const ret = fn()
-  // console.log(ret)
-
-  return ret
-}
-
 export const is_virtual_id = id_ => {
   return typeof id_ === 'string' && id_.slice(0, 8) === 'virtual_'
 }
@@ -124,27 +92,35 @@ export class Model extends BaseModel {
     super()
     this._env_local = null
     this._ids = []
+    this._callback_onchange = null
+    this._callback_onchange_all = null
     this._init_storage()
   }
 
   _init_storage(payload = {}) {
     const { iterated, from_record, field_onchange = {} } = payload
-    if (iterated) {
+    if (iterated && !from_record) {
       this._from_record = iterated._from_record
       this._field_onchange = iterated._field_onchange
       this._values = iterated._values
       this._values_to_write = iterated._values_to_write
       this._values_relation = iterated._values_relation
+
+      this._callback_onchange = iterated._callback_onchange
     } else {
       this._from_record = from_record
       this._field_onchange = field_onchange
       if (from_record) {
         const [parent, field] = from_record
+
+        // console.log('init storage,', this._name, this.ids)
+        // console.log('init storage 2,', parent._values_relation, field.name)
         const storage = parent._values_relation[field.name] || {}
 
         this._values = storage._values || {}
         this._values_to_write = storage._values_to_write || {}
         this._values_relation = storage._values_relation || {}
+        // this._callback_onchange ????
       } else {
         this._values = {} // {field: {ID: value}}
         this._values_to_write = {} // {field: {ID: value}}
@@ -152,22 +128,22 @@ export class Model extends BaseModel {
       }
 
       Object.keys(this.constructor._columns).forEach(field => {
-        if (!this._values[field]) {
-          this._values[field] = {}
-        }
-        if (!this._values_to_write[field]) {
-          this._values_to_write[field] = {}
-        }
         const meta = this.constructor._columns[field]
-        if (meta.relation) {
-          if (!this._values_relation[field]) {
-            this._values_relation[field] = {}
-            this._values_relation[field]._values = {}
-            this._values_relation[field]._values_to_write = {}
-            this._values_relation[field]._values.display_name = {}
-          }
-        }
+        meta._init_storage(this)
       })
+    }
+
+    if (iterated) {
+      if (iterated._callback_onchange_all) {
+        if (this._ids.length === 1) {
+          const callback = res => {
+            iterated.event_onchange_all(this.id, res)
+          }
+          this._callback_onchange = callback
+        } else {
+          // 如果是 切片 1个以上 ?
+        }
+      }
     }
   }
 
@@ -227,6 +203,45 @@ export class Model extends BaseModel {
   }
 
   //
+  event_onchange(values) {
+    if (this._callback_onchange) {
+      this._callback_onchange(values)
+    }
+  }
+
+  event_onchange_all(rid, values) {
+    if (this._callback_onchange_all) {
+      const data_dict = this._dataDict
+      if (!data_dict[rid]) {
+        data_dict[rid] = { id: rid }
+      }
+      data_dict[rid] = { ...data_dict[rid], ...values }
+      this._callback_onchange_all(Object.values(data_dict))
+    }
+  }
+
+  fetch_all() {
+    if (!this._callback_onchange_all) {
+      return
+    }
+
+    this._dataDict = {}
+    this.ids.forEach(id_ => {
+      const rec = this.sliceById(id_)
+      rec.fetch_one()
+    })
+  }
+
+  fetch_one() {
+    // console.log('fetch one', this._name, this.id)
+    this.event_onchange({ id: this.id })
+
+    Object.keys(this._columns).forEach(col => {
+      // console.log('fetch one', this.id, col)
+      const meta = this._columns[col]
+      meta.fetch_one(this)
+    })
+  }
 
   async new() {
     if (!this._from_record) {
@@ -234,7 +249,8 @@ export class Model extends BaseModel {
     }
 
     const records = await this.constructor._browse(this.env, null, {
-      from_record: this._from_record
+      from_record: this._from_record,
+      iterated: this
     })
 
     return records
@@ -249,17 +265,19 @@ export class Model extends BaseModel {
 
   static _browse_iterated(env, ids, iterated) {
     // 迭代 返回的 不是 promise
+
     const records = new this()
     records._env_local = env
     records._ids = _normalize_ids(ids)
     records._init_storage({ iterated })
+
     return records
   }
 
   static async _browse(env, ids, payload = {}) {
     // view_form_xml_id = module_name.view_from_xml_name
     // view_form_xml_id = my_xml_id_name_not_point
-    const { from_record, view_form_xml_id } = payload
+    const { from_record, view_form_xml_id, fetch_one, iterated } = payload
 
     const check_is_o2m_edit = () => {
       if (from_record) {
@@ -281,12 +299,16 @@ export class Model extends BaseModel {
     const ids2 = is_o2m_edit && !ids ? this._odoo._get_virtual_id() : ids
     records._ids = _normalize_ids(ids2)
 
+    records._callback_onchange = fetch_one
+
+    records._dataDict = {}
+
     const field_onchange = await this._get_field_onchange(
       view_form_xml_id,
       from_record
     )
 
-    records._init_storage({ from_record, field_onchange })
+    records._init_storage({ from_record, iterated, field_onchange })
 
     if (view_form_xml_id && records.ids.length) {
       // edit from page
@@ -305,8 +327,8 @@ export class Model extends BaseModel {
       const virtual_ids = records.ids.filter(item => is_virtual_id(item))
       const real_ids = records.ids.filter(item => !is_virtual_id(item))
       await records._init_values_for_edit({ partial_ids: real_ids })
-      await records._init_values_for_virtual(virtual_ids)
-      await records._init_values_to_write_for_edit()
+      records._init_values_for_virtual(virtual_ids)
+      records._init_values_to_write_for_edit()
     } else {
       // never goto here
       throw 'some errer'
@@ -317,6 +339,7 @@ export class Model extends BaseModel {
 
   // ok
   async _init_values(paylaod = {}) {
+    // console.log('xx in _init_values :', this._name, this.ids)
     const { partial_ids = [], context = this.env.context } = paylaod
 
     const columns = this.constructor._columns
@@ -338,8 +361,6 @@ export class Model extends BaseModel {
         // load: '_classic_write'
       })
       // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
-      // 存储 m2o.id:   this._values[field][row.id] = m2o.id
-      // 存储 m2o.name: this._values_relation[field]._values.display_name[m2o.id] = m2o.display_name
 
       const ids_fetched = new Set()
 
@@ -348,16 +369,7 @@ export class Model extends BaseModel {
           ids_fetched.add(row.id)
           if (field_name !== 'id') {
             const meta = columns[field_name]
-            if (meta.type === 'many2one') {
-              const val = row[field_name]
-              this._values[field_name][row.id] = val ? val[0] : val
-              if (val) {
-                this._values_relation[field_name]._values.display_name[val[0]] =
-                  val[1]
-              }
-            } else {
-              this._values[field_name][row.id] = row[field_name]
-            }
+            meta._init_values(this, row.id, row[field_name])
           }
         })
       })
@@ -394,8 +406,11 @@ export class Model extends BaseModel {
   async _init_values_for_new(/* paylaod = {} */) {
     // const { context = this.env.context } = paylaod
     const id_ = this.id || null
-    Object.keys(this._values).forEach(field => {
-      this._values[field][id_] = this.constructor._get_default(field)
+    Object.keys(this._values).forEach(field_name => {
+      // this._values[field_name][id_] = this.constructor._get_default(field_name)
+      const val = this.constructor._get_default(field_name)
+      const meta = this._columns[field_name]
+      meta._init_values(this, id_, val)
     })
 
     const onchange = await this._onchange2({}, [], this.field_onchange)
@@ -420,9 +435,11 @@ export class Model extends BaseModel {
 
     this.ids.forEach(vid => {
       const vals = values_dict[vid] || {}
-      Object.keys(this._values).forEach(fld => {
-        if (vals[fld] !== undefined) {
-          this._values_to_write[fld][vid] = vals[fld]
+      Object.keys(this._values).forEach(field_name => {
+        if (vals[field_name] !== undefined) {
+          // this._values_to_write[field_name][vid] = vals[field_name]
+          const meta = this._columns[field_name]
+          meta._init_values_to_write(this, vid, vals[field_name])
         }
       })
     })
@@ -431,8 +448,11 @@ export class Model extends BaseModel {
   // ok
   _init_values_for_virtual(virtual_ids) {
     virtual_ids.forEach(vid => {
-      Object.keys(this._values).forEach(fld => {
-        this._values[fld][vid] = this._get_default(fld)
+      Object.keys(this._values).forEach(field_name => {
+        // this._values[field_name][vid] = this._get_default(field_name)
+        const val = this.constructor._get_default(field_name)
+        const meta = this._columns[field_name]
+        meta._init_values(this, vid, val)
       })
     })
   }
@@ -474,7 +494,7 @@ export class Model extends BaseModel {
 
   // ok
   async trigger_onchange(field_name) {
-    // console.log('trigger_onchange,11 ', this._name, this.id, field_name)
+    console.log('trigger_onchange,11 ', this._name, this.id, field_name)
 
     if (!this.field_onchange) {
       return
@@ -482,7 +502,8 @@ export class Model extends BaseModel {
 
     if (this._from_record) {
       // 1st, o2m update parent. so, value for onchange with parent
-      this._update_parent()
+      console.log('trigger_onchange,22 ', this._name, this.id, field_name)
+      this._update_parent(field_name, 'isInit')
     }
 
     if (field_name && !this.field_onchange[field_name]) {
@@ -498,12 +519,19 @@ export class Model extends BaseModel {
       values[field.relation_field] = parent_vals
     }
 
+    // console.log(values)
+
     // 3rd, onchange
     const args = [values, field_name, this.field_onchange]
     const onchange = await this._onchange2(...args)
 
     // 4th, update values_to_write, and _update_parent
     this._after_onchange(onchange)
+
+    // 5th, update _update_parent
+    if (this._from_record) {
+      this._update_parent(field_name)
+    }
 
     // 5th parent trigger onchange
     if (this._from_record) {
@@ -522,27 +550,23 @@ export class Model extends BaseModel {
     //
     // const onchange_domain = onchange.domain || {}
     // TBD domain
-    // log(' after onchange,', onchange)
+    console.log(' after onchange,', onchange)
     const onchange_value = onchange.value
     Object.keys(onchange_value).forEach(field => {
       const meta = this._columns[field]
       const val = onchange_value[field]
-      this._values_to_write[field][this.id] =
-        meta.type === 'many2one' ? (val ? val[0] : false) : val
+      meta.setValueByOnchange(this, val)
     })
-
-    if (this._from_record) {
-      this._update_parent()
-    }
   }
 
   // ok
-  _update_parent() {
+  _update_parent(field_name, isInit) {
     // call before onchange and after onchange
     if (!this._from_record) {
       return
     }
     const [parent, field] = this._from_record
+
     const values = Object.keys(this._values_to_write).reduce((acc, fld) => {
       if (this._values_to_write[fld][this.id] !== undefined) {
         acc[fld] = this._values_to_write[fld][this.id]
@@ -550,7 +574,7 @@ export class Model extends BaseModel {
       return acc
     }, {})
 
-    field._update_relation(parent, this.id, values)
+    field.setValueFromRelation(parent, this.id, values, isInit)
   }
 
   // commit
@@ -740,111 +764,31 @@ export class Model extends BaseModel {
 
   // for odoo call
 
-  // ok call by get_selection
-  static async _get_domain(field, kwargs = {}) {
-    /*
-    // # 仅被 get_selection 使用
-
-    // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
-    // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
-    // # 该选择 需要 存储在 本地 config 中
-
-    // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
-    // #  其余的只是需要 company_id
-    // #  --- res.partner
-    // #  <-str---> state_id [('country_id', '=?', country_id)]
-
-    // #  --- sale.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- purchase.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- stock.move
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-    */
-
-    const _get_company_id = () => {
-      const session_info = this._odoo.session_info
-      // # company_id = session_info['company_id']
-      const user_companies = session_info.user_companies
-      const current_company = user_companies.current_company[0]
-      // # allowed_companies = user_companies['allowed_companies']
-      // # allowed_company_ids = [com[0] for com in allowed_companies]
-      return current_company
-    }
-
-    const _get_res_model_id = async () => {
-      if (this._model_id) {
-        return this._model_id
-      }
-
-      const dm = [['model', '=', this._name]]
-      const model_ids = this._odoo.execute('ir.model', 'search', dm)
-      const model_id = model_ids.length ? model_id[0] : 0
-      this._model_id = model_id
-      return model_id
-    }
-
-    const { locals_dict } = kwargs
-
-    const Field = this._columns[field]
-    const domain = Field.domain || false
-
-    const globals_dict = {
-      company_id: _get_company_id(),
-      res_model_id: await _get_res_model_id()
-    }
-
-    if (domain && typeof domain === 'string') {
-      // console.log('domain: ', field)
-      const domain2 = eval_safe(domain, globals_dict, locals_dict)
-      // console.log('domain2: ', domain2)
-      return domain2
-    } else {
-      return domain
-    }
-  }
-
-  // ok
-  async get_selections(kwargs = {}) {
+  async get_selection(kwargs = {}) {
+    const { fields = [] } = kwargs
     const selections = {}
-    for (const field_name in this._columns) {
-      const meta = this._columns[field_name]
-      if (meta.type === 'many2one') {
-        const ops = await this.get_selection(field_name, kwargs)
-        selections[field_name] = ops
-      } else if (meta.type === 'selection') {
-        const ops = this._columns[field_name].selection
-        selections[field_name] = ops
+
+    for (const field_name of fields) {
+      // M2m 字段 有两种情况,
+      // 1 是 partner.category 这种的, 前端用 select 选择框
+      // 2 是 sale.order 里的 invoice_ids 这种的, 前端 大概不是  select 选择框
+      // TBD 2021-3-10
+
+      const fs = field_name.split('.')
+      if (fs.length > 1) {
+        // TBD , 这个 需要 子模型的 values , 显然 不能在父 模型中 这样直接获取
+        // const [parent_field, child_field] = fs
+        // const Relation = this.env.model(this._columns[parent_field].relation)
+        // const selection = Relation.get_selection(child_field, kwargs)
+        // return selection
+      } else {
+        const meta = this._columns[field_name]
+        selections[field_name] = await meta.get_selection(this)
       }
     }
+
+    // console.log(selections)
     return selections
-  }
-
-  // ok
-  async get_selection(field_name, kwargs = {}) {
-    return this.constructor.get_selection(field_name, kwargs)
-  }
-
-  static async get_selection(field_name, kwargs = {}) {
-    await this.awaiter
-    const { locals_dict } = kwargs
-    const fs = field_name.split('.')
-    if (fs.length > 1) {
-      const [parent_field, child_field] = fs
-      const Relation = this.env.model(this._columns[parent_field].relation)
-      const selection = Relation.get_selection(child_field, kwargs)
-      return selection
-    } else {
-      const domain = await this._get_domain(field_name, { locals_dict })
-      const relation = this._columns[field_name].relation
-      // const context = this._columns[field_name].context
-      const selection = this.env
-        .model(relation)
-        .execute_kw('name_search', [], { args: domain })
-      return selection
-    }
   }
 
   // ok // call by _browse
@@ -967,6 +911,7 @@ export class Model extends BaseModel {
     }, {})
 
     // # TBD: default_get 里面 可能有 m2o o2m 需要处理
+    // TBD, default_get, m2o 返回值 是 id, 需要 补充上 display_name
     const values_onchange = { ...values_onchange2, ...values, ...default_get }
 
     if (this._from_record) {
@@ -982,6 +927,7 @@ export class Model extends BaseModel {
     const default_get2 = Object.keys(default_get).reduce((acc, cur) => {
       const meta = this._columns[cur]
       const value = default_get[cur]
+      // default_get, m2o 返回值 是 id, 需要 补充上 display_name
       acc[cur] = meta.type === 'many2one' && value ? [value, ''] : value
       return acc
     }, {})

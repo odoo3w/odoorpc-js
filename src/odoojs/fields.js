@@ -102,6 +102,38 @@ const merge_tuples = (old_tuples, new_tuples) => {
   }, acc_init)
 }
 
+const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
+  const to_replaced = {
+    '\\(': '[',
+    '\\)': ']',
+    False: 'false',
+    True: 'true'
+  }
+
+  let domain2 = domain
+  Object.keys(to_replaced).forEach(item => {
+    domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
+  })
+
+  const kwargs = { ...globals_dict, ...locals_dict }
+
+  const fn_str = []
+  fn_str.push('() => {')
+  Object.keys(kwargs).forEach(item => {
+    fn_str.push(`const ${item} = ${kwargs[item]}`)
+  })
+  fn_str.push(`return ${domain2}`)
+  fn_str.push('}')
+
+  const fn_str2 = fn_str.join('\n')
+  // console.log(fn_str2)
+  const fn = eval(fn_str2)
+  const ret = fn()
+  // console.log(ret)
+
+  return ret
+}
+
 class BaseField {
   constructor(name, data) {
     this.name = name
@@ -179,6 +211,14 @@ class BaseField {
     return this._getValue(instance)
   }
 
+  fetch_one(instance) {
+    const value = this.value(instance)
+    const values = {
+      [this.name]: value
+    }
+    instance.event_onchange(values)
+  }
+
   value(instance) {
     return this.getValue(instance)
   }
@@ -186,6 +226,7 @@ class BaseField {
   getValue(instance) {
     return this._getValue(instance)
   }
+
   _getValue(instance) {
     let value = instance._values[this.name][instance.id]
     const value_in_writed = instance._values_to_write[this.name][instance.id]
@@ -193,6 +234,30 @@ class BaseField {
       value = value_in_writed
     }
     return value
+  }
+
+  _init_storage(instance) {
+    if (instance._values[this.name] === undefined) {
+      instance._values[this.name] = {}
+    }
+    if (instance._values_to_write[this.name] === undefined) {
+      instance._values_to_write[this.name] = {}
+    }
+  }
+
+  _init_values(instance, instance_id, value) {
+    instance._values[this.name][instance_id] = value
+    this.fetch_one(instance)
+  }
+
+  _init_values_to_write(instance, instance_id, value) {
+    instance._values_to_write[this.name][instance_id] = value
+    this.fetch_one(instance)
+  }
+
+  setValueByOnchange(instance, value) {
+    instance._values_to_write[this.name][instance.id] = value
+    this.fetch_one(instance)
   }
 
   async setValue(instance, value) {
@@ -203,17 +268,18 @@ class BaseField {
     // value = this.check_value(value)
     instance._values_to_write[this.name][instance.id] = value
 
-    if (!instance.field_onchange) {
-      return new Promise(resolve => resolve(this.name))
+    if (instance.field_onchange) {
+      await instance.trigger_onchange(this.name)
     }
 
-    await instance.trigger_onchange(this.name)
+    this.fetch_one(instance)
 
     return new Promise(resolve => resolve(this.name))
   }
 
-  commit(/* instance */) {
+  commit(instance) {
     // only a skeleton, to be overrid for o2m
+    this.fetch_one(instance)
   }
 }
 
@@ -251,8 +317,12 @@ class Date2 extends BaseField {
     super(name, data)
   }
 
-  getValue(instance) {
-    const value = this._getValue(instance)
+  get_for_onchange(instance) {
+    return super._getValue(instance)
+  }
+
+  _getValue(instance) {
+    const value = super._getValue(instance)
     return value ? new Date(value) : value
   }
 }
@@ -262,8 +332,12 @@ class Datetime extends BaseField {
     super(name, data)
   }
 
-  getValue(instance) {
-    const value = this._getValue(instance)
+  get_for_onchange(instance) {
+    return super._getValue(instance)
+  }
+
+  _getValue(instance) {
+    const value = super._getValue(instance)
     function parseDate(dateString) {
       const [date, time] = dateString.split(' ')
       return new Date(`${date}T${time}.000Z`) // Z = UTC
@@ -277,8 +351,8 @@ class Float extends BaseField {
     super(name, data)
   }
 
-  getValue(instance) {
-    const value = this._getValue(instance)
+  _getValue(instance) {
+    const value = super._getValue(instance)
     return value ? value : 0.0
   }
 }
@@ -289,8 +363,8 @@ class Integer extends BaseField {
     this.selection = data.selection || false
   }
 
-  getValue(instance) {
-    const value = this._getValue(instance)
+  _getValue(instance) {
+    const value = super._getValue(instance)
     return value ? value : 0
   }
 }
@@ -301,10 +375,13 @@ class Selection2 extends BaseField {
     this.selection = data.selection || []
   }
 
+  get_selection(/*instance*/) {
+    return this.selection
+  }
   valueName(instance) {
     const value = this._getValue(instance)
     if (!value) {
-      return null
+      return ''
     }
 
     const ops = this.selection.reduce((acc, cur) => {
@@ -316,12 +393,36 @@ class Selection2 extends BaseField {
   }
 }
 
-class Many2many extends BaseField {
+class _Relational extends BaseField {
   constructor(name, data) {
     super(name, data)
     this.relation = data.relation || false
     this.context = data.context || {}
     this.domain = data.domain || false
+  }
+
+  _init_storage(instance) {
+    super._init_storage(instance)
+    // if (instance._values[this.name] === undefined) {
+    //   instance._values[this.name] = {}
+    // }
+    // if (instance._values_to_write[this.name] === undefined) {
+    //   instance._values_to_write[this.name] = {}
+    // }
+    if (instance._values_relation[this.name] === undefined) {
+      instance._values_relation[this.name] = {}
+      const relation_storage = instance._values_relation[this.name]
+      relation_storage._values = {}
+      relation_storage._values.display_name = {}
+      relation_storage._values_to_write = {}
+      relation_storage._values_relation = {}
+    }
+  }
+}
+
+class Many2many extends _Relational {
+  constructor(name, data) {
+    super(name, data)
   }
 
   get_for_onchange(instance) {
@@ -342,6 +443,7 @@ class Many2many extends BaseField {
     return tuples
   }
 
+  // 返回原生的 [ids],
   value(instance) {
     return this._getValue(instance)
   }
@@ -358,6 +460,7 @@ class Many2many extends BaseField {
     return ids
   }
 
+  // 返回 异步 对象
   async getValue(instance) {
     const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
@@ -385,27 +488,150 @@ class Many2many extends BaseField {
   }
 }
 
-class Many2one extends BaseField {
+class Many2one extends _Relational {
   constructor(name, data) {
     super(name, data)
-    this.relation = data.relation || false
-    this.context = data.context || {}
-    this.domain = data.domain || false
   }
 
+  // ok call by get_selection
+  async _get_domain(instance) {
+    /*
+    // # 仅被 get_selection 使用
+
+    // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
+    // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
+    // # 该选择 需要 存储在 本地 config 中
+
+    // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
+    // #  其余的只是需要 company_id
+    // #  --- res.partner
+    // #  <-str---> state_id [('country_id', '=?', country_id)]
+
+    // #  --- sale.order.line
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+    // #  --- purchase.order.line
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+    // #  --- stock.move
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+    */
+
+    const _get_company_id = () => {
+      const session_info = instance._odoo.session_info
+      // # company_id = session_info['company_id']
+      const user_companies = session_info.user_companies
+      const current_company = user_companies.current_company[0]
+      // # allowed_companies = user_companies['allowed_companies']
+      // # allowed_company_ids = [com[0] for com in allowed_companies]
+      return current_company
+    }
+
+    const _get_values_for_domain = () => {
+      // 这是  odoo 中 仅有的 string domain 中需要的 变量
+      // 如果 是扩展模块, 有额外的 需要, 则 该处代码需要改为可配置的
+      // TBD 2021-3-10
+      const globals_fields = [
+        'company_id',
+        'country_id',
+        'product_uom_category_id'
+      ]
+
+      const values = globals_fields.reduce((acc, col) => {
+        const meta = instance._columns[col]
+        if (meta) {
+          meta.value(instance)
+          // console.log('vsls', col, meta)
+          acc[col] = meta.value(instance)
+        }
+        return acc
+      }, {})
+      if (!values.company_id) {
+        values.company_id = _get_company_id()
+      }
+      return values
+    }
+
+    const _get_res_model_id = async () => {
+      if (instance._model_id) {
+        return instance._model_id
+      }
+
+      const dm = [['model', '=', instance._name]]
+      const model_ids = await instance._odoo.execute('ir.model', 'search', dm)
+      const model_id = model_ids.length ? model_ids[0] : 0
+      this._model_id = model_id
+      return model_id
+    }
+
+    const domain = this.domain || false
+
+    if (domain && typeof domain === 'string') {
+      // console.log('domain: ', field)
+      const values = _get_values_for_domain()
+      const globals_dict = {
+        res_model_id: await _get_res_model_id(),
+        ...values
+      }
+
+      const domain2 = eval_safe(domain, globals_dict)
+      // console.log('domain2: ', domain2)
+      return domain2
+    } else {
+      return domain
+    }
+  }
+
+  async get_selection(instance) {
+    //
+    // console.log(' get selection,', instance._name, instance.id, this.name)
+
+    const domain = await this._get_domain(instance)
+
+    const relation = this.relation
+    // ? TBD, 是否 在 context 中, 有 string domain 需要的 values?
+    // const context = this.context
+    const selection = await instance.env
+      .model(relation)
+      .execute_kw('name_search', [], { args: domain })
+
+    //
+    // console.log(' get selection,2 ', selection)
+    selection.forEach(value => {
+      instance._values_relation[this.name]._values.display_name[value[0]] =
+        value[1]
+    })
+
+    return selection
+  }
+
+  fetch_one(instance) {
+    const value = this.value(instance)
+    const value_name = this.valueName(instance)
+
+    const values = {
+      [this.name]: value,
+      [`${this.name}__name`]: value_name
+    }
+    instance.event_onchange(values)
+  }
+
+  // 返回  m2o id
   value(instance) {
     return this._getValue(instance)
   }
 
+  // 返回  m2o display_name
   valueName(instance) {
     const id_ = this._getValue(instance)
     if (!id_) {
-      return null
+      return ''
     }
     const value = instance._values_relation[this.name]._values.display_name[id_]
     return value
   }
 
+  // 返回 异步对象
   async getValue(instance) {
     const id_ = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
@@ -422,28 +648,76 @@ class Many2one extends BaseField {
     return Relation._browse(get_env(), id_ || false, kwargs)
   }
 
-  setValue(instance, value) {
+  _init_values(instance, instance_id, value) {
+    // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
+    // 存储 m2o.id:   this._values[field][row.id] = m2o.id
+    // 存储 m2o.name: this._values_relation[field]._values.display_name[m2o.id] = m2o.display_name
+
+    instance._values[this.name][instance_id] = value ? value[0] : value
+    if (value && value[1]) {
+      instance._values_relation[this.name]._values.display_name[value[0]] =
+        value[1]
+    }
+  }
+
+  setValueByOnchange(instance, value) {
+    instance._values_to_write[this.name][instance.id] = value ? value[0] : value
+    if (value && value[1]) {
+      instance._values_relation[this.name]._values.display_name[value[0]] =
+        value[1]
+    }
+    this.fetch_one(instance)
+  }
+  async setValue(instance, value) {
     // TBD
     // m2o 如何 set value?
-    return this._setValue(instance, value)
+    // return this._setValue(instance, value)
+    instance._values_to_write[this.name][instance.id] = value
+    if (instance.field_onchange) {
+      await instance.trigger_onchange(this.name)
+    }
+    this.fetch_one(instance)
+    return new Promise(resolve => resolve(this.name))
   }
 }
 
-class One2many extends BaseField {
+class One2many extends _Relational {
   constructor(name, data) {
     super(name, data)
-    this.relation = data.relation || false
-    this.context = data.context || {}
-    this.domain = data.domain || false
-
     this.relation_field = data.relation_field || false
   }
 
   _get_storage_records(instance) {
-    const storage = instance._values_relation[this.name] || {}
+    // const storage = instance._values_relation[this.name] || {}
+    const storage = instance._values_relation[this.name]
     return storage.records
   }
 
+  fetch_one_for_record(instance, res) {
+    const values = {
+      [`${this.name}__record`]: res
+    }
+    instance.event_onchange(values)
+  }
+
+  fetch_one(instance) {
+    const value = this.value(instance)
+
+    const values = {
+      [this.name]: value
+    }
+    instance.event_onchange(values)
+
+    const storage = instance._values_relation[this.name]
+
+    if (storage && storage.records) {
+      storage.records.fetch_all()
+    } else {
+      this.fetch_one_for_record(instance, [])
+    }
+  }
+
+  // 返回 [ids]
   value(instance) {
     return this._getValue(instance)
   }
@@ -460,10 +734,13 @@ class One2many extends BaseField {
     return ids
   }
 
+  // 返回 异步对象
   async getValue(instance) {
     const get_relation = async () => {
       let ids = instance._values[this.name][instance.id]
       if (ids === null) {
+        // 忘记什么情况下 ids = null 了
+        // TBD 2021-3-9
         const args = [[instance.id], [this.name]]
         const kwargs = { context: this.context, load: '_classic_write' }
 
@@ -493,6 +770,7 @@ class One2many extends BaseField {
       }
 
       const kwargs = { from_record: [instance, this] }
+
       return Relation._browse(get_env(), ids, kwargs)
     }
 
@@ -500,17 +778,21 @@ class One2many extends BaseField {
       return get_relation()
     }
 
-    const get_storage = () => {
-      //
-      const storage1 = instance._values_relation[this.name]
-      if (!storage1) {
-        instance._values_relation[this.name] = {}
-      }
-      const storage2 = instance._values_relation[this.name]
-      return storage2
-    }
+    // const get_storage = () => {
+    //   //
+    //   const storage1 = instance._values_relation[this.name]
+    //   // 一定不会为 null
+    //   // TBD 找到 这句代码的作用 2021-3-9
+    //   if (!storage1) {
+    //     instance._values_relation[this.name] = {}
+    //   }
+    //   const storage2 = instance._values_relation[this.name]
+    //   return storage2
+    // }
 
-    const storage = get_storage()
+    // const storage = get_storage()
+
+    const storage = instance._values_relation[this.name]
 
     if (storage.records) {
       return storage.records
@@ -518,11 +800,22 @@ class One2many extends BaseField {
 
     const relation = await get_relation()
     storage.records = relation
+
+    if (instance._callback_onchange) {
+      const callback = res => {
+        // console.log('o2m', instance._name, instance.ids, this.name, res)
+
+        this.fetch_one_for_record(instance, res)
+      }
+      relation._callback_onchange_all = callback
+      this.fetch_one(instance)
+    }
+
     return relation
   }
 
   // set value ?
-  _update_relation(instance, o2m_id, values) {
+  setValueFromRelation(instance, o2m_id, values, isInit) {
     const op = !is_virtual_id(o2m_id) ? 1 : 0
     const new_value = [[op, o2m_id, values]]
     const old_value = instance._values_to_write[this.name][instance.id] || []
@@ -532,6 +825,19 @@ class One2many extends BaseField {
     if (relation && !relation._ids.includes(o2m_id)) {
       relation._ids.push(o2m_id)
     }
+
+    this.fetch_one(instance)
+
+    if (isInit) {
+      return
+    } else {
+      //
+    }
+  }
+
+  async setValue(instance, value) {
+    // TBD
+    return this._setValue(instance, value)
   }
 
   _get_for_CU(instance, value) {
@@ -632,6 +938,7 @@ class One2many extends BaseField {
     })
 
     storage.records = null
+    this.fetch_one(instance)
   }
 }
 

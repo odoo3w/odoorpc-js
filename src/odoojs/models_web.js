@@ -8,6 +8,8 @@ export class Model extends BaseModel {
     this._totalIds = []
     this._pageSize = PAGE_SIZE
     this._currentPage = 0
+
+    // this._callback_onchange = undefined
   }
 
   get totalIds() {
@@ -129,6 +131,26 @@ export class Model extends BaseModel {
     )
   }
 
+  get_readonlys() {
+    const readonlys = {}
+    for (const field_name in this._columns) {
+      const meta = this._columns[field_name]
+      readonlys[field_name] = meta._get_readonly(this)
+    }
+    return readonlys
+  }
+
+  // event_onchange(field) {
+  //   console.log('event_onchange', field)
+  //   if (this._callback_onchange) {
+  //     // this.toObject()
+  //     this._callback_onchange(this.toObject())
+  //   }
+  // }
+
+  // onchange(callback) {
+  //   this._callback_onchange = callback
+  // }
   //
 
   static async _bak_search_browse2(domain = [], kwargs = {}) {
