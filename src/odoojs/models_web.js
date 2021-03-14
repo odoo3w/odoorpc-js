@@ -100,36 +100,37 @@ export class Model extends BaseModel {
     return all
   }
 
-  toArray() {
-    console.log('to arr')
-    return this.ids.map(id_ => {
-      return this._toObject(id_)
-    })
-  }
+  // 不再用了
+  // toArray() {
+  //   console.log('to arr')
+  //   return this.ids.map(id_ => {
+  //     return this._toObject(id_)
+  //   })
+  // }
 
-  toObject() {
-    const id_ = this.id
-    return this._toObject(id_)
-  }
+  // toObject() {
+  //   const id_ = this.id
+  //   return this._toObject(id_)
+  // }
 
-  _toObject(id_) {
-    return Object.keys(this._columns).reduce(
-      (acc, col) => {
-        const meta = this._columns[col]
-        const one = this.sliceById(id_)
-        const val = meta.value(one)
-        acc[col] = val
-        if (meta.type === 'many2one') {
-          acc[`${col}__name`] = meta.valueName(one)
-        } else if (meta.type === 'selection') {
-          // console.log(meta.selection)
-          acc[`${col}__name`] = meta.valueName(one)
-        }
-        return acc
-      },
-      { id: id_ }
-    )
-  }
+  // _toObject(id_) {
+  //   return Object.keys(this._columns).reduce(
+  //     (acc, col) => {
+  //       const meta = this._columns[col]
+  //       const one = this.getById(id_)
+  //       const val = meta.value(one)
+  //       acc[col] = val
+  //       if (meta.type === 'many2one') {
+  //         acc[`${col}__name`] = meta.valueName(one)
+  //       } else if (meta.type === 'selection') {
+  //         // console.log(meta.selection)
+  //         acc[`${col}__name`] = meta.valueName(one)
+  //       }
+  //       return acc
+  //     },
+  //     { id: id_ }
+  //   )
+  // }
 
   get_readonlys() {
     const readonlys = {}

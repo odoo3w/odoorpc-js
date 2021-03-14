@@ -61,9 +61,9 @@ export default {
       const so = await SO.browse(ids)
       console.log('next:', so)
 
-      const rec = so.toObject()
-      console.log(rec)
-      this.dataDict = rec
+      // const rec = so.toObject()
+      // console.log(rec)
+      // this.dataDict = rec
     },
 
     toHome() {

@@ -100,7 +100,7 @@ describe('model', async () => {
     const odoo = await get_odoo()
     const Partner = odoo.env.model('res.partner')
     const partner = await Partner.browse(1)
-    const p2 = partner.slice(0, 1)
+    const p2 = partner.getByIndex(0)
     // how to do deep equal
     expect(p2.ids).to.eql(partner.ids)
     // expect(p2).to.eql(partner)

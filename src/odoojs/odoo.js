@@ -28,6 +28,14 @@ export class ODOO {
     // odoorpc2 append
     this._session_info = {}
     this._virtual_id = 1
+
+    this._config = {
+      //
+    }
+  }
+
+  get config() {
+    return this._config
   }
 
   get baseURL() {

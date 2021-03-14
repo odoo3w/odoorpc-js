@@ -92,64 +92,14 @@ export class Model extends BaseModel {
     super()
     this._env_local = null
     this._ids = []
-    this._callback_onchange = null
-    this._callback_onchange_all = null
-    this._init_storage()
-  }
-
-  _init_storage(payload = {}) {
-    const { iterated, from_record, field_onchange = {} } = payload
-    if (iterated && !from_record) {
-      this._from_record = iterated._from_record
-      this._field_onchange = iterated._field_onchange
-      this._values = iterated._values
-      this._values_to_write = iterated._values_to_write
-      this._values_relation = iterated._values_relation
-
-      this._callback_onchange = iterated._callback_onchange
-    } else {
-      this._from_record = from_record
-      this._field_onchange = field_onchange
-      if (from_record) {
-        const [parent, field] = from_record
-
-        // console.log('init storage,', this._name, this.ids)
-        // console.log('init storage 2,', parent._values_relation, field.name)
-        const storage = parent._values_relation[field.name] || {}
-
-        this._values = storage._values || {}
-        this._values_to_write = storage._values_to_write || {}
-        this._values_relation = storage._values_relation || {}
-        // this._callback_onchange ????
-      } else {
-        this._values = {} // {field: {ID: value}}
-        this._values_to_write = {} // {field: {ID: value}}
-        this._values_relation = {}
-      }
-
-      Object.keys(this.constructor._columns).forEach(field => {
-        const meta = this.constructor._columns[field]
-        meta._init_storage(this)
-      })
-    }
-
-    if (iterated) {
-      if (iterated._callback_onchange_all) {
-        if (this._ids.length === 1) {
-          const callback = res => {
-            iterated.event_onchange_all(this.id, res)
-          }
-          this._callback_onchange = callback
-        } else {
-          // 如果是 切片 1个以上 ?
-        }
-      }
-    }
   }
 
   iterator_next(index) {
     if (index < this.ids.length) {
-      return this.constructor._browse_iterated(this.env, this.ids[index], this)
+      // 这种 迭代 切片 不用于 页面展示, 只用于 内部处理, 因此 这里用不到 fetch_one, callback
+      return this.constructor._browse_iterated(this.env, this.ids[index], {
+        iterated: this
+      })
     } else {
       return undefined
     }
@@ -202,45 +152,39 @@ export class Model extends BaseModel {
     return res
   }
 
-  //
-  event_onchange(values) {
+  event_onchange(field_name) {
     if (this._callback_onchange) {
-      this._callback_onchange(values)
+      const values = this.fetch_one()
+      this._callback_onchange(values, field_name)
     }
   }
 
-  event_onchange_all(rid, values) {
+  event_onchange_all() {
     if (this._callback_onchange_all) {
-      const data_dict = this._dataDict
-      if (!data_dict[rid]) {
-        data_dict[rid] = { id: rid }
-      }
-      data_dict[rid] = { ...data_dict[rid], ...values }
-      this._callback_onchange_all(Object.values(data_dict))
+      this._callback_onchange_all()
     }
   }
 
   fetch_all() {
-    if (!this._callback_onchange_all) {
-      return
-    }
-
-    this._dataDict = {}
-    this.ids.forEach(id_ => {
-      const rec = this.sliceById(id_)
-      rec.fetch_one()
-    })
+    return this.ids.map(id_ => this._getById(id_).fetch_one())
   }
 
   fetch_one() {
-    // console.log('fetch one', this._name, this.id)
-    this.event_onchange({ id: this.id })
-
-    Object.keys(this._columns).forEach(col => {
-      // console.log('fetch one', this.id, col)
+    // console.log('fetch_one', this._name, this.ids)
+    const acc_init = { id: this.id }
+    return Object.keys(this._columns).reduce((acc, col) => {
       const meta = this._columns[col]
-      meta.fetch_one(this)
-    })
+      acc = { ...acc, ...meta.fetch_one(this) }
+      return acc
+    }, acc_init)
+  }
+
+  async remove(record) {
+    if (!this._from_record) {
+      return null
+    }
+    const [parent, field] = this._from_record
+    field.remove(parent, record)
   }
 
   async new() {
@@ -248,28 +192,69 @@ export class Model extends BaseModel {
       return null
     }
 
-    const records = await this.constructor._browse(this.env, null, {
-      from_record: this._from_record,
-      iterated: this
-    })
-
-    return records
+    const [parent, field] = this._from_record
+    return field.new(parent)
   }
 
   static async browse(ids, payload) {
     if (ids === undefined) {
       throw 'call browse without ids'
     }
-    return this._browse(this.env, ids, payload)
+    const records = await this._browse(this.env, ids, payload)
+
+    // 按照约定, browse后, 要触发 callback, 返回数据
+    // records.event_onchange()
+    // records.event_onchange_all()
+
+    return records
   }
 
-  static _browse_iterated(env, ids, iterated) {
-    // 迭代 返回的 不是 promise
+  _init_callback(payload) {
+    const { iterated, from_record, fetch_one } = payload
+    // if o2m new : iterated, from_record all is true
+    const records = this
+
+    if (fetch_one) {
+      // main call,
+      records._callback_onchange = fetch_one
+    } else if (iterated) {
+      // o2m 切片 or o2m new, 需要处理 _callback_onchange_all
+      records._callback_onchange_all = iterated._callback_onchange_all
+
+      // 切片 后, 原本 有 callback_all, so define callbak for each record
+      if (iterated._callback_onchange_all) {
+        if (records._ids.length === 1) {
+          const callback = () => iterated.event_onchange_all()
+          records._callback_onchange = callback
+        } else {
+          // 如果是切片 1个以上? 目前 only call by getById, getByIndex, 只有一个 切片
+        }
+      }
+    } else if (from_record) {
+      // from_record && !iterated.  o2m edit, from parent
+      const [parent, field] = from_record
+      if (parent._callback_onchange) {
+        const callback = () => parent.event_onchange(field.name)
+        records._callback_onchange_all = callback
+      }
+    }
+  }
+
+  static _browse_iterated(env, ids, payload = {}) {
+    const { iterated, fetch_one } = payload
 
     const records = new this()
     records._env_local = env
     records._ids = _normalize_ids(ids)
-    records._init_storage({ iterated })
+
+    records._values = iterated._values
+    records._values_to_write = iterated._values_to_write
+    records._values_relation = iterated._values_relation
+
+    records._from_record = iterated._from_record
+    records._field_onchange = iterated._field_onchange
+
+    records._init_callback({ iterated, fetch_one })
 
     return records
   }
@@ -277,7 +262,12 @@ export class Model extends BaseModel {
   static async _browse(env, ids, payload = {}) {
     // view_form_xml_id = module_name.view_from_xml_name
     // view_form_xml_id = my_xml_id_name_not_point
-    const { from_record, view_form_xml_id, fetch_one, iterated } = payload
+    const { from_record, iterated, view_form_xml_id } = payload
+    const { fetch_one } = payload
+
+    // if o2m new, from_record is true, iterated is true
+    // fetch_one:  main call, dict callback
+    // fetch_all:  main call, list callback
 
     const check_is_o2m_edit = () => {
       if (from_record) {
@@ -293,22 +283,51 @@ export class Model extends BaseModel {
 
     await this.awaiter
     const records = new this()
-    // console.log(records.awaiter)
     await records.awaiter
     records._env_local = env
+
+    // 1 o2m new, need a virtual id
+    // 2 main new, need not virtual id
     const ids2 = is_o2m_edit && !ids ? this._odoo._get_virtual_id() : ids
+
     records._ids = _normalize_ids(ids2)
 
-    records._callback_onchange = fetch_one
+    if (from_record) {
+      // o2m, m2m, m2o
+      const [parent, field] = from_record
+      // console.log('init storage,', this._name, this.ids)
+      // console.log('init storage 2,', parent._values_relation, field.name)
+      // parent 已经定义了 _values_relation , 不可能为 null
+      const storage = parent._values_relation[field.name]
+      records._values = storage._values
+      records._values_to_write = storage._values_to_write
+      records._values_relation = storage._values_relation
+    } else {
+      // main call.  1 new. 2 read
+      records._values = {} // {field: {ID: value}}
+      records._values_to_write = {} // {field: {ID: value}}
+      records._values_relation = {}
+    }
 
-    records._dataDict = {}
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._init_storage(records)
+    )
 
-    const field_onchange = await this._get_field_onchange(
+    records._from_record = from_record
+
+    records._field_onchange = await this._get_field_onchange(
       view_form_xml_id,
       from_record
     )
 
-    records._init_storage({ from_record, iterated, field_onchange })
+    if (from_record) {
+      // o2m edit: from_record=true, iterated=false
+      // o2m new:  from_record=true, iterated=true
+      records._init_callback({ from_record, iterated })
+    } else {
+      // main read, set callback
+      records._callback_onchange = fetch_one
+    }
 
     if (view_form_xml_id && records.ids.length) {
       // edit from page
@@ -407,14 +426,12 @@ export class Model extends BaseModel {
     // const { context = this.env.context } = paylaod
     const id_ = this.id || null
     Object.keys(this._values).forEach(field_name => {
-      // this._values[field_name][id_] = this.constructor._get_default(field_name)
       const val = this.constructor._get_default(field_name)
-      const meta = this._columns[field_name]
-      meta._init_values(this, id_, val)
+      this._columns[field_name]._init_values(this, id_, val)
     })
 
     const onchange = await this._onchange2({}, [], this.field_onchange)
-    this._after_onchange(onchange)
+    await this._after_onchange(onchange)
   }
 
   // ok
@@ -437,7 +454,6 @@ export class Model extends BaseModel {
       const vals = values_dict[vid] || {}
       Object.keys(this._values).forEach(field_name => {
         if (vals[field_name] !== undefined) {
-          // this._values_to_write[field_name][vid] = vals[field_name]
           const meta = this._columns[field_name]
           meta._init_values_to_write(this, vid, vals[field_name])
         }
@@ -449,7 +465,6 @@ export class Model extends BaseModel {
   _init_values_for_virtual(virtual_ids) {
     virtual_ids.forEach(vid => {
       Object.keys(this._values).forEach(field_name => {
-        // this._values[field_name][vid] = this._get_default(field_name)
         const val = this.constructor._get_default(field_name)
         const meta = this._columns[field_name]
         meta._init_values(this, vid, val)
@@ -503,7 +518,7 @@ export class Model extends BaseModel {
     if (this._from_record) {
       // 1st, o2m update parent. so, value for onchange with parent
       console.log('trigger_onchange,22 ', this._name, this.id, field_name)
-      this._update_parent(field_name, 'isInit')
+      this._update_parent()
     }
 
     if (field_name && !this.field_onchange[field_name]) {
@@ -513,7 +528,7 @@ export class Model extends BaseModel {
     const values = this._get_values_for_onchange()
 
     if (this._from_record) {
-      // 2nd, parent value in values_for_onchange, with o2m value. this is why 1st _update_parent
+      // 2nd, parent value in values_for_onchange, with o2m value. this is why 1st _update_parent1
       const [parent, field] = this._from_record
       const parent_vals = parent._get_values_for_onchange({ for_parent: true })
       values[field.relation_field] = parent_vals
@@ -525,13 +540,8 @@ export class Model extends BaseModel {
     const args = [values, field_name, this.field_onchange]
     const onchange = await this._onchange2(...args)
 
-    // 4th, update values_to_write, and _update_parent
-    this._after_onchange(onchange)
-
-    // 5th, update _update_parent
-    if (this._from_record) {
-      this._update_parent(field_name)
-    }
+    // 4th, update values_to_write
+    await this._after_onchange(onchange)
 
     // 5th parent trigger onchange
     if (this._from_record) {
@@ -546,21 +556,30 @@ export class Model extends BaseModel {
   }
 
   //  TBD domain
-  _after_onchange(onchange) {
+  async _after_onchange(onchange) {
     //
     // const onchange_domain = onchange.domain || {}
     // TBD domain
+    //
+
     console.log(' after onchange,', onchange)
+    // console.log('xxxx,', onchange)
     const onchange_value = onchange.value
     Object.keys(onchange_value).forEach(field => {
+      // console.log('after onchange,', field)
       const meta = this._columns[field]
       const val = onchange_value[field]
       meta.setValueByOnchange(this, val)
     })
+
+    // 5th, update _update_parent1
+    if (this._from_record) {
+      this._update_parent()
+    }
   }
 
   // ok
-  _update_parent(field_name, isInit) {
+  _update_parent() {
     // call before onchange and after onchange
     if (!this._from_record) {
       return
@@ -574,7 +593,7 @@ export class Model extends BaseModel {
       return acc
     }, {})
 
-    field.setValueFromRelation(parent, this.id, values, isInit)
+    field.setValueFromRelation(parent, this.id, values)
   }
 
   // commit
@@ -621,7 +640,7 @@ export class Model extends BaseModel {
     })
 
     this._ids = [id_]
-    await this._init_values_for_edit()
+    await this._after_commit()
     return id_
   }
 
@@ -642,12 +661,19 @@ export class Model extends BaseModel {
       if (this._values_to_write[fld][this.id] !== undefined) {
         delete this._values_to_write[fld][this.id]
       }
-
       this._columns[fld].commit(this)
     })
 
-    await this._init_values_for_edit()
+    await this._after_commit()
     return res
+  }
+
+  async _after_commit() {
+    await this._init_values_for_edit()
+    for (const col of Object.keys(this._columns)) {
+      await this._columns[col].after_commit(this)
+    }
+    this.event_onchange()
   }
 
   async commit() {
@@ -671,16 +697,48 @@ export class Model extends BaseModel {
   */
 
   // 切片方法, 等同于 __getitem__
-  slice(start, end) {
-    const new_ids = this.ids.slice(start, end)
-    const res = this.constructor._browse_iterated(this.env, new_ids, this)
-    return res
+  getByIndex(index, kwargs = {}) {
+    const index2 = index >= 0 ? index : this.ids.length + index
+    if (index2 >= 0 && index2 < this.ids.length) {
+      const id_ = this.ids[index2]
+      return this.getById(id_, kwargs)
+    } else {
+      // error
+      return undefined
+    }
   }
 
-  sliceById(id_) {
-    const res = this.constructor._browse_iterated(this.env, id_, this)
-    return res
+  _getById(id_) {
+    // 纯切片, 内部使用, 不触发 onchange
+    return this.constructor._browse_iterated(this.env, id_, {
+      iterated: this
+    })
   }
+
+  getById(id_, kwargs = {}) {
+    // 切片为一条之后, 需要有自己的 callback, 才能给页面传数据
+    // 外部使用, 切片后, 触发 onchange
+    if (this.ids.includes(id_)) {
+      const { fetch_one } = kwargs
+      const payload = { iterated: this, fetch_one }
+      const res = this.constructor._browse_iterated(this.env, id_, payload)
+      // 按照约定, 切片后, 要触发 callback, 返回数据
+      res.event_onchange()
+
+      return res
+    } else {
+      // error if id not in ids
+      return undefined
+    }
+  }
+
+  // 这个函数 废弃不用了 2021-3-13
+  // slice(start, end) {
+  //   const end2 = end || start + 1
+  //   const new_ids = this.ids.slice(start, end2)
+  //   const res = this.constructor._browse_iterated(this.env, new_ids, this)
+  //   return res
+  // }
 
   // __init__ ?
 
@@ -715,8 +773,7 @@ export class Model extends BaseModel {
       kwargs2.context = this.env.context
     }
 
-    const res = this._odoo.execute_kw(this._name, method, args, kwargs2)
-    return res
+    return this._odoo.execute_kw(this._name, method, args, kwargs2)
   }
 
   static async execute(method, ...args) {
@@ -764,6 +821,7 @@ export class Model extends BaseModel {
 
   // for odoo call
 
+  // 这个 应该没有用了
   async get_selection(kwargs = {}) {
     const { fields = [] } = kwargs
     const selections = {}
@@ -885,11 +943,14 @@ export class Model extends BaseModel {
   }
 
   // ok , call by _onchange2
+  // TBD: default_get 里面 可能有 m2o o2m 需要处理
   async _default_get_onchange(values = {}, field_onchange = {}) {
     const fields = Object.keys(field_onchange).filter(
       fld => fld.split('.').length === 1
     )
-    const default_get = await this.constructor.execute('default_get', fields)
+    const default_get1 = await this.constructor.execute('default_get', fields)
+
+    // console.log('default get ', default_get1)
 
     const _get_default = col => {
       const meta = this._columns[col]
@@ -910,9 +971,7 @@ export class Model extends BaseModel {
       return acc
     }, {})
 
-    // # TBD: default_get 里面 可能有 m2o o2m 需要处理
-    // TBD, default_get, m2o 返回值 是 id, 需要 补充上 display_name
-    const values_onchange = { ...values_onchange2, ...values, ...default_get }
+    const values_onchange = { ...values_onchange2, ...values, ...default_get1 }
 
     if (this._from_record) {
       const [parent, field] = this._from_record
@@ -924,13 +983,31 @@ export class Model extends BaseModel {
     const args = [[], values_onchange, field_name, field_onchange]
     const onchange = await this.constructor.execute('onchange', ...args)
 
-    const default_get2 = Object.keys(default_get).reduce((acc, cur) => {
-      const meta = this._columns[cur]
-      const value = default_get[cur]
-      // default_get, m2o 返回值 是 id, 需要 补充上 display_name
-      acc[cur] = meta.type === 'many2one' && value ? [value, ''] : value
-      return acc
-    }, {})
+    // # TBD: default_get 里面 可能有 m2o o2m 需要处理
+    // default_get, m2o 返回值 是 id, 需要 补充上 display_name
+    const default_get2 = {}
+
+    for (const col of Object.keys(default_get1)) {
+      if (this._columns[col].relation) {
+        const ref_val = default_get1[col]
+
+        if (ref_val) {
+          const ref_ids = Array.isArray(ref_val) ? ref_val : [ref_val]
+          const domain = [['id', 'in', ref_ids]]
+          const ref_records = await this.env
+            .model(this._columns[col].relation)
+            .execute_kw('name_search', [], { args: domain })
+
+          const ref_rec = ref_records[0]
+
+          default_get2[col] = [...ref_rec]
+        } else {
+          default_get2[col] = default_get1[col]
+        }
+      } else {
+        default_get2[col] = default_get1[col]
+      }
+    }
 
     const values_ret = { ...values, ...default_get2, ...onchange.value }
     const onchange2 = { ...onchange, value: values_ret }

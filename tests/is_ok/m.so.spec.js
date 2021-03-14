@@ -60,7 +60,7 @@ describe('sale.order', async () => {
   //   const amount_total = so.$amount_total
   //   console.log('amount_total1', amount_total)
   //   const sols = await so.$order_line
-  //   const sol1 = sols.slice(0, 1)
+  //   const sol1 = sols.getByIndex(0)
   //   const price_subtotal = sol1.$price_subtotal
   //   const price = sol1.$price_unit
   //   sol1.$price_unit = price + 0.1
@@ -85,7 +85,7 @@ describe('sale.order', async () => {
   //   const amount_total = so.$amount_total
   //   console.log('amount_total1', amount_total)
   //   const sols = await so.$order_line
-  //   const sol1 = sols.slice(0, 1)
+  //   const sol1 = sols.getByIndex(0)
   //   const price_subtotal = sol1.$price_subtotal
   //   const price = sol1.$price_unit
   //   sol1.$price_unit = price + 0.1
