@@ -1,28 +1,22 @@
 <template>
   <div>
     <div>
+      <FormView :record="record" :key="viewIndex" readonly />
+
+      <div>&nbsp;-----version-----</div>
+      <div class="oe_chatter">{{ api.version }}</div>
+
       <div>&nbsp;</div>
       <div>&nbsp;</div>
 
-      <!-- home 222222 -->
-      <div>Test page</div>
+      <van-button type="info" @click="toHome"> goto home </van-button>
 
-      <div>{{ api.version }}</div>
-
-      <van-button type="info" @click="toHome">
-        goto home
-      </van-button>
-      <van-button type="info" @click="testSO">
-        read SO
-      </van-button>
-
-      <div>
-        <!-- {{ dataList }} -->
+      <!-- <div>
+        {{ dataDict }}
         <div v-for="(index, col) in dataDict" :key="col">
           {{ col }}: {{ dataDict[col] }}
         </div>
-        <!-- <div>{{ dataDict }}</div> -->
-      </div>
+      </div> -->
 
       <div>&nbsp;</div>
     </div>
@@ -32,46 +26,83 @@
 <script>
 import api from '@/api'
 
+import FormView from '@/components/FormView.js'
+
 export default {
   name: 'Home',
-  components: {},
+  components: { FormView },
   mixins: [],
 
   data() {
     return {
       api,
-      dataDict: {}
+      viewIndex: 1,
+      record: null,
     }
   },
   computed: {},
   async created() {
-    //
+    // const domain = ['&', true, '|', '!', false, true]
+    // const domain = ['&', false, true]
+    // const domain = [true]
+    // const domain = [true, '!', false, true]
+    // const domain = ['!', false]
+    // const domain = [true, '!', false]
+    // const domain = [10, 20, 30]
+    // compute_domain(domain)
+    // console.log('xxxx, ')
+
+    await this.init_data_so()
+    // await this.init_data_ptn_title()
+    // await this.init_data_ptn()
   },
 
   methods: {
+    async init_data_so() {
+      const model_name = 'sale.order'
+      const view_ref = 'sale.view_order_form'
+      const domain = []
+      this.init_data({ model_name, view_ref, domain })
+    },
+
+    async init_data_ptn_title() {
+      // const model_name = 'res.partner'
+      const model_name = 'res.partner.title'
+      const view_ref = null
+      const domain = []
+      this.init_data({ model_name, view_ref, domain })
+    },
+
+    async init_data_ptn() {
+      const model_name = 'res.partner'
+      // const model_name = 'res.partner.title'
+      const view_ref = null
+      const domain = [['id', 'in', [3]]]
+      this.init_data({ model_name, view_ref, domain })
+    },
+
+    async init_data({ model_name, view_ref, domain }) {
+      const view_type = 'form'
+      const SO = api.env.model(model_name, view_type, view_ref)
+      let ids = await SO.search(domain, { order: 'id' })
+      const so = await SO.browse(ids[0])
+
+      this.record = so
+      this.viewIndex = this.viewIndex + 1
+    },
+
     async page_next() {
       //
     },
 
-    async testSO() {
-      //
-      // this.dataList = []
-      const SO = api.env.model('res.partner')
-      const ids = await SO.search([])
-      const so = await SO.browse(ids)
-      console.log('next:', so)
-
-      // const rec = so.toObject()
-      // console.log(rec)
-      // this.dataDict = rec
-    },
+    async testSO() {},
 
     toHome() {
       this.$router.replace({
-        path: '/home'
+        path: '/home',
       })
-    }
-  }
+    },
+  },
 }
 </script>
 

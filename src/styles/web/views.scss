@@ -1,0 +1,10 @@
+/**
+ * This file regroups the rules which apply on elements which are shared between
+ * all renderers. For field default rules, see the fields.scss file.
+ */
+
+// Invisible modifier (can be inside the view, the button area, ...)
+.o_invisible_modifier {
+  // display: none !important;
+  color: red;
+}

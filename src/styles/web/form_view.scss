@@ -1,0 +1,168 @@
+// Compensate margins
+@mixin o-form-sheet-negative-margin {
+  margin-left: -$o-horizontal-padding;
+  margin-right: -$o-horizontal-padding;
+  @include media-breakpoint-between(lg, xl, $o-extra-grid-breakpoints) {
+    margin-left: -$o-horizontal-padding * 2;
+    margin-right: -$o-horizontal-padding * 2;
+  }
+}
+
+.o_form_view {
+  background-color: $o-view-background-color;
+
+  // Non-chatter rules
+  .o_form_sheet_bg {
+    position: relative;
+  }
+
+  // Statusbar
+  .o_form_statusbar {
+    position: relative; // Needed for the "More" dropdown
+    display: flex;
+    justify-content: space-between;
+    padding-left: $o-horizontal-padding;
+    border-bottom: 1px solid gray('400');
+    background-color: $o-view-background-color;
+
+    > .o_statusbar_buttons,
+    > .o_statusbar_status {
+      display: flex;
+      align-items: center;
+      align-content: space-around;
+    }
+
+    > .o_field_widget {
+      align-self: center;
+      margin-bottom: 0px;
+    }
+
+    > .o_statusbar_buttons {
+      flex-flow: row wrap;
+
+      > .btn {
+        $o-statusbar-buttons-vmargin: 4px;
+        min-height: $o-statusbar-height - 2 * $o-statusbar-buttons-vmargin;
+        margin: $o-statusbar-buttons-vmargin 3px $o-statusbar-buttons-vmargin 0;
+        padding-top: 2px;
+        padding-bottom: 2px;
+      }
+    }
+
+    > .o_statusbar_status {
+      margin-left: auto;
+      flex-flow: row-reverse wrap-reverse;
+      align-self: stretch;
+      align-items: stretch;
+
+      > .o_arrow_button {
+        min-height: $o-statusbar-height;
+        font-size: 11px;
+        font-weight: bold;
+        position: relative;
+        padding-left: $o-statusbar-arrow-width * 2;
+        color: gray('700');
+        border-width: 0 0 0;
+        border-radius: 0;
+        transition: all 0.1s ease 0s;
+
+        &:first-child {
+          padding-right: $o-horizontal-padding; // Compensate container padding
+          overflow-x: hidden; // to prevent horizontal scroll due to last arrow
+        }
+        &:last-child {
+          padding-left: $o-horizontal-padding - 1;
+          border-left: 1px solid gray('400');
+        }
+
+        &:active {
+          box-shadow: none;
+        }
+
+        &.disabled {
+          opacity: 1;
+          color: $text-muted;
+          pointer-events: none;
+          border-left: 1px solid gray('300');
+        }
+
+        &:not(:first-child):before,
+        &:not(:first-child):after {
+          content: ' ';
+          display: block;
+          @include o-position-absolute(0, -$o-statusbar-arrow-width + 1);
+
+          border-top: floor($o-statusbar-height/2) solid transparent;
+          border-bottom: ceil($o-statusbar-height/2) solid transparent;
+          border-right: none;
+          border-left: $o-statusbar-arrow-width solid $o-view-background-color;
+          transition: border 0.2s ease 0s;
+          -moz-transform: scale(0.9999); // Smooth the triangle on firefox
+        }
+
+        &:not(.disabled) {
+          &:hover,
+          &:active,
+          &:focus {
+            color: $o-brand-primary;
+            background-color: gray('200');
+
+            &:after {
+              border-left-color: gray('200');
+            }
+          }
+        }
+
+        &:not(:first-child):before {
+          right: -$o-statusbar-arrow-width;
+          border-left-color: gray('300');
+        }
+
+        &.btn-primary.disabled {
+          color: $o-brand-odoo;
+          font-size: 11px;
+          background-color: gray('200');
+          cursor: default;
+
+          &:after {
+            border-left-color: gray('200');
+          }
+        }
+      }
+    }
+  }
+
+  // Button box
+  .oe_button_box {
+    position: relative;
+    display: block;
+    margin-bottom: $o-sheet-vpadding;
+    margin-top: -$o-sheet-vpadding;
+    @include o-form-sheet-negative-margin;
+    text-align: right;
+    // Use box-shadow instead of border-bottom because some button boxes are
+    // empty in some cases and we do not want to see a floating border in
+    // that cases.
+    box-shadow: inset 0 -1px 0 gray('400');
+
+    &.o_full .oe_stat_button:not(.o_invisible_modifier) ~ .oe_stat_button {
+      border-left: 1px solid gray('400');
+    }
+    &.o_not_full .oe_stat_button {
+      border-left: 1px solid gray('400');
+    }
+  }
+}
+
+// // Avatar
+// .oe_avatar {
+//   float: right;
+//   margin-bottom: 10px;
+
+//   > img {
+//     max-width: $o-avatar-size;
+//     max-height: $o-avatar-size;
+//     vertical-align: top;
+//     border: 1px solid $o-main-color-muted;
+//   }
+// }

@@ -111,7 +111,7 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
   const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
 
   let domain2 = domain
-  Object.keys(to_replaced).forEach(item => {
+  Object.keys(to_replaced).forEach((item) => {
     domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
   })
 
@@ -119,7 +119,7 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
 
   const fn_str = []
   fn_str.push('() => {')
-  Object.keys(kwargs).forEach(item => {
+  Object.keys(kwargs).forEach((item) => {
     fn_str.push(`const ${item} = ${kwargs[item]}`)
   })
   fn_str.push(`return ${domain2}`)
@@ -185,7 +185,7 @@ class BaseField {
 
   _get_for_create(instance) {
     const columns = Object.keys(instance.field_onchange).filter(
-      col => col.split('.').length === 1
+      (col) => col.split('.').length === 1
     )
     if (!columns.includes(this.name)) {
       return null
@@ -280,7 +280,7 @@ class BaseField {
       await instance.trigger_onchange(this.name)
     }
 
-    return new Promise(resolve => resolve(this.name))
+    return new Promise((resolve) => resolve(this.name))
   }
 
   commit(/* instance  */) {
@@ -295,6 +295,11 @@ class BaseField {
 class Binary extends BaseField {
   constructor(name, data) {
     super(name, data)
+  }
+
+  value(instance) {
+    // 给 instance  fetch_one 使用
+    return this.getValue(instance)
   }
 
   getValue(instance) {
@@ -384,6 +389,13 @@ class Selection2 extends BaseField {
     return this.selection
   }
 
+  fetch_one(instance) {
+    const values1 = super.fetch_one(instance)
+    const value_name = this.valueName(instance)
+    const values = { ...values1, [`${this.name}__name`]: value_name }
+    return values
+  }
+
   valueName(instance) {
     const value = this._getValue(instance)
     if (!value) {
@@ -448,7 +460,7 @@ class Many2many extends _Relational {
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
       const tuple_in_write = value_in_writed || []
-      tuple_in_write.forEach(tuple_ => {
+      tuple_in_write.forEach((tuple_) => {
         tuples.push(tuple_)
       })
     }
@@ -576,7 +588,7 @@ class Many2one extends _Relational {
       const values = _get_values_for_domain()
       const globals_dict = {
         res_model_id: await _get_res_model_id(),
-        ...values
+        ...values,
       }
 
       const domain2 = eval_safe(domain, globals_dict)
@@ -602,7 +614,7 @@ class Many2one extends _Relational {
 
     //
     // console.log(' get selection,2 ', selection)
-    selection.forEach(value => {
+    selection.forEach((value) => {
       instance._values_relation[this.name]._values.display_name[value[0]] =
         value[1]
     })
@@ -726,7 +738,7 @@ class One2many extends _Relational {
 
     const ids_old = instance._values[this.name][instance.id] || []
 
-    let tuples = ids_old.map(id_ => [4, id_, 0])
+    let tuples = ids_old.map((id_) => [4, id_, 0])
     const value_in_writed = instance._values_to_write[this.name][instance.id]
 
     if (value_in_writed !== undefined) {
@@ -750,7 +762,7 @@ class One2many extends _Relational {
       } else {
         const relation2 = relation._getById(tup[1])
         const tup_vals2 = relation2._get_values_for_onchange({
-          for_relation: true
+          for_relation: true,
         })
         const new_tup = [tup[0], tup[1], tup_vals2]
         acc = [...acc, new_tup]
@@ -780,7 +792,7 @@ class One2many extends _Relational {
       return records
     } else {
       const ids = this.value(instance)
-      const records = ids.map(id_ => {
+      const records = ids.map((id_) => {
         return { id: id_ }
       })
       return records
@@ -944,7 +956,7 @@ class One2many extends _Relational {
 
     if (relation) {
       // console.log('remove3:', relation.ids)
-      const new_ids = relation.ids.filter(item => item !== o2m_id)
+      const new_ids = relation.ids.filter((item) => item !== o2m_id)
       relation._ids = new_ids
 
       // Object.keys(records._values).forEach(field => {
@@ -985,14 +997,14 @@ class One2many extends _Relational {
     }
 
     const records = storage.records
-    Object.keys(records._values).forEach(field => {
+    Object.keys(records._values).forEach((field) => {
       const values = records._values[field]
-      Object.keys(values).forEach(o2m_id => delete values[o2m_id])
+      Object.keys(values).forEach((o2m_id) => delete values[o2m_id])
     })
 
-    Object.keys(records._values_to_write).forEach(field => {
+    Object.keys(records._values_to_write).forEach((field) => {
       const values = records._values_to_write[field]
-      Object.keys(values).forEach(o2m_id => delete values[o2m_id])
+      Object.keys(values).forEach((o2m_id) => delete values[o2m_id])
     })
   }
 }
@@ -1068,7 +1080,7 @@ const TYPES_TO_FIELDS = {
   one2many: One2many,
   reference: Reference,
   selection: Selection2,
-  text: Text
+  text: Text,
 }
 
 export const generate_field = (name, data) => {
@@ -1082,5 +1094,5 @@ export const generate_field = (name, data) => {
 export const fields_for_test = {
   merge_tuples,
   merge_tuples_one,
-  One2many
+  One2many,
 }

@@ -45,7 +45,10 @@ function _getChildren(parent) {
   var childNodes = parent.childNodes
   var children = []
   for (let child of childNodes) {
-    if (child.nodeType !== 1) {
+    // console.log(child.nodeType, child)
+    if (child.nodeType === 3) {
+      children.push(child)
+    } else if (child.nodeType !== 1) {
       continue
     } else {
       children.push(child)
@@ -60,17 +63,44 @@ function _getChildren(parent) {
 function _getChildInfo(children) {
   var resultArr = []
   for (var child of children) {
+    if (child.nodeType === 3) {
+      const text = child.nodeValue.trim()
+      if (text.length) {
+        // console.log(
+        //   'text',
+        //   child.nodeValue.trim(),
+        //   child.nodeValue.trim().length
+        //   // typeof child.nodeValue
+        // )
+
+        const textInfo = {
+          tagName: 'text',
+          content: text,
+          attr: {},
+          isParent: false,
+          hasAttr: false,
+        }
+
+        resultArr.push(textInfo)
+      }
+      continue
+    }
+
     var eachChildInfo = {
       tagName: _getTagName(child),
       content: _getContent(child),
       attr: _getAllAttr(child),
       isParent: false,
-      hasAttr: child.hasAttributes()
+      hasAttr: child.hasAttributes(),
     }
     var subChildren = _getChildren(child)
     if (subChildren.length !== 0) {
-      eachChildInfo.isParent = true
-      eachChildInfo.children = _getChildInfo(subChildren)
+      var no_loop = subChildren.length === 1 && subChildren[0].nodeType === 3
+
+      if (!no_loop) {
+        eachChildInfo.isParent = true
+        eachChildInfo.children = _getChildInfo(subChildren)
+      }
     }
     resultArr.push(eachChildInfo)
   }
@@ -135,6 +165,7 @@ function getXmlObject(xmlString) {
   var parser = new DOMParser()
   // var parser = new window.DOMParser()
   var xmlDoc = parser.parseFromString(xmlString, 'text/xml')
+  // console.log('xmldoc', xmlDoc, typeof xmlDoc)
   return xmlDoc
 }
 
@@ -143,5 +174,5 @@ export { toJSON, toXML, getXmlObject }
 export default {
   toJSON,
   toXML,
-  getXmlObject
+  getXmlObject,
 }

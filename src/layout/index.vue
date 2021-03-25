@@ -1,9 +1,8 @@
 <template>
   <div>
-    <div>layout</div>
-    <div>{{ fullWidth }}</div>
-
     <router-view />
+    <div>------layout</div>
+    <div>{{ fullWidth }}</div>
   </div>
 </template>
 
@@ -14,7 +13,7 @@ export default {
   mixins: [],
   data() {
     return {
-      fullWidth: document.documentElement.clientWidth
+      fullWidth: document.documentElement.clientWidth,
     }
   },
 
@@ -30,8 +29,8 @@ export default {
   methods: {
     handleResize() {
       this.fullWidth = document.documentElement.clientWidth
-    }
-  }
+    },
+  },
 }
 </script>
 

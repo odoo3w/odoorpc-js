@@ -890,6 +890,18 @@ export class Model extends BaseModel {
     return field_onchange
   }
 
+  static async fields_view_get(view_id_or_xml_id) {
+    let view_id = view_id_or_xml_id
+    if (view_id_or_xml_id && typeof view_id_or_xml_id === 'string') {
+      view_id = (await this.env.ref(view_id_or_xml_id)).id
+    }
+    const args = view_id ? [view_id] : []
+    const view_info = await this.execute('fields_view_get', ...args)
+
+    // const arch2 = xml2json.toJSON(view_info.arch)
+    return { ...view_info }
+  }
+
   // ok // call by _get_field_onchange
   static _onchange_spec(view_info) {
     const result = {}

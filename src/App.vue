@@ -1,6 +1,5 @@
 <template>
   <div id="app">
-    <div>App.vue</div>
     <router-view />
     <!-- <div>Home:</div> -->
     <!-- <img alt="Vue logo" src="./assets/logo.png" />
@@ -19,8 +18,8 @@ export default {
   methods: {
     test1() {},
 
-    async test2() {}
-  }
+    async test2() {},
+  },
 }
 </script>
 

@@ -15,12 +15,13 @@ Vue.use(Vant)
 
 // Vue.use(ViewUI)
 
-//
+import '@/styles/global.scss'
+import '@/styles/style.scss'
 
 Vue.config.productionTip = false
 
 new Vue({
   store, // store by vuex
   router, // router
-  render: h => h(App)
+  render: (h) => h(App),
 }).$mount('#app')

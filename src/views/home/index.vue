@@ -52,6 +52,8 @@ export default {
   computed: {},
   async created() {
     //
+    // NewClass.search_code()
+    // NewClass.search()
   },
 
   methods: {

@@ -68,7 +68,22 @@ export default {
   },
   computed: {},
   async created() {
-    this.form_edit()
+    const xml_id = 'sale.view_order_form'
+    const Model = api.env.model(this.modelName, 'form')
+    const so = Model.search([])
+
+    // const Model2 = api.env.model(this.modelName)
+
+    // const view_info = await Model.fields_view_get()
+
+    // // const field_onchange = await Model._onchange_spec(view_info)
+    // // console.log('field_onchage', field_onchange)
+
+    // // const viewInfo = await Model.form_view_get(xml_id)
+
+    // console.log(view_info)
+
+    // // this.form_edit()
   },
 
   methods: {
@@ -80,18 +95,18 @@ export default {
 
     async form_edit() {
       // edit
-      await this.init_browse()
+      // await this.init_browse()
       // await this.init_selections()
       // await this.editSO()
-      await sleep(Timeout)
-      await this.readLines()
-      await sleep(Timeout)
-      // await this.writeLines()
       // await sleep(Timeout)
-      await sleep(Timeout)
-      await this.newLine()
-      await sleep(Timeout)
-      await this.delLine()
+      // await this.readLines()
+      // await sleep(Timeout)
+      // // await this.writeLines()
+      // // await sleep(Timeout)
+      // await sleep(Timeout)
+      // await this.newLine()
+      // await sleep(Timeout)
+      // await this.delLine()
     },
 
     async form_new() {

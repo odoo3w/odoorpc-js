@@ -28,6 +28,8 @@
     "chai-as-promised": "^7.1.1",
     "eslint": "^6.7.2",
     "eslint-plugin-vue": "^6.2.2",
+    "sass": "^1.32.8",
+    "sass-loader": "10.x",
     "vue-template-compiler": "^2.6.11"
   },
   "eslintConfig": {

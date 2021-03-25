@@ -1,0 +1,19 @@
+///
+/// This file regroups the odoo mixins. They are available in every asset bundle.
+///
+
+// ------------------------------------------------------------------
+// Position absolute
+// ------------------------------------------------------------------
+@mixin o-position-absolute(
+  $top: auto,
+  $right: auto,
+  $bottom: auto,
+  $left: auto
+) {
+  position: absolute;
+  top: $top;
+  left: $left;
+  bottom: $bottom;
+  right: $right;
+}

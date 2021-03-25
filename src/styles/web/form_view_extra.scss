@@ -1,0 +1,35 @@
+.o_form_view {
+  $sheet-max-width: 1140px;
+  $sheet-min-width: 650px;
+  $sheet-padding: 16px;
+
+  .o_form_sheet_bg {
+    border-bottom: 1px solid #ddd;
+    // background: url(/web/static/src/img/form_sheetbg.png);
+
+    > .o_form_sheet {
+      min-width: $sheet-min-width;
+      max-width: $sheet-max-width;
+      min-height: 330px;
+      border: 1px solid #c8c8d3;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      background: white;
+      overflow: hidden;
+
+      margin: $o-sheet-vpadding * 0.2 auto;
+      // @include media-breakpoint-up(md) {
+      //   margin: $o-sheet-vpadding * 0.5 auto;
+      // }
+      padding: $o-sheet-vpadding;
+      // @include o-form-sheet-inner-right-padding;
+      // @include o-form-sheet-inner-left-padding;
+
+      .ui-tabs {
+        margin: 0 -16px;
+      }
+      .oe_notebook_page {
+        padding: 0 16px;
+      }
+    }
+  }
+}
