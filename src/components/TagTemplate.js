@@ -3,13 +3,7 @@ export default {
   components: {},
   mixins: [],
   props: {
-    tag: {
-      type: Object,
-      default: () => {
-        return {}
-      },
-    },
-    record: {
+    node: {
       type: Object,
       default: () => {
         return {}
@@ -20,16 +14,16 @@ export default {
   computed: {},
 
   render(createElement) {
-    if (!this.record) {
-      return <div> </div>
-    }
-
     const node = this.tag
 
     return this.renderMe(createElement, node)
 
     // return createElement(
-    //   node.tagName, {},
+    //   node.tagName, {class: node.attribute.class },
+    //   (node.children || []).map((item) => {
+    //     return 'but ele'
+    //   })
+
     // )
   },
 
@@ -37,11 +31,19 @@ export default {
     //
 
     renderMe(createElement, node) {
+      if (typeof node === 'string') {
+        return node
+      }
+
       const children = (node.children || []).map((sub_node) => {
         return this.renderMe(createElement, sub_node)
       })
 
-      return createElement(node.tagName, { ...node.attr }, children)
+      return createElement(
+        node.tagName,
+        { class: node.attribute.class },
+        children
+      )
     },
   },
 }

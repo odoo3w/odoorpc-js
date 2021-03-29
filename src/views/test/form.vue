@@ -63,7 +63,7 @@ export default {
       dataDict: {},
       record: {},
       selections: {},
-      readonlys: {}
+      readonlys: {},
     }
   },
   computed: {},
@@ -73,23 +73,12 @@ export default {
     const so = Model.search([])
 
     // const Model2 = api.env.model(this.modelName)
-
-    // const view_info = await Model.fields_view_get()
-
-    // // const field_onchange = await Model._onchange_spec(view_info)
-    // // console.log('field_onchage', field_onchange)
-
-    // // const viewInfo = await Model.form_view_get(xml_id)
-
-    // console.log(view_info)
-
-    // // this.form_edit()
   },
 
   methods: {
     toHome() {
       this.$router.replace({
-        path: '/home'
+        path: '/home',
       })
     },
 
@@ -133,12 +122,12 @@ export default {
     async init_new() {
       const view_form_xml_id = 'sale.view_order_form'
       const Model = api.env.model(this.modelName)
-      const callback = res => {
+      const callback = (res) => {
         this.dataDict = { ...this.dataDict, ...res }
       }
       const record = await Model.browse(null, {
         view_form_xml_id,
-        fetch_one: callback
+        fetch_one: callback,
       })
 
       this.record = record
@@ -158,12 +147,12 @@ export default {
       const ids = await Model.search([], { order: 'id' })
       // const record = await Model.browse(ids)
       const records = await Model.browse(ids, {
-        view_form_xml_id
+        view_form_xml_id,
         // fetch_one: callback //  只返回 第一个 id 的 dict
         // fetch_all: callback_all // 返回所有的 ids 的 list值
       })
 
-      const callback = res => {
+      const callback = (res) => {
         this.dataDict = { ...res }
       }
 
@@ -258,8 +247,8 @@ export default {
       const record = this.record
       await record.commit()
       // record.$order_line
-    }
-  }
+    },
+  },
 }
 </script>
 

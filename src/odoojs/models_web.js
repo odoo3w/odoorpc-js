@@ -1,3 +1,4 @@
+import { forEach } from 'axios/lib/utils'
 import { Model as BaseModel } from './models_base.js'
 
 import xml2json from './xml2json.js'
@@ -11,12 +12,27 @@ const mixin_class = (...class_list) => {
   return list3.join(' ')
 }
 
+const get_attrs = (node_attr) => {
+  return Object.keys(node_attr).reduce((acc, cur) => {
+    if (!['class', 'attrs', 'modifiers', 'invisible'].includes(cur)) {
+      acc[cur] = node_attr[cur]
+    }
+    return acc
+  }, {})
+}
+
+const deep_copy = (node) => {
+  return JSON.parse(JSON.stringify(node))
+}
+
 export class Model extends BaseModel {
   constructor() {
     super()
     this._totalIds = []
     this._pageSize = PAGE_SIZE
     this._currentPage = 0
+
+    this._currentNotebook = 0
   }
 
   static get metadata() {
@@ -117,93 +133,6 @@ export class Model extends BaseModel {
     return all
   }
 
-  view_node(xml_node) {
-    return xml2json.toJSON(xml_node)
-  }
-
-  view_info() {
-    const arch1 = this._view_info.arch
-    const arch = xml2json.toJSON(arch1)
-    console.log(' get v view_info', arch)
-
-    return this._view_info
-    // const arch = xml2json.toJSON(arch1)
-    // const header_node = arch.children[0]
-    // const header = this.form_view_header(header_node)
-    // const sheet_node = arch.children[1]
-    // const sheet = this.form_view_sheet(sheet_node)
-
-    // // console.log(' get v button_boxs2', button_boxs)
-
-    // return {
-    //   form: { ...arch.attr },
-    //   header,
-    //   sheet,
-    // }
-  }
-
-  view_xml2html(payload = {}) {
-    //
-    // const view_info = this._view_info
-    const arch1 = this._view_info.arch
-
-    const node = xml2json.toJSON(arch1)
-    console.log('view_info 1', node)
-
-    const node2 = this._view_node_form(node, payload)
-
-    console.log('view_info 2', node2)
-
-    return node2
-  }
-
-  //
-  _view_node_form(node, kwargs = {}) {
-    const { readonly = true } = kwargs
-
-    const node_sheet_bg = this._view_node_sheet_bg(node)
-    const node_chatter = this._view_node_chatter(node)
-
-    const class_list = ['o_form_view', node.attr.class]
-    if (readonly) {
-      class_list.push('o_form_readonly')
-    }
-
-    const node_form = {
-      attr: {
-        class: mixin_class(...class_list),
-      },
-      children: [node_sheet_bg, node_chatter],
-      hasAttr: true,
-      isParent: true,
-      tagName: 'div',
-    }
-
-    return node_form
-  }
-
-  _view_node_chatter(node) {
-    const node_chatter2 = node.children.filter(
-      (item) => item.attr.class === 'oe_chatter'
-    )
-
-    if (node_chatter2.length === 0) {
-      return null
-    }
-
-    const node_chatter = node_chatter2[0]
-
-    return {
-      ...node_chatter,
-      attr: {
-        ...node_chatter.attr,
-        class: mixin_class('o_chatter', node_chatter.attr.class),
-      },
-      children: ['this chater', 'ok'],
-      tagName: 'aside',
-    }
-  }
-
   _view_required(node) {
     if (!node.attr.modifiers) {
       return null
@@ -230,7 +159,7 @@ export class Model extends BaseModel {
 
   _view_invisible(node) {
     if (node.attr.invisible) {
-      return node.attr.invisible
+      return node.attr.invisible ? true : false
     }
     if (!node.attr.modifiers) {
       return null
@@ -267,344 +196,94 @@ export class Model extends BaseModel {
     return class_list.join(' ')
   }
 
-  // ok
-  _view_node_button(node, kwargs = {}) {
-    const class_list = node.attr.class ? node.attr.class.split(' ') : []
-
-    const { parent = [] } = kwargs
-
-    if (parent.includes('header')) {
-      const oe_highlight =
-        class_list.includes('oe_highlight') ||
-        class_list.includes('btn-primary')
-          ? 'btn-primary'
-          : 'btn-secondary'
-
-      class_list.push(oe_highlight)
+  _view_node_default_html(node) {
+    if (node.tagName === 'field') {
+      return this._view_node_field2(node)
     }
-    const class_list2 = class_list.filter((item) => item !== 'oe_highlight')
 
-    const children = []
-
-    if (parent.includes('button_box')) {
-      const icon = {
-        attr: {
-          class: mixin_class('fa fa-fw o_button_icon', node.attr.class),
-        },
-        tagName: 'i',
-      }
-      children.push(icon)
-
-      node.children.forEach((item) => {
-        if (item.tagName === 'field') {
-          children.push(this._view_node_field(item))
-        } else {
-          children.push(item)
-        }
-      })
+    if (typeof node === 'string') {
+      return node
     }
 
     return {
-      ...node,
-      attr: {
-        class: mixin_class(
-          'btn',
-          ...class_list2,
-          this._view_class_common(node)
-        ),
-        attrs: {
-          // ...node.attr,
-          ...(node.attr.name ? { name: node.attr.name } : {}),
-          type: 'button',
-        },
+      name: node.tagName,
+      meta: {
+        readonly: this._view_readonly(node),
+        invisible: this._view_invisible(node),
+        required: this._view_required(node),
+      },
+      tagName: node.tagName,
+
+      attribute: {
+        attrs: { ...get_attrs(node.attr) },
+        class: node.attr.class,
       },
 
-      onClick: Object.keys(node.attr).reduce((acc, cur) => {
-        if (!['class', 'attrs', 'modifiers', 'invisible'].includes(cur)) {
-          acc[cur] = node.attr[cur]
-        }
-        return acc
-      }, {}),
-
-      children: children.length ? children : [node.attr.string],
-      tagName: 'button',
+      children:
+        !node.isParent && node.content
+          ? [node.content]
+          : (node.children || []).map((item) =>
+              this._view_node_default_html(item)
+            ),
     }
   }
 
-  _view_node_field(node) {
-    if (node.attr.widget === 'statusbar') {
-      return this._view_node_field_widget_statusbar(node)
-    }
-
-    const class_list = node.attr.class ? node.attr.class.split(' ') : []
+  // ok
+  _view_node_field2(node) {
     const meta = this._columns[node.attr.name]
-    class_list.push(`o_field_${meta.type}`)
-    class_list.push('o_field_widget')
+    let value = ''
 
-    const children = []
-    if (node.attr.widget === 'statinfo') {
-      const node_value = {
-        attr: { class: 'o_stat_value' },
-        children: [meta.value(this)],
-        tagName: 'div',
-      }
-      const node_text = {
-        attr: { class: 'o_stat_text' },
-        children: [node.attr.string],
-        tagName: 'div',
-      }
-      children.push(node_value)
-      children.push(node_text)
+    if (meta.type === 'many2one') {
+      value = meta.valueName(this)
+    } else if (meta.type === 'one2many') {
+      value = 'this o2m'
+    } else if (meta.type === 'many2many') {
+      value = 'this m2m'
+    } else {
+      value = meta.value(this)
     }
 
     return {
-      ...node,
-      attr: {
-        class: mixin_class(...class_list, this._view_class_common(node)),
+      name: 'field',
+      meta: {
+        readonly: this._view_readonly(node),
+        invisible: this._view_invisible(node),
+        required: this._view_required(node),
+        type: meta.type,
+        string: meta.string,
+        value: value,
+        selection: meta.selection,
+      },
+      tagName: node.tagName,
+      attribute: {
         attrs: {
-          ...(node.attr.name ? { name: node.attr.name } : {}),
+          // name
+          // widget
+          // options
+          ...get_attrs(node.attr),
+          can_create: node.attr.can_create
+            ? JSON.parse(node.attr.can_create)
+            : null,
+          can_write: node.attr.can_write
+            ? JSON.parse(node.attr.can_write)
+            : null,
         },
+        class: node.attr.class,
       },
-      children,
-
-      tagName: 'div',
     }
   }
 
-  // ok
-  _view_node_field_widget_statusbar(node) {
-    const meta = this._columns[node.attr.name]
-    const selection_dict = meta.selection.reduce((acc, cur) => {
-      acc[cur[0]] = cur[1]
-      return acc
-    }, {})
+  view_node() {
+    const arch1 = this._view_info.arch
+    const node = xml2json.toJSON(arch1)
+    console.log('view_node 1', deep_copy(node))
+    const node_form = this._view_node_default_html(node)
 
-    const states = node.attr.statusbar_visible.split(',')
-    const children = states.reverse().map((state) => {
-      return {
-        attr: {
-          class: mixin_class(
-            'btn o_arrow_button',
-            this.$state === state ? 'btn-primary' : 'btn-secondary',
-            'disabled'
-          ),
+    const node_form2 = deep_copy(node_form)
 
-          attrs: {
-            type: 'button',
-            'data-value': state,
-            disabled: 'disabled',
-            title: this.$state === state ? '当前状态' : '非启用状态',
-            'aria-pressed': false,
-          },
-        },
-        children: [selection_dict[state]],
+    console.log('node_form', node_form2)
 
-        tagName: 'button',
-      }
-    })
-
-    const class_list = node.attr.class ? node.attr.class.split(' ') : []
-    class_list.push('o_statusbar_status')
-    class_list.push('o_field_widget')
-
-    return {
-      ...node,
-      attr: {
-        class: mixin_class(...class_list, this._view_class_common(node)),
-        attrs: {
-          ...node.attr,
-        },
-      },
-      children,
-      tagName: 'div',
-    }
-  }
-
-  // ok
-  _view_node_header(node) {
-    const nodes = node.children.filter((item) => item.tagName === 'header')
-    if (nodes.length === 0) {
-      return null
-    }
-
-    const node2 = nodes[0]
-    const statusbar_buttons = {
-      attr: { class: 'o_statusbar_buttons' },
-      children: node2.children
-        .filter((item) => item.tagName === 'button')
-        .map((item) => this._view_node_button(item, { parent: ['header'] })),
-      hasAttr: true,
-      isParent: true,
-      tagName: 'div',
-    }
-
-    const children = node2.children
-      .filter((item) => item.tagName === 'field')
-      .map((item) => this._view_node_field(item))
-
-    return {
-      ...node2,
-      attr: {
-        class: mixin_class('o_form_statusbar', node2.attr.class),
-        attrs: {
-          ...node2.attr,
-        },
-      },
-      children: [statusbar_buttons, ...children],
-      tagName: 'div',
-    }
-  }
-
-  _view_node_default(node) {
-    return {
-      ...node,
-      attr: {
-        class: mixin_class(node.attr.class),
-        attrs: { ...node.attr },
-      },
-      children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
-      tagName: 'div',
-    }
-  }
-
-  _view_node_button_box(node) {
-    const children = node.children.map((item) => {
-      if (item.tagName === 'button') {
-        return this._view_node_button(item, { parent: ['button_box'] })
-      } else if (item.tagName === 'field') {
-        return this._view_node_field(item)
-      } else {
-        return this._view_node_default(item)
-      }
-    })
-    return {
-      ...node,
-      attr: {
-        class: mixin_class('o_not_full', node.attr.class),
-        attrs: { ...node.attr },
-      },
-      children: children,
-      // [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
-      tagName: 'div',
-    }
-  }
-
-  _view_node_sheet(node) {
-    const nodes = node.children.filter((item) => item.tagName === 'sheet')
-    if (nodes.length === 0) {
-      return null
-    }
-
-    const node2 = nodes[0]
-
-    const children = node2.children.map((item) => {
-      if (item.tagName === 'notebook') {
-        return this._view_node_default(item)
-      } else if (item.tagName === 'group') {
-        return this._view_node_default(item)
-      } else if (item.attr.name === 'button_box') {
-        return this._view_node_button_box(item)
-      } else if (item.attr.class === 'oe_title') {
-        return this._view_node_default(item)
-      } else {
-        return this._view_node_default(item)
-      }
-    })
-
-    return {
-      ...node2,
-      attr: {
-        class: mixin_class(
-          'clearfix position-relative o_form_sheet',
-          node2.attr.class
-        ),
-        attrs: {
-          ...node2.attr,
-        },
-      },
-      children: children,
-      // [statusbar_buttons, ...children],
-      tagName: 'div',
-    }
-
-    // return null
-
-    // const node_chatter = node_chatter2[0]
-
-    // return {
-    //   ...node_chatter,
-    //   attr: {
-    //     class: mixin_class('o_chatter', node_chatter.attr.class),
-    //     attrs: {
-    //       ...node_chatter.attr,
-    //     },
-    //   },
-    //   children: ['this chater', 'ok'],
-    //   tagName: 'aside',
-    // }
-
-    // 如果下一级是 group
-    // 那么一定是 两个 inner group
-    // 分为 4 col, 4 * 6 = 24
-    // label 6, field 6, label 6, field 6
-    // 1st, Group1 label, field or lable
-    // 2nd, Group1 field, field or other
-    // 3rd, Group2 label
-    // 4th, Group2 field
-    // 此时应该做循环处理
-    // 这样直接 处理所有 到底
-    // 内部 group 这样设置
-    // classNames.push('o_group')
-    // classNames.push('o_inner_group')
-    // classNames.push('o_group_col_6')
-    // 第三层的 label:
-    // classNames.push('o_form_label')
-    // 第三层的 field:
-    // classNames.push('o_field_widget')
-    // classNames.push('o_field_[field_type]')
-  }
-
-  // ok
-  _view_node_sheet_bg(node) {
-    const node_header = this._view_node_header(node)
-    const node_sheet = this._view_node_sheet(node)
-
-    const children = []
-    // if (node_header) {
-    //   children.push(node_header)
-    // }
-    if (node_sheet) {
-      children.push(node_sheet)
-    }
-
-    const node_sheet_bg = {
-      attr: { class: 'o_form_sheet_bg' },
-      children,
-      hasAttr: true,
-      isParent: true,
-      tagName: 'div',
-    }
-
-    return node_sheet_bg
-  }
-
-  //
-  //
-
-  static async form_view_get(view_id_or_xml_id) {
-    const view_info = await super.fields_view_get(view_id_or_xml_id)
-    const arch = xml2json.toJSON(view_info.arch)
-    console.log(view_info)
-    console.log(arch)
-    return { ...view_info, arch }
-  }
-
-  static async tree_view_get(view_id_or_xml_id) {
-    const view_info = await super.fields_view_get(view_id_or_xml_id)
-    const arch = xml2json.toJSON(view_info.arch)
-    console.log(view_info)
-    console.log(arch)
-    return { ...view_info, arch }
+    return { ...node_form }
   }
 
   compute_domain(domain_in) {
@@ -794,6 +473,368 @@ export class Model extends BaseModel {
     // console.log('all,ok', ret2)
 
     return ret2
+  }
+
+  // delllllll
+
+  _view_node_notebook(node) {
+    // const num = Math.ceil(Math.random() * 100)
+
+    const children = node.children.map((item, index) => {
+      return { index, page: item }
+    })
+
+    const tabChanged_callback = (payload) => {
+      console.log(' tabChanged_callback', payload)
+      this._currentNotebook = payload
+    }
+
+    return {
+      attr: { class: mixin_class('o_notebook') },
+      // children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
+      children: [
+        {
+          attr: { class: mixin_class('o_notebook_headers') },
+          children: [
+            {
+              attr: { class: mixin_class('nav nav-tabs') },
+              children: children.map((item) => {
+                return {
+                  attr: {
+                    class: mixin_class(
+                      'nav-item',
+                      this._view_class_common(item.page)
+                    ),
+                  },
+                  children: [
+                    {
+                      attr: {
+                        class: mixin_class(
+                          'nav-link',
+                          ...(item.index === this._currentNotebook
+                            ? ['active']
+                            : [])
+                        ),
+                        attrs: {
+                          'data-toggle': 'tab',
+                          disable_anchor: true,
+                          role: 'tab',
+                          href: 'javascript:void(0)',
+                        },
+                      },
+                      children: [item.page.attr.string],
+                      tabChanged: {
+                        callback: tabChanged_callback,
+                        index: item.index,
+                      },
+
+                      tagName: 'a',
+                    },
+                  ],
+                  tagName: 'li',
+                }
+              }),
+              tagName: 'ul',
+            },
+          ],
+          tagName: 'div',
+        },
+        {
+          attr: { class: mixin_class('tab_content') },
+
+          children: children
+            .filter((item) => item.index === this._currentNotebook)
+            .map((item) => {
+              return {
+                attr: {
+                  class: mixin_class(
+                    'tab-pane',
+                    ...(item.index === this._currentNotebook ? ['active'] : [])
+                  ),
+                  attrs: {
+                    // id: `notebook_page_${item.index}`,
+                  },
+                },
+                children: item.page.children.map((item2) =>
+                  this._view_node_default_html(item2)
+                ),
+                tagName: 'div',
+              }
+            }),
+
+          tagName: 'div',
+        },
+      ],
+      tagName: 'div',
+    }
+  }
+
+  _view_node_field_partner_autocomplete(node) {
+    const meta = this._columns[node.attr.name]
+
+    return {
+      ...node,
+      attr: {
+        class: mixin_class(
+          'o_field_partner_autocomplete o_field_widget',
+          node.attr.class,
+          this._view_class_common(node)
+        ),
+        attrs: get_attrs(node.attr),
+        // { ...(node.attr.name ? { name: node.attr.name } : {}) },
+      },
+      children: [meta.value(this)],
+      tagName: 'span',
+    }
+  }
+
+  _view_node_field_radio(node) {
+    const meta = this._columns[node.attr.name]
+
+    const value =
+      meta.type === 'selection' ? meta.valueName(this) : meta.value(this)
+
+    return {
+      ...node,
+      attr: {
+        class: mixin_class(
+          'o_field_radio o_field_widget',
+          node.attr.class,
+          this._view_class_common(node)
+        ),
+        attrs: get_attrs(node.attr),
+        // { ...(node.attr.name ? { name: node.attr.name } : {}) },
+      },
+      children: [value],
+      tagName: 'span',
+    }
+  }
+
+  _view_node_field_res_partner_many2one(node) {
+    const meta = this._columns[node.attr.name]
+
+    const value = meta.valueName(this)
+
+    return {
+      ...node,
+      attr: {
+        class: mixin_class(
+          'o_field_uri o_field_widget',
+          node.attr.class,
+          this._view_class_common(node),
+          'o_field_empty' // 这个 如何控制的
+        ),
+        attrs: get_attrs(node.attr),
+      },
+      children: [value],
+      tagName: 'span',
+    }
+  }
+
+  // ok
+  _view_node_group_label(node) {
+    if (node.tagName === 'field') {
+      const label_class = mixin_class(
+        'o_form_label',
+        this._view_class_common(node)
+      )
+
+      // 这是  tip 用的
+      // const attrs = { 'data-original-title': true, title: true }
+
+      const meta = this._columns[node.attr.name]
+      return {
+        attr: { class: label_class },
+        attrs: {
+          // for 属性 是否有作用
+          // for: ''
+          // ...attrs,
+        },
+        children: [meta.string],
+        tagName: 'label',
+      }
+    } else if (node.tagName === 'label') {
+      return {
+        attr: { class: 'o_form_label' },
+        attrs: {
+          // for 属性 是否有作用
+          // for: ''
+          // 这是  tip 用的
+          // 'data-original-title': true,
+          // title: true
+        },
+        children: [node.attr.string],
+        tagName: 'label',
+      }
+    } else {
+      return {
+        attr: { class: mixin_class(this._view_class_common(node)) },
+        attrs: get_attrs(node.attr),
+        children: node.children,
+        tagName: 'div',
+      }
+    }
+  }
+
+  // ok
+  _view_node_group_table(fields, payload = {}) {
+    //
+    const { parent, col_count, style: value_style, class: class2 } = payload
+
+    const get_table_matrix = (fields, col_count) => {
+      // const matrix_col_count = col_count / 2
+      const loop_res = fields.reduce(
+        (acc, node) => {
+          const { matrix, last_row, last_item } = acc
+
+          let new_matrix = [...matrix]
+          let new_row = last_row ? [...last_row] : []
+          let new_item = last_item ? { ...last_item } : {}
+
+          if (node.tagName === 'field') {
+            if (node.attr.nolabel) {
+              new_item = { ...new_item, value: node }
+            } else {
+              new_item = { label: node, value: node }
+            }
+          } else {
+            new_item = { label: node }
+          }
+
+          if (new_item.label && new_item.value) {
+            new_row = [...new_row, new_item]
+            new_item = null
+          }
+
+          if (new_row.length === col_count / 2) {
+            new_matrix = [...new_matrix, new_row]
+            new_row = null
+            new_item = null
+          }
+
+          acc = {
+            matrix: new_matrix,
+            last_row: new_row,
+            last_item: new_item,
+          }
+          return acc
+        },
+        { matrix: [], last_row: null, last_item: null }
+      )
+
+      const matrix = loop_res.matrix
+      const part_matrix = loop_res.last_row ? [loop_res.last_row] : []
+      return [...matrix, ...part_matrix]
+    }
+
+    const matrix = get_table_matrix(fields, col_count)
+
+    // console.log('table_matrix, ', matrix)
+
+    const node_table = {
+      attr: { class: mixin_class('o_group', 'o_inner_group', class2) },
+      children: [
+        {
+          children: matrix.map((row) => {
+            return {
+              attr: {},
+              children: row.reduce((acc, col) => {
+                acc.push({
+                  attr: { class: mixin_class('o_td_label') },
+                  children: [this._view_node_group_label(col.label)],
+                  tagName: 'td',
+                })
+
+                acc.push({
+                  attr: { style: value_style },
+                  children: [this._view_node_field(col.value)],
+                  tagName: 'td',
+                })
+
+                return acc
+              }, []),
+              tagName: 'tr',
+            }
+          }),
+          tagName: 'tbody',
+        },
+      ],
+      tagName: 'table',
+    }
+    // console.log('node_table, ', node_table)
+
+    return node_table
+  }
+
+  // ok
+  _view_node_group_inner(node) {
+    // console.log('inner group', node)
+
+    const node_table = this._view_node_group_table(node.children, {
+      parent: 'group_inner',
+      col_count: 2,
+      style: 'width: 100%',
+      class: 'o_group_col_6',
+    })
+    // console.log('node_table, ', node_table)
+    return node_table
+  }
+
+  // ok
+  _view_node_group_outer(node) {
+    return {
+      ...node,
+      attr: {
+        class: mixin_class('o_group'),
+        attrs: get_attrs(node.attr),
+      },
+      children: node.children.map((item) => this._view_node_group_inner(item)),
+
+      // children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
+      tagName: 'div',
+    }
+  }
+
+  // ok
+  _view_node_group_one(node) {
+    console.log('inner group 1', node)
+    // col: "4"
+    const node_table = this._view_node_group_table(node.children, {
+      parent: 'group_one',
+      col_count: 4,
+      style: 'width: 50%',
+    })
+    // console.log('node_table, ', node_table)
+    return node_table
+  }
+  // ok
+  _view_node_group(node) {
+    const check_type = () => {
+      if (!node.children) {
+        return 0
+      }
+      if (node.children.length !== 2) {
+        return 1
+      }
+      const child0 = node.children[0]
+      const child1 = node.children[0]
+
+      if (child0.tagName === 'group' && child1.tagName === 'group') {
+        return 2
+      } else {
+        return 1
+      }
+    }
+
+    const my_type = check_type()
+
+    if (my_type === 1) {
+      return this._view_node_group_one(node)
+    } else if (my_type === 2) {
+      return this._view_node_group_outer(node)
+    } else {
+      // return this._view_node_default(node)
+    }
   }
 
   // 不再用了

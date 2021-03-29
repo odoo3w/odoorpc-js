@@ -73,15 +73,17 @@ function _getChildInfo(children) {
         //   // typeof child.nodeValue
         // )
 
-        const textInfo = {
-          tagName: 'text',
-          content: text,
-          attr: {},
-          isParent: false,
-          hasAttr: false,
-        }
+        resultArr.push(text)
 
-        resultArr.push(textInfo)
+        // const textInfo = {
+        //   tagName: 'text',
+        //   content: text,
+        //   attr: {},
+        //   isParent: false,
+        //   hasAttr: false,
+        // }
+
+        // resultArr.push(textInfo)
       }
       continue
     }

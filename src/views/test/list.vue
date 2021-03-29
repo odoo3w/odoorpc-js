@@ -48,7 +48,7 @@ export default {
     return {
       api,
       dataList: [],
-      viewInfo: { arch: { tagName: '' } }
+      viewInfo: { arch: { tagName: '' } },
     }
   },
   computed: {},
@@ -65,23 +65,22 @@ export default {
     async init_viev_info() {},
 
     async init_data() {
-      const model_name = 'sale.order'
-      const view_type = 'form'
-      const view_ref = 'sale.view_order_tree'
-      // const view_ref = "sale.view_quotation_tree_with_onboarding";
-      const SO = api.env.model(model_name, view_type, view_ref)
-      const viewInfo = await SO.view_info()
-      this.viewInfo = { ...viewInfo }
-      console.log(viewInfo)
-
-      const domain = []
-      let sos = await SO.pageSearch(domain, { order: 'id' })
-      console.log('next:', sos.totalIds, sos.count, sos.pageCount)
-      const so = await sos.pageGoto(0)
-      const data = so.fetch_all()
-      // const data = so && so.toArray()
-      console.log(data)
-      this.dataList = [...data]
+      // const model_name = 'sale.order'
+      // const view_type = 'form'
+      // const view_ref = 'sale.view_order_tree'
+      // // const view_ref = "sale.view_quotation_tree_with_onboarding";
+      // const SO = api.env.model(model_name, view_type, view_ref)
+      // const viewInfo = await SO.view_info2()
+      // this.viewInfo = { ...viewInfo }
+      // console.log(viewInfo)
+      // const domain = []
+      // let sos = await SO.pageSearch(domain, { order: 'id' })
+      // console.log('next:', sos.totalIds, sos.count, sos.pageCount)
+      // const so = await sos.pageGoto(0)
+      // const data = so.fetch_all()
+      // // const data = so && so.toArray()
+      // console.log(data)
+      // this.dataList = [...data]
     },
 
     async page_next() {
@@ -99,10 +98,10 @@ export default {
 
     toHome() {
       this.$router.replace({
-        path: '/home'
+        path: '/home',
       })
-    }
-  }
+    },
+  },
 }
 </script>
 

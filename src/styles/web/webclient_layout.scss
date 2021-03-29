@@ -1,0 +1,11 @@
+// ------------------------------------------------------------------
+// Base layout rules, use the 'webclient.scss' file for styling
+// ------------------------------------------------------------------
+html {
+  height: 100%;
+  .o_web_client {
+    height: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+  }
+}

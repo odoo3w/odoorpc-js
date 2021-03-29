@@ -3,6 +3,10 @@
   $sheet-min-width: 650px;
   $sheet-padding: 16px;
 
+  &.o_form_nosheet.oe_form_nomargin {
+    margin: 0;
+  }
+
   .o_form_sheet_bg {
     border-bottom: 1px solid #ddd;
     // background: url(/web/static/src/img/form_sheetbg.png);
@@ -31,5 +35,69 @@
         padding: 0 16px;
       }
     }
+  }
+
+  // Button box
+  .oe_button_box {
+    &,
+    & + .oe_avatar {
+      + .oe_title {
+        width: 400px;
+      }
+    }
+
+    // TODO remove me in master (this rule is a copy of the one in the
+    // bootstrap_review.scss file)
+    + .alert {
+      clear: both;
+    }
+
+    .oe_stat_button {
+      &:hover {
+        background-color: #e6e6e6;
+      }
+      .o_button_icon {
+        color: #7c7bad;
+      }
+    }
+  }
+
+  // Groups
+  .o_group {
+    .o_td_label {
+      border-right: 1px solid #ddd;
+    }
+    .o_td_label + td {
+      padding: 0px 36px 0px 8px;
+    }
+    .o_field_widget.o_text_overflow {
+      width: 1px !important; // hack to make the table layout believe it is a small element (so that the table does not grow too much) ...
+      min-width: 100%; // ... but in fact it takes the whole table space
+    }
+  }
+
+  // Separators
+  .o_horizontal_separator {
+    color: $o-brand-primary;
+    font-weight: bold;
+  }
+
+  // Specific style classes
+  .o_group.o_inner_group.oe_subtotal_footer {
+    .oe_subtotal_footer_separator {
+      border-top: 1px solid #cacaca;
+    }
+    .o_td_label {
+      border-right: none;
+    }
+  }
+
+  // Chatter
+  .oe_chatter {
+    display: block;
+    min-width: $sheet-min-width + 2 * $sheet-padding;
+    max-width: $sheet-max-width + 2 * $sheet-padding;
+    margin: 0 auto;
+    padding: 16px 16px 48px;
   }
 }

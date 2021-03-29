@@ -15,6 +15,7 @@ Vue.use(Vant)
 
 // Vue.use(ViewUI)
 
+import '@/styles/base/fontawesome/css/font-awesome.css'
 import '@/styles/global.scss'
 import '@/styles/style.scss'
 
