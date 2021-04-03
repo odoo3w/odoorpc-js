@@ -33,6 +33,11 @@ const homeRoutes = [
         name: 'home'
       },
       {
+        path: '/test/api2',
+        component: () => import('@/views/test/test_api'),
+        name: 'test-api'
+      },
+      {
         path: '/test/list',
         component: () => import('@/views/test/list'),
         name: 'test-list'

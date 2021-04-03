@@ -1,6 +1,6 @@
 import api from '@/api'
 
-const Database = process.env.VUE_APP_ODOO_DB
+import { Database } from '@/api/api_config'
 
 const Mixin = {
   data() {

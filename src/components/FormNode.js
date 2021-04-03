@@ -1,21 +1,37 @@
-export default {
-  // name: 'ORender',
-  // props: {},
+import renderMixin from '@/components/renderMixin'
 
-  components: {
-    WidgetField: () => import('@/components/WidgetField.js'),
-    OButton: () => import('@/components/OButton.vue'),
+export default {
+  name: 'FormNode',
+  components: {},
+
+  mixins: [renderMixin],
+  props: {
+    node: {
+      type: Object,
+      default: () => {
+        return { children: [] }
+      },
+    },
   },
 
-  data() {
-    return {
-      is_title: 0,
-      list: [],
+  computed: {},
+
+  render(createElement) {
+    const node = this.node
+
+    const deep_copy = (node) => {
+      return JSON.parse(JSON.stringify(node))
     }
+    return this.renderNode(createElement, node)
   },
 
   methods: {
-    className(node) {
+    //
+
+    className222(node) {
+      if (node.tagName === 'field') {
+        console.log('xxxxxxxx,', node)
+      }
       const classList = [
         ...(node.attribute.class ? node.attribute.class.split(' ') : []),
       ]
@@ -31,7 +47,7 @@ export default {
       return classList.join(' ')
     },
 
-    renderNode(createElement, node, parent) {
+    renderNode222(createElement, node, parent) {
       if (!node) {
         console.log('error:  parent node,', parent)
         throw 'error node'
@@ -42,24 +58,8 @@ export default {
 
       let tagName = node.tagName
 
-      if (node.tagName === 'field') {
-        tagName = 'WidgetField'
-      } else if (node.tagName === 'button') {
-        tagName = 'OButton'
-      } else if (node.tagName === 'group') {
-        tagName = 'div'
-      } else if (node.tagName === 'notebook') {
-        tagName = 'div'
-      } else if (node.tagName === 'page') {
-        tagName = 'div'
-      } else if (node.tagName === 'separator') {
-        tagName = 'div'
-      } else if (node.tagName === 'header') {
-        tagName = 'div'
-      }
-
       const children = (node.children || []).map((sub_node) => {
-        return this.renderNode(createElement, sub_node, node)
+        return this.renderNode222(createElement, sub_node, node)
       })
 
       if (['WidgetField', 'OButton'].includes(tagName)) {
@@ -73,8 +73,8 @@ export default {
         if (node.attribute.attrs && Object.keys(node.attribute.attrs).length) {
           attribute.attrs = { ...node.attribute.attrs }
         }
-        if (this.className(node)) {
-          attribute.class = this.className(node)
+        if (this.className222(node)) {
+          attribute.class = this.className222(node)
         }
         return createElement(tagName, { ...attribute }, children)
       }

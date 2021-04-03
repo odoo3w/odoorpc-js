@@ -3,8 +3,11 @@ import rpc from './rpc/index.js'
 
 export class ODOO {
   constructor(payload) {
-    const { baseURL, timeout = 50000 } = payload
+    const { baseURL, timeout = 50000, addons = {} } = payload
     this._baseURL = baseURL
+
+    this._addons = addons
+
     this._env = undefined
     this._login = undefined
 
@@ -185,7 +188,7 @@ export class ODOO {
         login: login,
         password: password
       })
-      console.log(' authenticate ok ')
+      // console.log(' authenticate ok ')
       // console.log(' authenticate ok ', data.result)
 
       return data
@@ -203,12 +206,16 @@ export class ODOO {
     const login = result.username
     const uid = result.uid
     const context = result.user_context
-    this._env = new Environment(this, db, uid, { context })
+    this._env = new Environment(this, db, uid, {
+      context,
+      addons: this._addons
+    })
+
     this._login = login
   }
 
   async login(payload) {
-    console.log('login')
+    // console.log('login')
     await this.awaiter
 
     const data = await this.authenticate(payload)

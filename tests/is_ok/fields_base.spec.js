@@ -34,10 +34,10 @@ describe('field', async () => {
     // const allowed_company_ids = odoo.allowed_company_ids
     // const SO1 = odoo.env.model('sale.order')
     // const SO = SO1.with_context({ ...SO1.env.context, allowed_company_ids })
-    // // // const view_form_xml_id = 'sale_order'
-    // const view_form_xml_id = 'sale.view_order_form'
+    // // // const view_ref = 'sale_order'
+    // const view_ref = 'sale.view_order_form'
     // const so_ids = await SO.search([])
-    // const so = await SO.browse(so_ids, { view_form_xml_id })
+    // const so = await SO.browse(so_ids, { view_ref })
     // const sols = await so.$order_line
     // const sol_new = await sols.new()
     // console.log('so.values', so._values.order_line)
@@ -63,10 +63,10 @@ describe('field', async () => {
     // const allowed_company_ids = odoo.allowed_company_ids
     // const SO1 = odoo.env.model('sale.order')
     // const SO = SO1.with_context({ ...SO1.env.context, allowed_company_ids })
-    // // // const view_form_xml_id = 'sale_order'
-    // const view_form_xml_id = 'sale.view_order_form'
+    // // // const view_ref = 'sale_order'
+    // const view_ref = 'sale.view_order_form'
     // const so_ids = await SO.search([])
-    // const so = await SO.browse(so_ids, { view_form_xml_id })
+    // const so = await SO.browse(so_ids, { view_ref })
     // const sols = await so.$order_line
     // const sol_new = await sols.new()
     // console.log('so.values', so._values.order_line)
@@ -91,8 +91,8 @@ describe('field', async () => {
   // it('test_field_onchange', async () => {
   //   const odoo = await get_odoo()
   //   const SO = odoo.env.model('sale.order')
-  //   const view_form_xml_id = 'sale.view_order_form'
-  //   const field_onchange = await SO._get_field_onchange(view_form_xml_id)
+  //   const view_ref = 'sale.view_order_form'
+  //   const field_onchange = await SO._get_field_onchange(view_ref)
   //   expect(field_onchange).to.include.keys('order_line')
   //   expect(field_onchange.order_line).to.be.equal('1')
   //   expect(field_onchange).to.include.keys('state')
@@ -107,9 +107,9 @@ describe('field', async () => {
   // it('edit sale order line', async () => {
   //   const odoo = await get_odoo()
   //   const SO = odoo.env.model('sale.order')
-  //   const view_form_xml_id = 'sale.view_order_form'
+  //   const view_ref = 'sale.view_order_form'
   //   const so_ids = await SO.search([])
-  //   const so = await SO.browse(so_ids, { view_form_xml_id })
+  //   const so = await SO.browse(so_ids, { view_ref })
   //   const amount_total = so.$amount_total
   //   console.log('amount_total1', amount_total)
   //   const sols = await so.$order_line

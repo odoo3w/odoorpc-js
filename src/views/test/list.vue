@@ -9,25 +9,20 @@
 
       <div>{{ api.version }}</div>
 
-      <van-button type="info" @click="toHome">
+      <button type="info" @click="toHome">
         goto home
-      </van-button>
-      <van-button type="info" @click="testSO">
-        read SO
-      </van-button>
+      </button>
 
-      <div v-if="viewInfo.arch.tagName === 'tree'">
+      <!-- <div v-if="viewInfo.arch.tagName === 'tree'">
         -------
         <TreeView :viewInfo="viewInfo" :dataList="dataList" />
-      </div>
+      </div> -->
 
-      <div>
-        <!-- {{ dataList }} -->
+      <!-- <div>
         <div v-for="rec in dataList" :key="rec.id">
-          <!-- {{ rec.name }} -->
           {{ rec.id }} -- {{ rec.partner_id__name }} -- {{ rec.name }}
         </div>
-      </div>
+      </div> -->
 
       <div>&nbsp;</div>
     </div>
@@ -58,14 +53,18 @@ export default {
 
   methods: {
     async init() {
-      await this.init_viev_info()
-      await this.init_data()
+      // await this.init_data()
+      await this.init_test()
     },
 
-    async init_viev_info() {},
+    async init_test() {
+      const model_name = 'sale.order'
+      const SO = api.env.model(model_name)
+      console.log(SO)
+    },
 
     async init_data() {
-      // const model_name = 'sale.order'
+      const model_name = 'sale.order'
       // const view_type = 'form'
       // const view_ref = 'sale.view_order_tree'
       // // const view_ref = "sale.view_quotation_tree_with_onboarding";

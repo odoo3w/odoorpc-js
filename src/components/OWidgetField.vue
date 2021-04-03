@@ -9,7 +9,7 @@
       {{ `widget=${node.attribute.attrs.widget}.` }}
     </span> -->
 
-    {{ node.meta.type }} {{ node.meta.string }}
+    <!-- {{ node.meta.type }} {{ node.meta.string }} -->
     {{ node.meta.value }}
 
     <!-- {{ node }} -->
@@ -42,6 +42,10 @@ export default {
     className() {
       const node = this.node
       const classList = [`o_field_${node.meta.type}`, 'o_field_widget']
+      if (!node.meta.value) {
+        classList.push('o_field_empty')
+      }
+
       if (node.meta.invisible) {
         classList.push('o_invisible_modifier')
       }

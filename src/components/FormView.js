@@ -59,6 +59,7 @@ export default {
             item.tagName,
           ])
         } else {
+          // partner 页面 有个  alert 需要单独处理
           return this.renderNode(createElement, item)
         }
       }),

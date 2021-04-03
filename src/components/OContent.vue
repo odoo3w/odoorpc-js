@@ -1,6 +1,7 @@
 <template>
   <div>
-    <div class="o_web_client">
+    <slot />
+    <!-- <div class="o_web_client">
       <div class="o_action_manager">
         <div class="o_action o_view_controller">
           <div class="o_content">
@@ -8,7 +9,7 @@
           </div>
         </div>
       </div>
-    </div>
+    </div> -->
 
     <div></div>
   </div>

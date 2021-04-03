@@ -23,9 +23,9 @@
         @click-right-icon="eye_open = !eye_open"
       />
       <div style="margin: 16px;">
-        <van-button round block type="info" native-type="submit">
+        <button round block type="info" native-type="submit">
           登录
-        </van-button>
+        </button>
         <div>{{ version }}</div>
       </div>
     </van-form>
@@ -45,7 +45,7 @@ export default {
   data() {
     return {
       //
-      eye_open: false
+      eye_open: false,
     }
   },
 
@@ -58,8 +58,8 @@ export default {
   methods: {
     submit(/* values */) {
       return this.handleLogin()
-    }
-  }
+    },
+  },
 }
 </script>
 

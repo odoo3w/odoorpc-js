@@ -9,18 +9,18 @@
 
       <div>{{ api.version }}</div>
 
-      <van-button type="info" @click="toHome">
+      <button type="info" @click="toHome">
         goto home
-      </van-button>
-      <van-button type="info" @click="testSO">
+      </button>
+      <button type="info" @click="testSO">
         read SO
-      </van-button>
+      </button>
 
       <div>
         <!-- {{ dataList }} -->
         <div v-for="rec in dataList" :key="rec.id">
           {{
-            rec.then(r => {
+            rec.then((r) => {
               r.ids
             })
           }}
@@ -44,7 +44,7 @@ export default {
   data() {
     return {
       api,
-      dataList: []
+      dataList: [],
     }
   },
   computed: {},
@@ -74,10 +74,10 @@ export default {
 
     toHome() {
       this.$router.replace({
-        path: '/home'
+        path: '/home',
       })
-    }
-  }
+    },
+  },
 }
 </script>
 

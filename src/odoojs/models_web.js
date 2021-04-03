@@ -1,4 +1,3 @@
-import { forEach } from 'axios/lib/utils'
 import { Model as BaseModel } from './models_base.js'
 
 import xml2json from './xml2json.js'
@@ -6,13 +5,13 @@ import xml2json from './xml2json.js'
 const PAGE_SIZE = 10
 
 const mixin_class = (...class_list) => {
-  const list1 = class_list.filter((item) => item).join(' ')
+  const list1 = class_list.filter(item => item).join(' ')
   const list2 = list1.split(' ')
   const list3 = Array.from(new Set(list2))
   return list3.join(' ')
 }
 
-const get_attrs = (node_attr) => {
+const get_attrs = node_attr => {
   return Object.keys(node_attr).reduce((acc, cur) => {
     if (!['class', 'attrs', 'modifiers', 'invisible'].includes(cur)) {
       acc[cur] = node_attr[cur]
@@ -21,7 +20,7 @@ const get_attrs = (node_attr) => {
   }, {})
 }
 
-const deep_copy = (node) => {
+const deep_copy = node => {
   return JSON.parse(JSON.stringify(node))
 }
 
@@ -33,16 +32,6 @@ export class Model extends BaseModel {
     this._currentPage = 0
 
     this._currentNotebook = 0
-  }
-
-  static get metadata() {
-    return {
-      description: 'used for web model to config. override by child Class',
-    }
-  }
-
-  get metadata() {
-    return this.constructor.metadata
   }
 
   get totalIds() {
@@ -198,7 +187,10 @@ export class Model extends BaseModel {
 
   _view_node_default_html(node) {
     if (node.tagName === 'field') {
-      return this._view_node_field2(node)
+      return this._view_node_field(node)
+    }
+    if (node.tagName === 'label') {
+      return this._view_node_label(node)
     }
 
     if (typeof node === 'string') {
@@ -210,30 +202,79 @@ export class Model extends BaseModel {
       meta: {
         readonly: this._view_readonly(node),
         invisible: this._view_invisible(node),
-        required: this._view_required(node),
+        required: this._view_required(node)
       },
       tagName: node.tagName,
 
       attribute: {
         attrs: { ...get_attrs(node.attr) },
-        class: node.attr.class,
+        class: node.attr.class
       },
 
       children:
         !node.isParent && node.content
           ? [node.content]
-          : (node.children || []).map((item) =>
+          : (node.children || []).map(item =>
               this._view_node_default_html(item)
-            ),
+            )
+    }
+  }
+
+  _view_node_label(node) {
+    let string = ''
+    let value = ''
+
+    if (node.attr.for) {
+      const meta = this._columns[node.attr.for]
+      string = meta.string
+      if (meta.type === 'many2one') {
+        value = meta.valueName(this)
+      } else if (meta.type === 'selection') {
+        value = meta.valueName(this)
+      } else if (meta.type === 'one2many') {
+        value = 'this o2m'
+      } else if (meta.type === 'many2many') {
+        value = 'this m2m'
+      } else {
+        value = meta.value(this)
+      }
+    } else {
+      //
+    }
+
+    return {
+      name: node.tagName,
+      meta: {
+        // readonly: this._view_readonly(node),
+        // invisible: this._view_invisible(node),
+        // required: this._view_required(node),
+        value: value,
+        string: string
+      },
+      tagName: node.tagName,
+      attribute: {
+        attrs: {
+          ...get_attrs(node.attr)
+        },
+        class: node.attr.class
+      },
+      children:
+        !node.isParent && node.content
+          ? [node.content]
+          : (node.children || []).map(item =>
+              this._view_node_default_html(item)
+            )
     }
   }
 
   // ok
-  _view_node_field2(node) {
+  _view_node_field(node) {
     const meta = this._columns[node.attr.name]
     let value = ''
 
     if (meta.type === 'many2one') {
+      value = meta.valueName(this)
+    } else if (meta.type === 'selection') {
       value = meta.valueName(this)
     } else if (meta.type === 'one2many') {
       value = 'this o2m'
@@ -252,7 +293,7 @@ export class Model extends BaseModel {
         type: meta.type,
         string: meta.string,
         value: value,
-        selection: meta.selection,
+        selection: meta.selection
       },
       tagName: node.tagName,
       attribute: {
@@ -266,10 +307,10 @@ export class Model extends BaseModel {
             : null,
           can_write: node.attr.can_write
             ? JSON.parse(node.attr.can_write)
-            : null,
+            : null
         },
-        class: node.attr.class,
-      },
+        class: node.attr.class
+      }
     }
   }
 
@@ -319,7 +360,7 @@ export class Model extends BaseModel {
         return val1 || val2
       }
     }
-    const NOT = (v1) => {
+    const NOT = v1 => {
       // console.log('NOT', v1)
       if (debug) {
         return -v1
@@ -355,7 +396,7 @@ export class Model extends BaseModel {
       return ret
     }
 
-    const compute_condition = (condition) => {
+    const compute_condition = condition => {
       if (!Array.isArray(condition)) {
         return condition
       }
@@ -484,7 +525,7 @@ export class Model extends BaseModel {
       return { index, page: item }
     })
 
-    const tabChanged_callback = (payload) => {
+    const tabChanged_callback = payload => {
       console.log(' tabChanged_callback', payload)
       this._currentNotebook = payload
     }
@@ -498,13 +539,13 @@ export class Model extends BaseModel {
           children: [
             {
               attr: { class: mixin_class('nav nav-tabs') },
-              children: children.map((item) => {
+              children: children.map(item => {
                 return {
                   attr: {
                     class: mixin_class(
                       'nav-item',
                       this._view_class_common(item.page)
-                    ),
+                    )
                   },
                   children: [
                     {
@@ -519,32 +560,32 @@ export class Model extends BaseModel {
                           'data-toggle': 'tab',
                           disable_anchor: true,
                           role: 'tab',
-                          href: 'javascript:void(0)',
-                        },
+                          href: 'javascript:void(0)'
+                        }
                       },
                       children: [item.page.attr.string],
                       tabChanged: {
                         callback: tabChanged_callback,
-                        index: item.index,
+                        index: item.index
                       },
 
-                      tagName: 'a',
-                    },
+                      tagName: 'a'
+                    }
                   ],
-                  tagName: 'li',
+                  tagName: 'li'
                 }
               }),
-              tagName: 'ul',
-            },
+              tagName: 'ul'
+            }
           ],
-          tagName: 'div',
+          tagName: 'div'
         },
         {
           attr: { class: mixin_class('tab_content') },
 
           children: children
-            .filter((item) => item.index === this._currentNotebook)
-            .map((item) => {
+            .filter(item => item.index === this._currentNotebook)
+            .map(item => {
               return {
                 attr: {
                   class: mixin_class(
@@ -553,19 +594,19 @@ export class Model extends BaseModel {
                   ),
                   attrs: {
                     // id: `notebook_page_${item.index}`,
-                  },
+                  }
                 },
-                children: item.page.children.map((item2) =>
+                children: item.page.children.map(item2 =>
                   this._view_node_default_html(item2)
                 ),
-                tagName: 'div',
+                tagName: 'div'
               }
             }),
 
-          tagName: 'div',
-        },
+          tagName: 'div'
+        }
       ],
-      tagName: 'div',
+      tagName: 'div'
     }
   }
 
@@ -580,11 +621,11 @@ export class Model extends BaseModel {
           node.attr.class,
           this._view_class_common(node)
         ),
-        attrs: get_attrs(node.attr),
+        attrs: get_attrs(node.attr)
         // { ...(node.attr.name ? { name: node.attr.name } : {}) },
       },
       children: [meta.value(this)],
-      tagName: 'span',
+      tagName: 'span'
     }
   }
 
@@ -602,11 +643,11 @@ export class Model extends BaseModel {
           node.attr.class,
           this._view_class_common(node)
         ),
-        attrs: get_attrs(node.attr),
+        attrs: get_attrs(node.attr)
         // { ...(node.attr.name ? { name: node.attr.name } : {}) },
       },
       children: [value],
-      tagName: 'span',
+      tagName: 'span'
     }
   }
 
@@ -624,10 +665,10 @@ export class Model extends BaseModel {
           this._view_class_common(node),
           'o_field_empty' // 这个 如何控制的
         ),
-        attrs: get_attrs(node.attr),
+        attrs: get_attrs(node.attr)
       },
       children: [value],
-      tagName: 'span',
+      tagName: 'span'
     }
   }
 
@@ -651,7 +692,7 @@ export class Model extends BaseModel {
           // ...attrs,
         },
         children: [meta.string],
-        tagName: 'label',
+        tagName: 'label'
       }
     } else if (node.tagName === 'label') {
       return {
@@ -664,14 +705,14 @@ export class Model extends BaseModel {
           // title: true
         },
         children: [node.attr.string],
-        tagName: 'label',
+        tagName: 'label'
       }
     } else {
       return {
         attr: { class: mixin_class(this._view_class_common(node)) },
         attrs: get_attrs(node.attr),
         children: node.children,
-        tagName: 'div',
+        tagName: 'div'
       }
     }
   }
@@ -715,7 +756,7 @@ export class Model extends BaseModel {
           acc = {
             matrix: new_matrix,
             last_row: new_row,
-            last_item: new_item,
+            last_item: new_item
           }
           return acc
         },
@@ -735,31 +776,31 @@ export class Model extends BaseModel {
       attr: { class: mixin_class('o_group', 'o_inner_group', class2) },
       children: [
         {
-          children: matrix.map((row) => {
+          children: matrix.map(row => {
             return {
               attr: {},
               children: row.reduce((acc, col) => {
                 acc.push({
                   attr: { class: mixin_class('o_td_label') },
                   children: [this._view_node_group_label(col.label)],
-                  tagName: 'td',
+                  tagName: 'td'
                 })
 
                 acc.push({
                   attr: { style: value_style },
                   children: [this._view_node_field(col.value)],
-                  tagName: 'td',
+                  tagName: 'td'
                 })
 
                 return acc
               }, []),
-              tagName: 'tr',
+              tagName: 'tr'
             }
           }),
-          tagName: 'tbody',
-        },
+          tagName: 'tbody'
+        }
       ],
-      tagName: 'table',
+      tagName: 'table'
     }
     // console.log('node_table, ', node_table)
 
@@ -774,7 +815,7 @@ export class Model extends BaseModel {
       parent: 'group_inner',
       col_count: 2,
       style: 'width: 100%',
-      class: 'o_group_col_6',
+      class: 'o_group_col_6'
     })
     // console.log('node_table, ', node_table)
     return node_table
@@ -786,12 +827,12 @@ export class Model extends BaseModel {
       ...node,
       attr: {
         class: mixin_class('o_group'),
-        attrs: get_attrs(node.attr),
+        attrs: get_attrs(node.attr)
       },
-      children: node.children.map((item) => this._view_node_group_inner(item)),
+      children: node.children.map(item => this._view_node_group_inner(item)),
 
       // children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
-      tagName: 'div',
+      tagName: 'div'
     }
   }
 
@@ -802,7 +843,7 @@ export class Model extends BaseModel {
     const node_table = this._view_node_group_table(node.children, {
       parent: 'group_one',
       col_count: 4,
-      style: 'width: 50%',
+      style: 'width: 50%'
     })
     // console.log('node_table, ', node_table)
     return node_table
@@ -920,9 +961,9 @@ export class Model extends BaseModel {
               // console.log('in next done')
               return { value: undefined, done: true }
             }
-          },
+          }
         }
-      },
+      }
     }
 
     return obj

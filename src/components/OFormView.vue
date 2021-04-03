@@ -1,26 +1,11 @@
 <template>
   <div class="o_form_view">
     <div class="o_form_sheet_bg">
-      sheet 1:
       <slot />
-      sheet 2:
-
-      <!-- {{ node }}
-      <OFormHeader
-        v-if="header"
-        :buttons="header.buttons"
-        :fields="header.fields"
-        :status="header.status"
-      />
-
-      <OFormSheet :sheet="sheet" /> -->
     </div>
     chatter 1:
     <slot name="chatter" />
     chatter 2:
-    <!-- <div class="o_chatter oe_chatter">
-      <slot name="chatter" />
-    </div> -->
   </div>
 </template>
 

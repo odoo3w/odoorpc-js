@@ -15,20 +15,23 @@
       <div>
         <img :src="image" alt="" />
       </div>
+      <button @click="toTestApi">
+        test Api
+      </button>
 
-      <van-button @click="toTestList">
+      <button @click="toTestList">
         test list
-      </van-button>
-      <van-button @click="toTestView">
+      </button>
+      <button @click="toTestView">
         test view
-      </van-button>
-      <van-button @click="toTestForm">
+      </button>
+      <button @click="toTestForm">
         test form
-      </van-button>
+      </button>
 
-      <van-button @click="logout">
+      <button @click="logout">
         注销
-      </van-button>
+      </button>
 
       <div>&nbsp;</div>
     </div>
@@ -66,22 +69,20 @@ export default {
       })
     },
 
+    toTestApi() {
+      this.$router.replace({ path: '/test/api2' })
+    },
+
     toTestList() {
-      this.$router.replace({
-        path: '/test/list'
-      })
+      this.$router.replace({ path: '/test/list' })
     },
 
     toTestView() {
-      this.$router.replace({
-        path: '/test/view'
-      })
+      this.$router.replace({ path: '/test/view' })
     },
 
     toTestForm() {
-      this.$router.replace({
-        path: '/test/form'
-      })
+      this.$router.replace({ path: '/test/form' })
     }
   }
 }

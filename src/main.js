@@ -10,10 +10,10 @@ import Vant from 'vant'
 import 'vant/lib/index.css'
 Vue.use(Vant)
 
-// import ViewUI from 'view-design'
-// import 'view-design/dist/styles/iview.css'
+import ViewUI from 'view-design'
+import 'view-design/dist/styles/iview.css'
 
-// Vue.use(ViewUI)
+Vue.use(ViewUI)
 
 import '@/styles/base/fontawesome/css/font-awesome.css'
 import '@/styles/global.scss'
@@ -24,5 +24,5 @@ Vue.config.productionTip = false
 new Vue({
   store, // store by vuex
   router, // router
-  render: (h) => h(App),
+  render: h => h(App)
 }).$mount('#app')

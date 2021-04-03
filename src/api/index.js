@@ -1,14 +1,7 @@
-import { ODOO as OdooBase } from '@/odoojs'
+import api from '@/api_connect'
 
-export const ODOO = OdooBase
+import { test_api as test_api_alias } from './test-api'
 
-// export default { ODOO }
+export const test_api = test_api_alias
 
-const baseURL = process.env.VUE_APP_BASE_API
-
-const odoo = new ODOO({ baseURL })
-
-// console.log(odoo)
-// odoo.login
-
-export default odoo
+export default api

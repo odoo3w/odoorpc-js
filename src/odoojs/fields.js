@@ -1,3 +1,22 @@
+//
+// env.model(model, view_type, view_ref)
+// 默认必须有 view_type
+// 这样  o2m 字段 已经嵌套带回来 fields
+// 所有的 o2m 字段 的 进一步 env.model()  只能从这个 view_info 中 生成, 不能再 发送请求
+//
+
+// o2m 字段 的 的数据刷新 几种可能性:
+// 1 主动 刷新 getValue
+// 2 o2m.new
+// 3 onchange 带回来的
+//
+// 改造 架构：o2m browse
+// 1 取 Model, 不能发请求, 因为
+// 2 做 records 空壳 不能发请求
+// 3 需要时 read 数据, 可以发请求
+// 4 初始化数据, 不管 数据从哪里来的 我只负责 初始化数据
+//
+
 import { parseTime } from './utils.js'
 
 import { is_virtual_id, Model } from './models.js'
@@ -111,7 +130,7 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
   const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
 
   let domain2 = domain
-  Object.keys(to_replaced).forEach((item) => {
+  Object.keys(to_replaced).forEach(item => {
     domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
   })
 
@@ -119,7 +138,7 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
 
   const fn_str = []
   fn_str.push('() => {')
-  Object.keys(kwargs).forEach((item) => {
+  Object.keys(kwargs).forEach(item => {
     fn_str.push(`const ${item} = ${kwargs[item]}`)
   })
   fn_str.push(`return ${domain2}`)
@@ -144,6 +163,7 @@ class BaseField {
     this.readonly = data.readonly || false
     this.help = data.help || false
     this.states = data.states || false
+    this.views = data.views || {}
   }
 
   print2(method, instance, ...args) {
@@ -185,7 +205,7 @@ class BaseField {
 
   _get_for_create(instance) {
     const columns = Object.keys(instance.field_onchange).filter(
-      (col) => col.split('.').length === 1
+      col => col.split('.').length === 1
     )
     if (!columns.includes(this.name)) {
       return null
@@ -194,9 +214,11 @@ class BaseField {
       return null
     }
     const value = instance._values[this.name][instance.id]
+
     if (value === undefined) {
       return null
     }
+
     const value_in_write = instance._values_to_write[this.name][instance.id]
     return value_in_write !== undefined ? value_in_write : value
   }
@@ -226,6 +248,7 @@ class BaseField {
   }
 
   getValue(instance) {
+    // console.log(' get value,', instance._name, instance.id, this.name)
     // 给 instance  __defineGetter__ 使用
     return this._getValue(instance)
   }
@@ -265,7 +288,7 @@ class BaseField {
     return this._setValue(instance, value)
   }
 
-  async _setValue(instance, value) {
+  _setValue(instance, value) {
     instance._values_to_write[this.name][instance.id] = value
     instance.event_onchange(this.name)
   }
@@ -280,7 +303,7 @@ class BaseField {
       await instance.trigger_onchange(this.name)
     }
 
-    return new Promise((resolve) => resolve(this.name))
+    return new Promise(resolve => resolve(this.name))
   }
 
   commit(/* instance  */) {
@@ -331,6 +354,11 @@ class Date2 extends BaseField {
     super(name, data)
   }
 
+  get_for_onchange(instance) {
+    const value = super._getValue(instance)
+    return value
+  }
+
   _getValue(instance) {
     const value = super._getValue(instance)
     return value ? new Date(value) : value
@@ -342,6 +370,11 @@ class Date2 extends BaseField {
 class Datetime extends BaseField {
   constructor(name, data) {
     super(name, data)
+  }
+
+  get_for_onchange(instance) {
+    const value = super._getValue(instance)
+    return value
   }
 
   _getValue(instance) {
@@ -432,7 +465,7 @@ class _Relational extends BaseField {
       // so. sol, invoices
       const relation_storage = instance._values_relation[this.name]
       relation_storage._values = {}
-      relation_storage._values.display_name = {}
+      // relation_storage._values.display_name = {}
       relation_storage._values_to_write = {}
       relation_storage._values_relation = {}
     }
@@ -460,7 +493,7 @@ class Many2many extends _Relational {
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
       const tuple_in_write = value_in_writed || []
-      tuple_in_write.forEach((tuple_) => {
+      tuple_in_write.forEach(tuple_ => {
         tuples.push(tuple_)
       })
     }
@@ -485,6 +518,7 @@ class Many2many extends _Relational {
   }
 
   // 返回 异步 对象
+  // TBD
   async getValue(instance) {
     const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
@@ -515,6 +549,12 @@ class Many2many extends _Relational {
 class Many2one extends _Relational {
   constructor(name, data) {
     super(name, data)
+  }
+
+  _init_storage(instance) {
+    super._init_storage(instance)
+    const relation_storage = instance._values_relation[this.name]
+    relation_storage._values.display_name = {}
   }
 
   // ok call by get_selection
@@ -588,7 +628,7 @@ class Many2one extends _Relational {
       const values = _get_values_for_domain()
       const globals_dict = {
         res_model_id: await _get_res_model_id(),
-        ...values,
+        ...values
       }
 
       const domain2 = eval_safe(domain, globals_dict)
@@ -614,7 +654,7 @@ class Many2one extends _Relational {
 
     //
     // console.log(' get selection,2 ', selection)
-    selection.forEach((value) => {
+    selection.forEach(value => {
       instance._values_relation[this.name]._values.display_name[value[0]] =
         value[1]
     })
@@ -639,10 +679,32 @@ class Many2one extends _Relational {
     return value
   }
 
-  // 返回 异步对象
-  async getValue(instance) {
-    const id_ = this._getValue(instance)
+  // 返回 异步 对象
+  async asyncGetValue(instance) {
+    const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
+
+    const get_env = () => {
+      if (!this.context) {
+        return instance.env
+      }
+      const context = { ...instance.env.context, ...this.context }
+      return instance.env.copy(context)
+    }
+    return Relation._browse_native(get_env(), ids)
+  }
+
+  // 返回 同步对象
+  getValue(instance) {
+    const id_ = this._getValue(instance)
+    const Relation = instance.env.model(this.relation, 'many2one', {
+      isSync: true,
+      view_info: {
+        fields: {
+          display_name: { type: 'char', string: 'Name', readonly: true }
+        }
+      }
+    })
 
     const get_env = () => {
       if (!this.context) {
@@ -653,7 +715,7 @@ class Many2one extends _Relational {
     }
 
     const kwargs = { from_record: [instance, this] }
-    return Relation._browse(get_env(), id_ || false, kwargs)
+    return Relation._browse_relation_m2o(get_env(), id_ || false, kwargs)
   }
 
   _init_values(instance, instance_id, value) {
@@ -697,27 +759,49 @@ class One2many extends _Relational {
   }
 
   _get_for_CU(instance, value) {
+    // console.log(' _get_for_CU,', instance._name, instance.id, this.name)
     if (value === null) {
       return value
     }
+
     const relation = this._get_storage_records(instance)
 
     if (!relation) {
       return value
     }
+    // console.log(
+    //   ' _get_for_CU 4, ',
+    //   instance._name,
+    //   instance.id,
+    //   this.name,
+    //   value,
+    //   relation
+    // )
 
     const value2 = value.reduce((acc, tup) => {
-      if (tup[0] === 0 || tup[0] === 1) {
-        acc.push(tup)
+      if (tup[0] !== 0 && tup[0] !== 1) {
+        acc.push([...tup])
       } else {
         const relation2 = relation._getById(tup[1])
+        // console.log(tup, tup[1], relation2)
         const tup_vals2 = tup[0]
           ? relation2._get_values_for_write()
           : relation2._get_values_for_create()
+
+        // console.log(tup, tup_vals2)
+
         acc.push([tup[0], tup[1], tup_vals2])
       }
       return acc
     }, [])
+
+    // console.log(
+    //   ' _get_for_CU 6,',
+    //   instance._name,
+    //   instance.id,
+    //   this.name,
+    //   value2
+    // )
 
     return value2
   }
@@ -738,7 +822,7 @@ class One2many extends _Relational {
 
     const ids_old = instance._values[this.name][instance.id] || []
 
-    let tuples = ids_old.map((id_) => [4, id_, 0])
+    let tuples = ids_old.map(id_ => [4, id_, 0])
     const value_in_writed = instance._values_to_write[this.name][instance.id]
 
     if (value_in_writed !== undefined) {
@@ -762,7 +846,7 @@ class One2many extends _Relational {
       } else {
         const relation2 = relation._getById(tup[1])
         const tup_vals2 = relation2._get_values_for_onchange({
-          for_relation: true,
+          for_relation: true
         })
         const new_tup = [tup[0], tup[1], tup_vals2]
         acc = [...acc, new_tup]
@@ -792,7 +876,7 @@ class One2many extends _Relational {
       return records
     } else {
       const ids = this.value(instance)
-      const records = ids.map((id_) => {
+      const records = ids.map(id_ => {
         return { id: id_ }
       })
       return records
@@ -816,77 +900,58 @@ class One2many extends _Relational {
     return ids
   }
 
-  // 返回 异步对象
-  async getValue(instance) {
-    const get_relation = async () => {
-      let ids = instance._values[this.name][instance.id]
-      if (ids === null) {
-        // 忘记什么情况下 ids = null 了
-        // TBD 2021-3-9
-        const args = [[instance.id], [this.name]]
-        const kwargs = { context: this.context, load: '_classic_write' }
-
-        const payload = [instance._name, 'read', args, kwargs]
-        const res = await instance._odoo.execute_kw(...payload)
-        const orig_ids = res[0][this.name] || []
-        instance._values[this.name][instance.id] = orig_ids
-        ids = [...orig_ids]
-      } else {
-        // copy for ids
-        ids = [...ids]
-      }
-
-      const value_in_writed = instance._values_to_write[this.name][instance.id]
-      if (value_in_writed !== undefined) {
-        const values = value_in_writed
-        ids = tuples2ids(values, ids || [])
-      }
-
-      const Relation = instance.env.model(this.relation)
-      const get_env = () => {
-        if (!this.context) {
-          return instance.env
-        }
-        const context = { ...instance.env.context, ...this.context }
-        return instance.env.copy(context)
-      }
-
-      // const callback = () => {
-      //   console.log('o2m callback', instance._name, instance.ids, this.name)
-      //   instance.event_onchange(this.name)
-      // }
-      // const fetch_all = instance._callback_onchange ? callback : undefined
-
-      return Relation._browse(get_env(), ids, { from_record: [instance, this] })
+  _get_Relation(instance) {
+    const view_info = instance._view_info
+    const my_views = view_info.fields[this.name].views
+    // o2m 一定是使用  tree or kanban view, 不可能是 form view
+    // o2m 单行编辑时, 用 tree or form view,
+    if (my_views.tree) {
+      return instance.env.model(this.relation, 'tree', {
+        view_info: my_views.tree
+      })
+    } else if (my_views.kanban) {
+      return instance.env.model(this.relation, 'kanban', {
+        view_info: my_views.kanban
+      })
+    } else {
+      return instance.env.model(this.relation)
     }
+  }
 
-    // console.log(' sol get 1', this.name)
-
-    if (!instance.field_onchange) {
-      return get_relation()
+  _get_env(instance) {
+    if (!this.context) {
+      return instance.env
     }
-    // console.log(' sol get 2', this.name)
+    const context = { ...instance.env.context, ...this.context }
+    return instance.env.copy(context)
+  }
+
+  // 返回 同步对象
+  getValue(instance, force) {
+    // console.log(
+    //   ' getValue, ',
+    //   instance._name,
+    //   instance.id,
+    //   this.name,
+    //   this.value(instance)
+    // )
 
     const storage = instance._values_relation[this.name]
 
-    if (storage.records) {
+    if (storage.records && !force) {
       return storage.records
+    } else {
+      const Relation = this._get_Relation(instance)
+      const env = this._get_env(instance)
+      const ids = this._getValue(instance)
+      const kwargs = { from_record: [instance, this] }
+      const relation = Relation._browse_relation_o2m(env, ids || false, kwargs)
+
+      storage.records = relation
+
+      relation.event_onchange_all()
+      return relation
     }
-
-    // this.print2(' getValue 1', instance)
-    const relation = await get_relation(true)
-    storage.records = relation
-    // this.print2(' getValue 2', instance)
-
-    // 1 relation._browse 仅仅 初始化数据
-    // 2 relation 设置 callback, 用于通知 list 数据刷新完成
-    // 3 初始化后,触发 event_onchange_all
-    // 4 这里的 callback 再 通知 instance, o2m字段 数据有变化,
-    // 5. instance 读取o2m数据, 需要 找 storage.records
-    relation.event_onchange_all()
-    // this.print2(' getValue 3', instance)
-
-    return relation
   }
 
   // async setValue(instance, value) {
@@ -908,27 +973,85 @@ class One2many extends _Relational {
     }
   }
 
+  // TBD
+  setValueByOnchange(instance, tuples) {
+    // console.log('xxxx,', this.name, instance._name, instance.id, tuples)
+
+    // console.log('xxxx,', relation, relation_records)
+
+    tuples.forEach(tup => {
+      // TBD event.event change event.type 时, 返回的是 全 [0,0,{}]
+      // 如果其他情况, TBD
+      if (tup[0] === 5) {
+        //remove all
+        this._update_relation_by_remove(instance, [tup])
+      } else if (tup[0] === 0) {
+        // console.log(tup)
+        this.new_sync(instance, tup[2])
+      }
+    })
+
+    instance.event_onchange(this.name)
+  }
+
+  _update_relation_by_remove(instance, tuples) {
+    const new_value = tuples
+    const old_value = instance._values_to_write[this.name][instance.id] || []
+    const values_to_write = merge_tuples(old_value, new_value)
+    instance._values_to_write[this.name][instance.id] = values_to_write
+    const relation = this.getValue(instance, true)
+    return relation
+
+    // Object.keys(records._values).forEach(field => {
+    //   const values = records._values[field]
+    //   delete values[o2m_id]
+    // })
+
+    // Object.keys(records._values_to_write).forEach(field => {
+    //   const values = records._values_to_write[field]
+    //   delete values[o2m_id]
+    // })
+  }
+
+  new_sync(instance, values) {
+    const relation = this.getValue(instance)
+    const Relation = this._get_Relation(instance)
+    const env = this._get_env(instance)
+    const iterated = relation
+    const kwargs = { from_record: [instance, this], iterated, values }
+    const ids = instance._odoo._get_virtual_id()
+    Relation._browse_relation_o2m_new(env, ids, kwargs)
+  }
+
   // set value, new a model, onchange, then call setValueFromRelation
+  // TBD
   async new(instance) {
     // console.log('new', instance._name, instance.ids, this.name)
+
+    // const Relation = instance.env.model(this.relation)
+    // const get_env = () => {
+    //   if (!this.context) {
+    //     return instance.env
+    //   }
+    //   const context = { ...instance.env.context, ...this.context }
+    //   return instance.env.copy(context)
+    // }
+    // console.log('new1,', instance._name, instance.ids, this.name)
+    // const new_relation = await Relation._browse(get_env(), null, kwargs)
+
     const storage = instance._values_relation[this.name]
-    // console.log('new', storage)
-
     const iterated = storage.records
-
-    const Relation = instance.env.model(this.relation)
-    const get_env = () => {
-      if (!this.context) {
-        return instance.env
-      }
-      const context = { ...instance.env.context, ...this.context }
-      return instance.env.copy(context)
-    }
-
+    const Relation = this._get_Relation(instance)
+    const env = this._get_env(instance)
+    const ids = instance._odoo._get_virtual_id()
     const kwargs = { from_record: [instance, this], iterated }
 
-    // console.log('new1,', instance._name, instance.ids, this.name)
-    const new_relation = await Relation._browse(get_env(), null, kwargs)
+    const new_relation = await Relation._browse_relation_o2m_new_async(
+      env,
+      ids,
+      kwargs
+    )
+
     // 在 onchange 里 更新 parent
     // 同时也触发 callback 返回页面
 
@@ -936,6 +1059,16 @@ class One2many extends _Relational {
     iterated.event_onchange_all()
     // console.log('new3,', instance._name, instance.ids, this.name)
     return new_relation
+  }
+
+  remove_one_sync(instance, relation_to_remove) {
+    const o2m_id =
+      relation_to_remove instanceof Model
+        ? relation_to_remove.id
+        : relation_to_remove
+
+    const new_value = [[2, o2m_id, 0]]
+    this._update_relation_by_remove(instance, new_value)
   }
 
   // set value ? del one,  [2, id, 0]
@@ -948,34 +1081,15 @@ class One2many extends _Relational {
         : relation_to_remove
 
     const new_value = [[2, o2m_id, 0]]
-    const old_value = instance._values_to_write[this.name][instance.id] || []
-    const values_to_write = merge_tuples(old_value, new_value)
-    instance._values_to_write[this.name][instance.id] = values_to_write
 
-    const relation = this._get_storage_records(instance)
-
-    if (relation) {
-      // console.log('remove3:', relation.ids)
-      const new_ids = relation.ids.filter((item) => item !== o2m_id)
-      relation._ids = new_ids
-
-      // Object.keys(records._values).forEach(field => {
-      //   const values = records._values[field]
-      //   delete values[o2m_id]
-      // })
-
-      // Object.keys(records._values_to_write).forEach(field => {
-      //   const values = records._values_to_write[field]
-      //   delete values[o2m_id]
-      // })
-    }
+    const relation = this._update_relation_by_remove(instance, new_value)
 
     if (instance.field_onchange) {
       await instance.trigger_onchange(this.name)
     }
 
     // remove 时, 相当于 列表变更, 故 全部刷新下
-    console.log('remove:', relation.ids)
+    // console.log('remove:', relation.ids)
     relation.event_onchange_all()
   }
 
@@ -997,14 +1111,14 @@ class One2many extends _Relational {
     }
 
     const records = storage.records
-    Object.keys(records._values).forEach((field) => {
+    Object.keys(records._values).forEach(field => {
       const values = records._values[field]
-      Object.keys(values).forEach((o2m_id) => delete values[o2m_id])
+      Object.keys(values).forEach(o2m_id => delete values[o2m_id])
     })
 
-    Object.keys(records._values_to_write).forEach((field) => {
+    Object.keys(records._values_to_write).forEach(field => {
       const values = records._values_to_write[field]
-      Object.keys(values).forEach((o2m_id) => delete values[o2m_id])
+      Object.keys(values).forEach(o2m_id => delete values[o2m_id])
     })
   }
 }
@@ -1017,6 +1131,7 @@ class Reference extends BaseField {
     this.selection = data.selection || false
   }
 
+  // TBD
   getValue(instance) {
     const value = this._getValue(instance)
 
@@ -1080,7 +1195,7 @@ const TYPES_TO_FIELDS = {
   one2many: One2many,
   reference: Reference,
   selection: Selection2,
-  text: Text,
+  text: Text
 }
 
 export const generate_field = (name, data) => {
@@ -1094,5 +1209,5 @@ export const generate_field = (name, data) => {
 export const fields_for_test = {
   merge_tuples,
   merge_tuples_one,
-  One2many,
+  One2many
 }

@@ -11,7 +11,7 @@
       <div>&nbsp;</div>
       <div>&nbsp;</div>
 
-      <van-button type="info" @click="toHome"> goto home </van-button>
+      <button type="info" @click="toHome">goto home</button>
 
       <div>&nbsp;</div>
     </div>

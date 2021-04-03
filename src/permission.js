@@ -2,6 +2,7 @@ import router from './router'
 
 import api from '@/api'
 
+console.log(api)
 const whiteList = [
   '/user/login', //
   '/user/register',

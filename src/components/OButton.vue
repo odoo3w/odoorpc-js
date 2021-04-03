@@ -1,5 +1,10 @@
 <template>
-  <button type="button" :class="className" @click="btnClick">
+  <button
+    type="button"
+    :name="node.attribute.attrs.name"
+    :class="className"
+    @click="btnClick"
+  >
     <i v-if="node.attribute.attrs.icon" :class="classNameIcon" />
     <span v-if="string"> {{ string }} </span>
     <slot />
