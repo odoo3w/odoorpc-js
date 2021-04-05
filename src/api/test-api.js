@@ -10,7 +10,7 @@ export const test_api = async () => {
   //   await test_schedule_event()
   //   await test_get_sportType()
   //   await test_get_bookvenue()
-  //   await test_get_presetData()
+  // await test_get_presetData()
 }
 
 const test_login = async () => {

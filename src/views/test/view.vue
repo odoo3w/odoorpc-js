@@ -2,7 +2,7 @@
   <div>
     <div>
       <OContent>
-        <FormView :node="node" readonly />
+        <OFormViewJS :node="node" readonly />
       </OContent>
 
       <div>&nbsp;-----version-----</div>
@@ -23,11 +23,11 @@ import api from '@/api'
 
 import OContent from '@/components/OContent'
 
-import FormView from '@/components/FormView.js'
+import OFormViewJS from '@/components/OFormViewJS.js'
 
 export default {
   name: 'Home',
-  components: { OContent, FormView },
+  components: { OContent, OFormViewJS },
   mixins: [],
 
   data() {
@@ -35,7 +35,7 @@ export default {
       api,
 
       record: null,
-      node: {},
+      node: {}
     }
   },
   computed: {},
@@ -51,8 +51,8 @@ export default {
     // console.log('xxxx, ')
 
     // await this.init_data_so()
-    // await this.init_data_ptn_title()
-    await this.init_data_ptn()
+    await this.init_data_ptn_title()
+    // await this.init_data_ptn()
 
     await this.renderMe()
   },
@@ -84,7 +84,7 @@ export default {
       const model_name = 'res.partner'
       // const model_name = 'res.partner.title'
       const view_ref = null
-      const domain = [['id', 'in', [1]]]
+      const domain = [['id', 'in', [3]]]
       await this.init_data({ model_name, view_ref, domain })
     },
 
@@ -106,10 +106,10 @@ export default {
 
     toHome() {
       this.$router.replace({
-        path: '/home',
+        path: '/home'
       })
-    },
-  },
+    }
+  }
 }
 </script>
 

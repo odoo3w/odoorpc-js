@@ -1,7 +1,15 @@
 <template>
+  <!-- aria-label: "More languages"
+class: "btn-sm btn-link mb4 fa fa-globe"
+name: "55"
+title: "More languages" -->
+
   <button
     type="button"
     :name="node.attribute.attrs.name"
+    :aria-label="node.attribute.attrs['aria-label']"
+    title
+    :data-original-title="node.attribute.attrs.title"
     :class="className"
     @click="btnClick"
   >
@@ -19,10 +27,10 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
+      }
     },
 
-    parent: { type: String, default: '' },
+    parent: { type: String, default: '' }
 
     // confirm: { type: String, default: '' },
     // type: { type: String, default: '' },
@@ -43,7 +51,7 @@ export default {
         'o_button_icon',
         ...(node.attribute.attrs.icon
           ? node.attribute.attrs.icon.split(' ')
-          : []),
+          : [])
       ]
 
       return classList.join(' ')
@@ -53,7 +61,7 @@ export default {
       const node = this.node
       let classList = [
         'btn',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
 
       if (this.parent === 'header') {
@@ -73,15 +81,17 @@ export default {
         classList.push('o_invisible_modifier')
       }
 
-      return classList.join(' ')
-    },
+      // console.log('xxxxxx,btn:', classList, node)
+
+      return Array.from(new Set(classList)).join(' ')
+    }
   },
 
   methods: {
     btnClick() {
       console.log('onclick', this.node.attribute.attrs)
-    },
-  },
+    }
+  }
 }
 </script>
 

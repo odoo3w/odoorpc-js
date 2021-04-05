@@ -2,13 +2,13 @@ import renderMixin from '@/components/renderMixin.js'
 
 import OFormView from '@/components/OFormView.vue'
 import OFormHeader from '@/components/OFormHeader.vue'
-import FormSheet from '@/components/FormSheet.js'
+import OFormSheetJS from '@/components/OFormSheetJS.js'
 import OFormChatter from '@/components/OFormChatter.vue'
 
 export default {
   name: 'FormView',
 
-  components: { OFormView, OFormHeader, FormSheet, OFormChatter },
+  components: { OFormView, OFormHeader, OFormSheetJS, OFormChatter },
   mixins: [renderMixin],
   props: {
     readonly: { type: Boolean, default: undefined },
@@ -16,10 +16,10 @@ export default {
       type: Object,
       default: () => {
         return {
-          children: [],
+          children: []
         }
-      },
-    },
+      }
+    }
   },
 
   data() {
@@ -30,7 +30,7 @@ export default {
   render(createElement) {
     // console.log('form view js ', this.node)
 
-    const deep_copy = (node) => {
+    const deep_copy = node => {
       return JSON.parse(JSON.stringify(node))
     }
 
@@ -42,38 +42,38 @@ export default {
     const children0 = node.children || []
 
     const chatter = children0.filter(
-      (item) => item.attribute && item.attribute.class === 'oe_chatter'
+      item => item.attribute && item.attribute.class === 'oe_chatter'
     )
     const children = children0.filter(
-      (item) => !(item.attribute && item.attribute.class === 'oe_chatter')
+      item => !(item.attribute && item.attribute.class === 'oe_chatter')
     )
 
     return createElement('OFormView', { attrs: attribute.attrs || {} }, [
-      ...children.map((item) => {
+      ...children.map(item => {
         if (item.tagName === 'sheet') {
-          return createElement('FormSheet', { props: { node: item } }, [
-            item.tagName,
+          return createElement('OFormSheetJS', { props: { node: item } }, [
+            item.tagName
           ])
         } else if (item.name === 'header') {
           return createElement('OFormHeader', { props: { node: item } }, [
-            item.tagName,
+            item.tagName
           ])
         } else {
           // partner 页面 有个  alert 需要单独处理
           return this.renderNode(createElement, item)
         }
       }),
-      ...chatter.map((item) => {
+      ...chatter.map(item => {
         // return this.renderNode(createElement, item)
         return createElement(
           'OFormChatter',
           {
             class: (item.attribute || {}).class,
-            slot: 'chatter',
+            slot: 'chatter'
           },
           [item.name, item.attribute.class]
         )
-      }),
+      })
     ])
 
     // return createElement('OContent', [this.renderMe(createElement, node)])
@@ -118,5 +118,5 @@ export default {
     //   const { callback, index } = payload
     //   callback(index)
     // },
-  },
+  }
 }

@@ -1,5 +1,9 @@
 <template>
-  <span :class="className" :name="node.attribute.attrs.name">
+  <span
+    :class="className"
+    :name="node.attribute.attrs.name"
+    :placeholder="node.attribute.attrs.placeholder"
+  >
     <!-- 
         radio:  oe_title  company_type
         field_partner_autocomplete: name   H1
@@ -10,10 +14,8 @@
     </span> -->
 
     <!-- {{ node.meta.type }} {{ node.meta.string }} -->
-    {{ node.meta.value }}
-
-    <!-- {{ node }} -->
-    <!-- {{ value }} -->
+    <!-- {{ node.meta.valueName }} -->
+    <span>{{ node.meta.valueName }}</span>
   </span>
 </template>
 
@@ -25,25 +27,27 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
-    },
-    // invisible: { type: Boolean, default: false },
-    // readonly: { type: Boolean, default: false },
-    // required: { type: Boolean, default: null },
-    // name: { type: String, default: '' },
-    // value: { type: [String, Number], default: '' },
-    // can_create: { type: Boolean, default: false },
-    // can_write: { type: Boolean, default: false },
-    // // widget: { type: String, default: '' },
-    // type: { type: String, default: '' },
+      }
+    }
   },
 
   computed: {
     className() {
       const node = this.node
-      const classList = [`o_field_${node.meta.type}`, 'o_field_widget']
-      if (!node.meta.value) {
-        classList.push('o_field_empty')
+      const classList = []
+
+      if (node.attribute.attrs.widget === 'field_partner_autocomplete') {
+        classList.push('o_field_partner_autocomplete')
+      } else {
+        classList.push(`o_field_${node.meta.type}`)
+        if (node.meta.type === 'integer') {
+          classList.push('o_field_number')
+        }
+      }
+      classList.push('o_field_widget')
+
+      if (node.attribute.class) {
+        classList.push(node.attribute.class)
       }
 
       if (node.meta.invisible) {
@@ -55,13 +59,18 @@ export default {
       if (node.meta.required) {
         classList.push('o_required_modifier')
       }
+
+      if (!node.meta.value) {
+        classList.push('o_field_empty')
+      }
+
       return classList.join(' ')
-    },
+    }
   },
 
   methods: {
     //
-  },
+  }
 }
 </script>
 

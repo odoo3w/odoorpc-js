@@ -1,37 +1,41 @@
 export default {
-  // name: 'ORender',
   // props: {},
 
   components: {
-    WidgetField: () => import('@/components/WidgetField.js'),
+    OWidgetFieldJS: () => import('@/components/OWidgetFieldJS.js'),
     OButton: () => import('@/components/OButton.vue'),
+    OGroup: () => import('@/components/OGroup.vue'),
+    OInnerGroup: () => import('@/components/OInnerGroup.vue')
   },
 
   data() {
     return {
       is_title: 0,
-      list: [],
+      list: []
     }
   },
 
   methods: {
     className(node) {
       const classList = [
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
-      if (node.meta.invisible) {
+      const meta = node.meta || {}
+      if (meta.invisible) {
         classList.push('o_invisible_modifier')
       }
-      if (node.meta.readonly) {
+      if (meta.readonly) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (meta.required) {
         classList.push('o_required_modifier')
       }
       return classList.join(' ')
     },
 
-    renderNode(createElement, node, parent) {
+    renderNode(createElement, node, payload = {}) {
+      const { parent } = payload
+
       if (!node) {
         console.log('error:  parent node,', parent)
         throw 'error node'
@@ -40,15 +44,21 @@ export default {
         return node
       }
 
-      let tagName = node.tagName
+      if (node.tagName === 'group') {
+        return this.renderGroup(createElement, node, payload)
+      }
 
       if (node.tagName === 'field') {
-        tagName = 'WidgetField'
-      } else if (node.tagName === 'button') {
-        tagName = 'OButton'
-      } else if (node.tagName === 'group') {
-        tagName = 'div'
-      } else if (node.tagName === 'notebook') {
+        return createElement('OWidgetFieldJS', { props: { node: node } })
+      }
+
+      if (node.tagName === 'button') {
+        return createElement('OButton', { props: { node: node } })
+      }
+
+      let tagName = node.tagName
+
+      if (node.tagName === 'notebook') {
         tagName = 'div'
       } else if (node.tagName === 'page') {
         tagName = 'div'
@@ -58,26 +68,47 @@ export default {
         tagName = 'div'
       }
 
-      const children = (node.children || []).map((sub_node) => {
-        return this.renderNode(createElement, sub_node, node)
+      const children = (node.children || []).map(sub_node => {
+        return this.renderNode(createElement, sub_node, {
+          ...payload,
+          parent: node
+        })
       })
 
-      if (['WidgetField', 'OButton'].includes(tagName)) {
-        return createElement(
-          tagName,
-          { props: { node: node }, class: node.attribute.class },
-          children
-        )
-      } else {
-        const attribute = {}
-        if (node.attribute.attrs && Object.keys(node.attribute.attrs).length) {
-          attribute.attrs = { ...node.attribute.attrs }
-        }
-        if (this.className(node)) {
-          attribute.class = this.className(node)
-        }
-        return createElement(tagName, { ...attribute }, children)
-      }
+      return createElement(
+        tagName,
+        {
+          ...node.attribute,
+          class: this.className(node),
+          props: { node: node }
+        },
+        children
+      )
     },
-  },
+
+    renderGroup(createElement, node, payload = {}) {
+      const { level = 0 } = payload
+      // console.log(
+      //   'group,xxxxxxxx, is:',
+      //   node.attribute.attrs.name,
+      //   node.children.length,
+      //   node
+      // )
+
+      const is_inner_group =
+        node.children &&
+        node.children.length &&
+        node.children[0].tagName !== 'group'
+
+      if (is_inner_group) {
+        return createElement('OInnerGroup', { props: { node: node, level } })
+      } else {
+        return createElement('OGroup', { props: { node: node, level } }, [
+          node.children.map(item =>
+            this.renderGroup(createElement, item, { level: level + 1 })
+          )
+        ])
+      }
+    }
+  }
 }

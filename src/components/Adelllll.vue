@@ -12,21 +12,21 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
+      }
     },
 
-    col_6: { type: Boolean, default: false },
+    col_6: { type: Boolean, default: false }
   },
   computed: {
     className() {
       const node = this.node
       let classList = [
         'o_form_label',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
 
       if (node.tagName === 'field') {
-        if (node.meta.invisible) {
+        if (!node.meta.value) {
           classList.push('o_form_label_empty')
         }
 
@@ -42,12 +42,12 @@ export default {
       }
 
       return classList.join(' ')
-    },
+    }
   },
 
   methods: {
     //
-  },
+  }
 }
 </script>
 

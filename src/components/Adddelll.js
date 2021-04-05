@@ -1,8 +1,12 @@
+import OFormLabel from '@/components/OFormLabel.vue'
+
 import renderMixin from '@/components/renderMixin'
 
 export default {
-  name: 'FormNode',
-  components: {},
+  name: 'FormLabel',
+  components: {
+    OFormLabel
+  },
 
   mixins: [renderMixin],
   props: {
@@ -10,8 +14,10 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
+      }
     },
+
+    col_6: { type: Boolean, default: false }
   },
 
   computed: {},
@@ -19,10 +25,25 @@ export default {
   render(createElement) {
     const node = this.node
 
-    const deep_copy = (node) => {
+    const deep_copy = node => {
       return JSON.parse(JSON.stringify(node))
     }
-    return this.renderNode(createElement, node)
+    // console.log(' Form lable,  ', node.tagName, node)
+
+    const is_OFormLabel =
+      node.tagName === 'field' || (node.tagName === 'label' && node.meta.string)
+
+    if (is_OFormLabel) {
+      return createElement(
+        'OFormLabel',
+        { props: { node: node, col_6: this.col_6 } },
+        [node.meta.string]
+      )
+    } else if (node.tagName === 'label') {
+      return this.renderNode(createElement, node)
+    } else {
+      throw 'error  tag name'
+    }
   },
 
   methods: {
@@ -33,7 +54,7 @@ export default {
         console.log('xxxxxxxx,', node)
       }
       const classList = [
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
       if (node.meta.invisible) {
         classList.push('o_invisible_modifier')
@@ -58,11 +79,11 @@ export default {
 
       let tagName = node.tagName
 
-      const children = (node.children || []).map((sub_node) => {
+      const children = (node.children || []).map(sub_node => {
         return this.renderNode222(createElement, sub_node, node)
       })
 
-      if (['WidgetField', 'OButton'].includes(tagName)) {
+      if (['OWidgetFieldJS', 'OButton'].includes(tagName)) {
         return createElement(
           tagName,
           { props: { node: node }, class: node.attribute.class },
@@ -78,6 +99,6 @@ export default {
         }
         return createElement(tagName, { ...attribute }, children)
       }
-    },
-  },
+    }
+  }
 }

@@ -9,40 +9,40 @@
       />
     </div>
 
-    <WidgetField v-for="(fld, index) in fields" :key="index" :node="fld" />
+    <OWidgetFieldJS v-for="(fld, index) in fields" :key="index" :node="fld" />
   </div>
 </template>
 
 <script>
 import OButton from '@/components/OButton.vue'
-import WidgetField from '@/components/WidgetField.js'
+import OWidgetFieldJS from '@/components/OWidgetFieldJS.js'
 
 export default {
   name: 'OFormHeader',
-  components: { OButton, WidgetField },
+  components: { OButton, OWidgetFieldJS },
   props: {
     node: {
       type: Object,
       default: () => {
         return {
-          children: [],
+          children: []
         }
-      },
-    },
+      }
+    }
   },
 
   computed: {
     buttons() {
       const node = this.node
-      return node.children.filter((item) => item.tagName === 'button')
+      return node.children.filter(item => item.tagName === 'button')
     },
     fields() {
       const node = this.node
-      return node.children.filter((item) => item.tagName === 'field')
-    },
+      return node.children.filter(item => item.tagName === 'field')
+    }
   },
 
-  async created() {},
+  async created() {}
 }
 </script>
 

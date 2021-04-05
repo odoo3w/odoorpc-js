@@ -1,6 +1,6 @@
 import api from '@/api'
 
-import { Database } from '@/api/api_config'
+import { Database } from '@/api_connect/api_config'
 
 const Mixin = {
   data() {

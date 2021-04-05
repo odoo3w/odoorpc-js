@@ -247,6 +247,10 @@ class BaseField {
     return this._getValue(instance)
   }
 
+  valueName(instance) {
+    return this._getValue(instance)
+  }
+
   getValue(instance) {
     // console.log(' get value,', instance._name, instance.id, this.name)
     // 给 instance  __defineGetter__ 使用
@@ -359,6 +363,10 @@ class Date2 extends BaseField {
     return value
   }
 
+  valueName(instance) {
+    return super._getValue(instance)
+  }
+
   _getValue(instance) {
     const value = super._getValue(instance)
     return value ? new Date(value) : value
@@ -375,6 +383,10 @@ class Datetime extends BaseField {
   get_for_onchange(instance) {
     const value = super._getValue(instance)
     return value
+  }
+
+  valueName(instance) {
+    return super._getValue(instance)
   }
 
   _getValue(instance) {

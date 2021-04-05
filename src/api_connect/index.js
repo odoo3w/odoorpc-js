@@ -13,7 +13,13 @@ const AddonsModels = AddonsFiles.keys().reduce((models, modulePath) => {
 }, {})
 
 const addons = { ...AddonsModels }
-// console.log('xxxx,', AddonsModels)
+
+// import Event from './addons/event.js'
+// import Ptn from './addons/res.partner.js'
+
+// const addons = { ...Event, ...Ptn }
+
+// // console.log('xxxx,', AddonsModels)
 
 export const ODOO = OdooBase
 

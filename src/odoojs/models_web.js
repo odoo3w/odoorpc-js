@@ -128,7 +128,8 @@ export class Model extends BaseModel {
     }
     const modifiers = JSON.parse(node.attr.modifiers)
     if (modifiers.required !== undefined) {
-      return modifiers.required
+      const required = this.compute_domain(modifiers.required)
+      return required
     } else {
       return null
     }
@@ -138,9 +139,13 @@ export class Model extends BaseModel {
     if (!node.attr.modifiers) {
       return null
     }
+
     const modifiers = JSON.parse(node.attr.modifiers)
+
     if (modifiers.readonly !== undefined) {
-      return modifiers.readonly
+      const readonly = this.compute_domain(modifiers.readonly)
+
+      return readonly
     } else {
       return null
     }
@@ -162,27 +167,6 @@ export class Model extends BaseModel {
     } else {
       return null
     }
-  }
-
-  // ok
-  _view_class_common(node) {
-    const class_list = []
-    const invisible = this._view_invisible(node)
-    if (invisible) {
-      class_list.push('o_invisible_modifier')
-    }
-
-    const readonly = this._view_readonly(node)
-    if (readonly) {
-      class_list.push('o_readonly_modifier')
-    }
-
-    const required = this._view_required(node)
-    if (required) {
-      class_list.push('o_required_modifier')
-    }
-
-    return class_list.join(' ')
   }
 
   _view_node_default_html(node) {
@@ -223,21 +207,24 @@ export class Model extends BaseModel {
   _view_node_label(node) {
     let string = ''
     let value = ''
+    let valueName = ''
 
     if (node.attr.for) {
       const meta = this._columns[node.attr.for]
       string = meta.string
-      if (meta.type === 'many2one') {
-        value = meta.valueName(this)
-      } else if (meta.type === 'selection') {
-        value = meta.valueName(this)
-      } else if (meta.type === 'one2many') {
-        value = 'this o2m'
-      } else if (meta.type === 'many2many') {
-        value = 'this m2m'
-      } else {
-        value = meta.value(this)
-      }
+      value = meta.value(this)
+      valueName = meta.valueName(this)
+      // if (meta.type === 'many2one') {
+      //   value = meta.valueName(this)
+      // } else if (meta.type === 'selection') {
+      //   value = meta.valueName(this)
+      // } else if (meta.type === 'one2many') {
+      //   value = 'this o2m'
+      // } else if (meta.type === 'many2many') {
+      //   value = 'this m2m'
+      // } else {
+      //   value = meta.value(this)
+      // }
     } else {
       //
     }
@@ -245,11 +232,13 @@ export class Model extends BaseModel {
     return {
       name: node.tagName,
       meta: {
+        readonly: 1,
         // readonly: this._view_readonly(node),
         // invisible: this._view_invisible(node),
         // required: this._view_required(node),
-        value: value,
-        string: string
+        value,
+        valueName,
+        string
       },
       tagName: node.tagName,
       attribute: {
@@ -271,18 +260,21 @@ export class Model extends BaseModel {
   _view_node_field(node) {
     const meta = this._columns[node.attr.name]
     let value = ''
+    let valueName = ''
+    value = meta.value(this)
+    valueName = meta.valueName(this)
 
-    if (meta.type === 'many2one') {
-      value = meta.valueName(this)
-    } else if (meta.type === 'selection') {
-      value = meta.valueName(this)
-    } else if (meta.type === 'one2many') {
-      value = 'this o2m'
-    } else if (meta.type === 'many2many') {
-      value = 'this m2m'
-    } else {
-      value = meta.value(this)
-    }
+    // if (meta.type === 'many2one') {
+    //   value = meta.valueName(this)
+    // } else if (meta.type === 'selection') {
+    //   value = meta.valueName(this)
+    // } else if (meta.type === 'one2many') {
+    //   value = 'this o2m'
+    // } else if (meta.type === 'many2many') {
+    //   value = 'this m2m'
+    // } else {
+    //   value = meta.value(this)
+    // }
 
     return {
       name: 'field',
@@ -291,8 +283,9 @@ export class Model extends BaseModel {
         invisible: this._view_invisible(node),
         required: this._view_required(node),
         type: meta.type,
-        string: meta.string,
-        value: value,
+        string: node.attr.string || meta.string,
+        value,
+        valueName,
         selection: meta.selection
       },
       tagName: node.tagName,
@@ -517,6 +510,27 @@ export class Model extends BaseModel {
   }
 
   // delllllll
+
+  // ok
+  _view_class_common(node) {
+    const class_list = []
+    const invisible = this._view_invisible(node)
+    if (invisible) {
+      class_list.push('o_invisible_modifier')
+    }
+
+    const readonly = this._view_readonly(node)
+    if (readonly) {
+      class_list.push('o_readonly_modifier')
+    }
+
+    const required = this._view_required(node)
+    if (required) {
+      class_list.push('o_required_modifier')
+    }
+
+    return class_list.join(' ')
+  }
 
   _view_node_notebook(node) {
     // const num = Math.ceil(Math.random() * 100)

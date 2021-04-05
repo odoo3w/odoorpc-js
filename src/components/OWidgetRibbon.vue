@@ -1,6 +1,6 @@
 <template>
   <div :class="className">
-    <span class="node.attribute.attrs.bg_color">
+    <span :class="node.attribute.attrs.bg_color">
       {{ node.attribute.attrs.title }}
     </span>
   </div>
@@ -14,8 +14,8 @@ export default {
       type: Object,
       default: () => {
         return {}
-      },
-    },
+      }
+    }
   },
 
   computed: {
@@ -28,12 +28,12 @@ export default {
       classList.push('o_widget')
 
       return classList.join(' ')
-    },
+    }
   },
 
   methods: {
     //
-  },
+  }
 }
 </script>
 
