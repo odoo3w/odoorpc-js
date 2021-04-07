@@ -1093,12 +1093,16 @@ export class Model extends BaseModel {
     const fields = Object.keys(field_onchange).filter(
       fld => fld.split('.').length === 1
     )
+
+    // console.log(this._name, field_onchange, fields)
+
     const default_get1 = await this.constructor.execute('default_get', fields)
 
     // console.log('default get ', default_get1)
 
     const _get_default = col => {
-      const meta = this._columns[col]
+      const meta = this._columns[col] || {}
+
       if (['many2many'].includes(meta.type)) {
         return [[6, false, []]]
       } else if (['one2many'].includes(meta.type)) {

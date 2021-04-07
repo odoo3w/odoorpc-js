@@ -1,5 +1,8 @@
 #### 设计说明
 
+2 create users
+1 m2m 要处理
+
 #### env
 
 1. env.model 函数 , 获取的 是 某个 view 信息, 一定有 view info

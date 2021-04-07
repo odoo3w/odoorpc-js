@@ -7,7 +7,8 @@ export const test_api = async () => {
   // await test_get_sportType()
   // await test_get_bookvenue()
   // await test_get_presetData()
-  await test_reg_event()
+  // await test_reg_event()
+  // test_register_mobile()
 }
 
 const login = async () => {
@@ -236,4 +237,42 @@ const test_reg_event = async () => {
   const reg = await Model.reg_event(event_id)
 
   console.log(reg)
+}
+
+const all_users = [
+  '13621007080',
+  '13910679928',
+  '15801252316',
+  '13911469690',
+  '13911132711',
+  '13811033313',
+  '13811535766',
+  '18911899712',
+  '13522808997',
+  '13683292391',
+  '13611054306',
+  '13661248928',
+  '13001294650',
+  '13718049661',
+  '18810779632',
+  '13426057008',
+  '18210121077',
+  '18611839706',
+  '13811057639',
+  '13693523682',
+  '18001226715',
+  '13910604413',
+  '13683398123'
+]
+
+const test_register_mobile = async () => {
+  const model = 'res.users'
+  const Model = api.env.model(model)
+  console.log([Model])
+  for (const mobile of all_users) {
+    // const mobile = '13911223366'
+    // const user = await Model.register_mobile(mobile)
+    // console.log(mobile)
+    // console.log(user)
+  }
 }

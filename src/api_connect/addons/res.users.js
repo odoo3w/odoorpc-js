@@ -1,50 +1,60 @@
 import { Model } from '@/odoojs/models'
 
-export class ResPartner extends Model {
+export class ResUsers extends Model {
   constructor() {
     super()
   }
 
-  static async search_location(category) {
-    const ids = await this.search([
-      ['category_id.name', '=', category],
-      ['category_id.parent_id.name', '=', 'location']
-    ])
-
-    return ids
+  static async create_by_values(vals) {
+    // const rec = await this.browse(null)
+    // // rec.$name = vals.name
+    // // rec.$mobile = vals.mobile
+    // // rec.$login = vals.login
+    // // rec.$email = vals.email
+    // // rec.$password = vals.password
+    // // await rec.awaiter
+    // // // await rec.commit()
+    // return rec.id
   }
 
-  static async search_location_room() {
-    return this.search_location('room')
+  static async search_or_create(vals) {
+    const domain = [['login', '=', vals.login]]
+    const ids = await this.search(domain, { limit: 1 })
+    if (ids.length) {
+      return ids[0]
+      // return this.browse(ids)
+    }
+    return await this.create(vals)
   }
 
-  static async search_location_area() {
-    const ids = await this.search([
-      ['parent_id.category_id.name', '=', 'room'],
-      ['parent_id.category_id.parent_id.name', '=', 'location']
-    ])
+  static async register_mobile(mobile) {
+    const group1 = await this.env.ref('base.group_user')
+    const group2 = await this.env.ref('base.group_partner_manager')
+    const group3 = await this.env.ref('event.group_event_manager')
 
-    return ids
-  }
+    const group_id1 = group1.id
+    const group_id2 = group2.id
+    const group_id3 = group3.id
 
-  static async get_sportType() {
-    const ids = await this.search_location_room()
-    const records = await this.browse(ids)
-    const records2 = records.fetch_all()
-    return records2
-  }
+    const vals = {
+      login: mobile,
+      email: mobile,
+      name: mobile,
+      mobile: mobile,
+      password: '123456',
+      groups_id: [
+        [4, group_id1],
+        [4, group_id2],
+        [4, group_id3]
+      ]
+    }
 
-  static async get_bookvenue(room_id) {
-    const domain = [['parent_id', '=', room_id]]
-    const ids = await this.search(domain)
-    const records = await this.browse(ids)
-    const records2 = records.fetch_all()
-    return records2
+    return await this.search_or_create(vals)
   }
 }
 
 const AddonsModels = {
-  'res.partner': ResPartner
+  'res.users': ResUsers
 }
 
 export default AddonsModels
