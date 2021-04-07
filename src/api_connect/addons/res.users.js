@@ -6,13 +6,10 @@ export class ResPartner extends Model {
   }
 
   static async search_location(category) {
-    const ids = await this.search(
-      [
-        ['category_id.name', '=', category],
-        ['category_id.parent_id.name', '=', 'location']
-      ],
-      { order: 'street2' }
-    )
+    const ids = await this.search([
+      ['category_id.name', '=', category],
+      ['category_id.parent_id.name', '=', 'location']
+    ])
 
     return ids
   }
