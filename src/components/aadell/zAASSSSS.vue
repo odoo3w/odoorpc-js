@@ -14,8 +14,8 @@
     </span> -->
 
     <!-- {{ node.meta.type }} {{ node.meta.string }} -->
-    <!-- {{ node.meta.valueName }} -->
-    <span>{{ node.meta.valueName }}</span>
+    {{ node.meta.valueName }}
+    <!-- <span>{{ node.meta.valueName }}</span> -->
   </span>
 </template>
 

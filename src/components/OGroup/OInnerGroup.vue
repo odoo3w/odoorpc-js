@@ -8,40 +8,32 @@
           :key="index2"
           :colspan="td.attribute.attrs.colspan"
           :style="styleNameTd(td)"
-          :class="td.tagName === 'label' ? 'o_td_label' : undefined"
+          :class="
+            td.tagName === 'label' || td.attribute.class === 'o_td_label'
+              ? 'o_td_label'
+              : undefined
+          "
         >
           <div v-if="td.tagName === 'separator'" class="o_horizontal_separator">
             {{ td.attribute.attrs.string }}
           </div>
-          <!-- <label
-            v-else-if="td.tagName === 'label' && td.meta.string"
-            :for="td.attribute.attrs.for"
-            :class="classNameLabel(td)"
-          >
-            {{ td.meta.string }}
-          </label> -->
-          <label
-            v-else-if="td.tagName === 'label'"
-            :class="classNameLabel(td)"
-            :for="td.attribute.attrs.for"
-            :name="td.attribute.attrs.name"
-          >
-            <span v-if="td.meta.string"> {{ td.meta.string }} </span>
-            <span v-else>
-              <OFormNodeJS
-                v-for="(child_of_label, index3) in td.children"
-                :key="index3"
-                :node="child_of_label"
-              />
-            </span>
-          </label>
-          <OFormNodeJS v-else :node="td" />
 
-          <!-- <div v-else>
-           
-            {{ td.tagName }}
-          </div> -->
-          <!-- {{ td }} -->
+          <div
+            v-else-if="
+              td.tagName === 'div' && td.attribute.class === 'o_td_label'
+            "
+            :class="td.meta.invisible ? 'o_invisible_modifier' : undefined"
+          >
+            <OFormLabel
+              v-for="(child_of_label, index3) in td.children"
+              :key="index3"
+              :node="child_of_label"
+            />
+          </div>
+
+          <OFormLabel v-else-if="td.tagName === 'label'" :node="td" />
+
+          <ONode v-else :record="record" :node="td" :editable="editable" />
         </td>
       </tr>
     </tbody>
@@ -50,20 +42,22 @@
 </template>
 
 <script>
-const deep_copy = node => {
-  return JSON.parse(JSON.stringify(node))
-}
-
-import OFormNodeJS from '@/components/OFormNodeJS.js'
+import OFormLabel from '@/components/OFormLabel'
+import ONode from '@/components/ONodeRender'
 
 export default {
   name: 'OInnerGroup',
-  components: {
-    OFormNodeJS
-  },
+  components: { OFormLabel, ONode },
 
   mixins: [],
   props: {
+    editable: { type: Boolean, default: undefined },
+    record: {
+      type: Object,
+      default: () => {
+        return {}
+      }
+    },
     node: {
       type: Object,
       default: () => {
@@ -106,41 +100,61 @@ export default {
 
           matrix.push([separator])
         }
+
         const children = [...node_group.children]
+        let count = 2 - this.level
+        let row = []
 
         while (children.length) {
           const child = children.shift()
-          // console.log(child)
-
-          if (child.tagName === 'label') {
+          if (
+            child.tagName === 'label' ||
+            child.attribute.class === 'o_td_label'
+          ) {
             const ch_value = children.shift()
-            matrix.push([child, ch_value])
+            row.push(child)
+            row.push(ch_value)
           } else if (child.tagName === 'field') {
             if (child.attribute.attrs.nolabel) {
-              matrix.push([child])
+              row.push(child)
             } else {
               const nd_label = {
                 attribute: { attrs: { for: child.attribute.attrs.name } },
                 meta: child.meta,
                 tagName: 'label'
               }
-              matrix.push([nd_label, child])
+              row.push(nd_label)
+              row.push(child)
             }
           } else {
-            matrix.push([child])
+            row.push(child)
           }
+          count = count - 1
+          if (!count) {
+            matrix.push(row)
+            row = []
+            count = 2 - this.level
+          }
+        }
+
+        if (row.length) {
+          matrix.push(row)
         }
 
         return matrix
       }
 
       const node_table = get_matrix()
+      // console.log('node_table', deep_copy(node_table))
 
       return node_table
     }
   },
   async created() {
-    // console.log('OGroup Inner, xxxxxx:', this.seq, deep_copy(this.node))
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OInnerGroup , xxxxxx:', this.seq, deep_copy(this.node))
   },
 
   methods: {
@@ -152,7 +166,7 @@ export default {
       //  colsapn =4, 200%
       //  TBD
 
-      if (node.tagName !== 'label') {
+      if (node.tagName !== 'label' && node.attribute.class !== 'o_td_label') {
         const compute_x = () => {
           if (node.attribute.attrs.colspan) {
             return node.attribute.attrs.colspan
@@ -164,47 +178,11 @@ export default {
         }
 
         const x = compute_x()
-
-        return `width: ${50 * x}%`
+        const x2 = x / (node.meta.type === 'many2one' ? 3 / 2 : 1)
+        return `width: ${50 * x2}%`
       }
 
-      // if (node.attribute.attrs.colspan) {
-      //   return `width: ${100}%`
-      // }
-
-      // if (node.tagName === 'field') {
-      //   return `width: ${100}%`
-      // }
       return undefined
-    },
-    classNameLabel(node) {
-      const classList = [
-        'o_form_label',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
-      ]
-
-      if (node.meta.invisible) {
-        classList.push('o_invisible_modifier')
-      }
-      // Label readonly TBD
-      if (node.meta.readonly) {
-        classList.push('o_readonly_modifier')
-      }
-      if (node.meta.required) {
-        classList.push('o_required_modifier')
-      }
-
-      if (!node.meta.value) {
-        classList.push('o_form_label_empty')
-      }
-
-      return classList.join(' ')
-    },
-    test(row, index) {
-      // const matrix = this.matrix
-
-      console.log(index, row[0].label, row[0].value)
-      return []
     }
   }
 }

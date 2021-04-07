@@ -1,16 +1,16 @@
-import OWidgetField from '@/components/OWidgetField.vue'
+import OWidgetField from '@/components/OWidgetField2.vue'
 import OWidgetStatinfo from '@/components/OWidgetStatinfo.vue'
 import OWidgetMonetary from '@/components/OWidgetMonetary.vue'
 
 import OWidgetStatusbar from '@/components/OWidgetStatusbar.vue'
 
 export default {
-  name: 'WidgetField',
+  name: 'QWidgetField',
   components: {
     OWidgetField,
     OWidgetStatinfo,
     OWidgetMonetary,
-    OWidgetStatusbar,
+    OWidgetStatusbar
   },
 
   mixins: [],
@@ -19,8 +19,8 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
-    },
+      }
+    }
   },
 
   computed: {},
@@ -28,7 +28,7 @@ export default {
   render(createElement) {
     const node = this.node
 
-    const deep_copy = (node) => {
+    const deep_copy = node => {
       return JSON.parse(JSON.stringify(node))
     }
     // console.log(' js field widget, 222 ', node, node.attribute.attrs.widget)
@@ -45,20 +45,7 @@ export default {
     }
 
     return createElement(tagName, { props: { node } })
-
-    // return createElement(
-    //   'OWidgetField',
-    //   { props: { node: node } },
-    //   ['field']
-    //   // node.children.map((item) => {
-    //   //   if (item.name === 'field') {
-    //   //     return createElement('WidgetField', { props: { node: item } }, [])
-    //   //   } else {
-    //   //     return createElement('div', {}, [item.name])
-    //   //   }
-    //   // })
-    // )
   },
 
-  methods: {},
+  methods: {}
 }

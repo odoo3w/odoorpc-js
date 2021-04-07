@@ -1,9 +1,4 @@
 <template>
-  <!-- aria-label: "More languages"
-class: "btn-sm btn-link mb4 fa fa-globe"
-name: "55"
-title: "More languages" -->
-
   <button
     type="button"
     :name="node.attribute.attrs.name"
@@ -15,13 +10,25 @@ title: "More languages" -->
   >
     <i v-if="node.attribute.attrs.icon" :class="classNameIcon" />
     <span v-if="string"> {{ string }} </span>
+    <ONode
+      v-else
+      v-for="(child, index) in node.children"
+      :key="index"
+      :node="child"
+    />
+
     <slot />
   </button>
 </template>
 
 <script>
+import ONode from '@/components/ONodeRender'
+
 export default {
   name: 'OButton',
+
+  components: { ONode },
+
   props: {
     node: {
       type: Object,
@@ -31,12 +38,6 @@ export default {
     },
 
     parent: { type: String, default: '' }
-
-    // confirm: { type: String, default: '' },
-    // type: { type: String, default: '' },
-    // name: { type: String, default: '' },
-    // context: { type: String, default: '' },
-    // states: { type: String, default: '' },
   },
   computed: {
     string() {

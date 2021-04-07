@@ -1,7 +1,7 @@
 import OButtonBox from '@/components/OButtonBox.vue'
 import OButton from '@/components/OButton.vue'
 
-import renderMixin from '@/components/renderMixin'
+import renderMixin from '@/components/aadell/zzzrenderMixin'
 
 export default {
   name: 'ButtonBox',
@@ -13,14 +13,14 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
-    },
+      }
+    }
   },
 
   computed: {},
 
   render(createElement) {
-    const deep_copy = (node) => {
+    const deep_copy = node => {
       return JSON.parse(JSON.stringify(node))
     }
 
@@ -29,12 +29,12 @@ export default {
     return createElement(
       'OButtonBox',
       { class: node.attribute.class },
-      node.children.map((item) => {
+      node.children.map(item => {
         if (item.name === 'button') {
           return createElement(
             'OButton',
             { props: { node: item }, class: item.attribute.class },
-            (item.children || []).map((el) => {
+            (item.children || []).map(el => {
               return this.renderNode(createElement, el)
             })
           )
@@ -46,5 +46,5 @@ export default {
     )
   },
 
-  methods: {},
+  methods: {}
 }

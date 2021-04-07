@@ -11,8 +11,8 @@ export const baseURL = process.env.VUE_APP_BASE_API
 // 将代码 移植到 小程序中时, 注意 使用 正确的 baseURL
 
 // Database Name
-// export const Database = 'reservation'
-export const Database = 'T2'
+export const Database = 'reservation'
+// export const Database = 'T2'
 
 // /view/test/test_api.vue 这个文件为 book系统 调试 页面
 

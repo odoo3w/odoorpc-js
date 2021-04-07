@@ -4,13 +4,6 @@ import xml2json from './xml2json.js'
 
 const PAGE_SIZE = 10
 
-const mixin_class = (...class_list) => {
-  const list1 = class_list.filter(item => item).join(' ')
-  const list2 = list1.split(' ')
-  const list3 = Array.from(new Set(list2))
-  return list3.join(' ')
-}
-
 const get_attrs = node_attr => {
   return Object.keys(node_attr).reduce((acc, cur) => {
     if (!['class', 'attrs', 'modifiers', 'invisible'].includes(cur)) {
@@ -208,23 +201,14 @@ export class Model extends BaseModel {
     let string = ''
     let value = ''
     let valueName = ''
+    let input_id = 0
 
     if (node.attr.for) {
       const meta = this._columns[node.attr.for]
-      string = meta.string
+      string = node.attr.string || meta.string
       value = meta.value(this)
       valueName = meta.valueName(this)
-      // if (meta.type === 'many2one') {
-      //   value = meta.valueName(this)
-      // } else if (meta.type === 'selection') {
-      //   value = meta.valueName(this)
-      // } else if (meta.type === 'one2many') {
-      //   value = 'this o2m'
-      // } else if (meta.type === 'many2many') {
-      //   value = 'this m2m'
-      // } else {
-      //   value = meta.value(this)
-      // }
+      input_id = meta.getInputId(this)
     } else {
       //
     }
@@ -238,12 +222,14 @@ export class Model extends BaseModel {
         // required: this._view_required(node),
         value,
         valueName,
-        string
+        string,
+        input_id
       },
       tagName: node.tagName,
       attribute: {
         attrs: {
-          ...get_attrs(node.attr)
+          ...get_attrs(node.attr),
+          string
         },
         class: node.attr.class
       },
@@ -259,22 +245,9 @@ export class Model extends BaseModel {
   // ok
   _view_node_field(node) {
     const meta = this._columns[node.attr.name]
-    let value = ''
-    let valueName = ''
-    value = meta.value(this)
-    valueName = meta.valueName(this)
-
-    // if (meta.type === 'many2one') {
-    //   value = meta.valueName(this)
-    // } else if (meta.type === 'selection') {
-    //   value = meta.valueName(this)
-    // } else if (meta.type === 'one2many') {
-    //   value = 'this o2m'
-    // } else if (meta.type === 'many2many') {
-    //   value = 'this m2m'
-    // } else {
-    //   value = meta.value(this)
-    // }
+    const value = meta.value(this)
+    const valueName = meta.valueName(this)
+    const input_id = meta.getInputId(this)
 
     return {
       name: 'field',
@@ -283,9 +256,11 @@ export class Model extends BaseModel {
         invisible: this._view_invisible(node),
         required: this._view_required(node),
         type: meta.type,
+        name: node.attr.name,
         string: node.attr.string || meta.string,
         value,
         valueName,
+        input_id,
         selection: meta.selection
       },
       tagName: node.tagName,
@@ -509,387 +484,9 @@ export class Model extends BaseModel {
     return ret2
   }
 
-  // delllllll
-
-  // ok
-  _view_class_common(node) {
-    const class_list = []
-    const invisible = this._view_invisible(node)
-    if (invisible) {
-      class_list.push('o_invisible_modifier')
-    }
-
-    const readonly = this._view_readonly(node)
-    if (readonly) {
-      class_list.push('o_readonly_modifier')
-    }
-
-    const required = this._view_required(node)
-    if (required) {
-      class_list.push('o_required_modifier')
-    }
-
-    return class_list.join(' ')
-  }
-
-  _view_node_notebook(node) {
-    // const num = Math.ceil(Math.random() * 100)
-
-    const children = node.children.map((item, index) => {
-      return { index, page: item }
-    })
-
-    const tabChanged_callback = payload => {
-      console.log(' tabChanged_callback', payload)
-      this._currentNotebook = payload
-    }
-
-    return {
-      attr: { class: mixin_class('o_notebook') },
-      // children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
-      children: [
-        {
-          attr: { class: mixin_class('o_notebook_headers') },
-          children: [
-            {
-              attr: { class: mixin_class('nav nav-tabs') },
-              children: children.map(item => {
-                return {
-                  attr: {
-                    class: mixin_class(
-                      'nav-item',
-                      this._view_class_common(item.page)
-                    )
-                  },
-                  children: [
-                    {
-                      attr: {
-                        class: mixin_class(
-                          'nav-link',
-                          ...(item.index === this._currentNotebook
-                            ? ['active']
-                            : [])
-                        ),
-                        attrs: {
-                          'data-toggle': 'tab',
-                          disable_anchor: true,
-                          role: 'tab',
-                          href: 'javascript:void(0)'
-                        }
-                      },
-                      children: [item.page.attr.string],
-                      tabChanged: {
-                        callback: tabChanged_callback,
-                        index: item.index
-                      },
-
-                      tagName: 'a'
-                    }
-                  ],
-                  tagName: 'li'
-                }
-              }),
-              tagName: 'ul'
-            }
-          ],
-          tagName: 'div'
-        },
-        {
-          attr: { class: mixin_class('tab_content') },
-
-          children: children
-            .filter(item => item.index === this._currentNotebook)
-            .map(item => {
-              return {
-                attr: {
-                  class: mixin_class(
-                    'tab-pane',
-                    ...(item.index === this._currentNotebook ? ['active'] : [])
-                  ),
-                  attrs: {
-                    // id: `notebook_page_${item.index}`,
-                  }
-                },
-                children: item.page.children.map(item2 =>
-                  this._view_node_default_html(item2)
-                ),
-                tagName: 'div'
-              }
-            }),
-
-          tagName: 'div'
-        }
-      ],
-      tagName: 'div'
-    }
-  }
-
-  _view_node_field_partner_autocomplete(node) {
-    const meta = this._columns[node.attr.name]
-
-    return {
-      ...node,
-      attr: {
-        class: mixin_class(
-          'o_field_partner_autocomplete o_field_widget',
-          node.attr.class,
-          this._view_class_common(node)
-        ),
-        attrs: get_attrs(node.attr)
-        // { ...(node.attr.name ? { name: node.attr.name } : {}) },
-      },
-      children: [meta.value(this)],
-      tagName: 'span'
-    }
-  }
-
-  _view_node_field_radio(node) {
-    const meta = this._columns[node.attr.name]
-
-    const value =
-      meta.type === 'selection' ? meta.valueName(this) : meta.value(this)
-
-    return {
-      ...node,
-      attr: {
-        class: mixin_class(
-          'o_field_radio o_field_widget',
-          node.attr.class,
-          this._view_class_common(node)
-        ),
-        attrs: get_attrs(node.attr)
-        // { ...(node.attr.name ? { name: node.attr.name } : {}) },
-      },
-      children: [value],
-      tagName: 'span'
-    }
-  }
-
-  _view_node_field_res_partner_many2one(node) {
-    const meta = this._columns[node.attr.name]
-
-    const value = meta.valueName(this)
-
-    return {
-      ...node,
-      attr: {
-        class: mixin_class(
-          'o_field_uri o_field_widget',
-          node.attr.class,
-          this._view_class_common(node),
-          'o_field_empty' // 这个 如何控制的
-        ),
-        attrs: get_attrs(node.attr)
-      },
-      children: [value],
-      tagName: 'span'
-    }
-  }
-
-  // ok
-  _view_node_group_label(node) {
-    if (node.tagName === 'field') {
-      const label_class = mixin_class(
-        'o_form_label',
-        this._view_class_common(node)
-      )
-
-      // 这是  tip 用的
-      // const attrs = { 'data-original-title': true, title: true }
-
-      const meta = this._columns[node.attr.name]
-      return {
-        attr: { class: label_class },
-        attrs: {
-          // for 属性 是否有作用
-          // for: ''
-          // ...attrs,
-        },
-        children: [meta.string],
-        tagName: 'label'
-      }
-    } else if (node.tagName === 'label') {
-      return {
-        attr: { class: 'o_form_label' },
-        attrs: {
-          // for 属性 是否有作用
-          // for: ''
-          // 这是  tip 用的
-          // 'data-original-title': true,
-          // title: true
-        },
-        children: [node.attr.string],
-        tagName: 'label'
-      }
-    } else {
-      return {
-        attr: { class: mixin_class(this._view_class_common(node)) },
-        attrs: get_attrs(node.attr),
-        children: node.children,
-        tagName: 'div'
-      }
-    }
-  }
-
-  // ok
-  _view_node_group_table(fields, payload = {}) {
-    //
-    const { parent, col_count, style: value_style, class: class2 } = payload
-
-    const get_table_matrix = (fields, col_count) => {
-      // const matrix_col_count = col_count / 2
-      const loop_res = fields.reduce(
-        (acc, node) => {
-          const { matrix, last_row, last_item } = acc
-
-          let new_matrix = [...matrix]
-          let new_row = last_row ? [...last_row] : []
-          let new_item = last_item ? { ...last_item } : {}
-
-          if (node.tagName === 'field') {
-            if (node.attr.nolabel) {
-              new_item = { ...new_item, value: node }
-            } else {
-              new_item = { label: node, value: node }
-            }
-          } else {
-            new_item = { label: node }
-          }
-
-          if (new_item.label && new_item.value) {
-            new_row = [...new_row, new_item]
-            new_item = null
-          }
-
-          if (new_row.length === col_count / 2) {
-            new_matrix = [...new_matrix, new_row]
-            new_row = null
-            new_item = null
-          }
-
-          acc = {
-            matrix: new_matrix,
-            last_row: new_row,
-            last_item: new_item
-          }
-          return acc
-        },
-        { matrix: [], last_row: null, last_item: null }
-      )
-
-      const matrix = loop_res.matrix
-      const part_matrix = loop_res.last_row ? [loop_res.last_row] : []
-      return [...matrix, ...part_matrix]
-    }
-
-    const matrix = get_table_matrix(fields, col_count)
-
-    // console.log('table_matrix, ', matrix)
-
-    const node_table = {
-      attr: { class: mixin_class('o_group', 'o_inner_group', class2) },
-      children: [
-        {
-          children: matrix.map(row => {
-            return {
-              attr: {},
-              children: row.reduce((acc, col) => {
-                acc.push({
-                  attr: { class: mixin_class('o_td_label') },
-                  children: [this._view_node_group_label(col.label)],
-                  tagName: 'td'
-                })
-
-                acc.push({
-                  attr: { style: value_style },
-                  children: [this._view_node_field(col.value)],
-                  tagName: 'td'
-                })
-
-                return acc
-              }, []),
-              tagName: 'tr'
-            }
-          }),
-          tagName: 'tbody'
-        }
-      ],
-      tagName: 'table'
-    }
-    // console.log('node_table, ', node_table)
-
-    return node_table
-  }
-
-  // ok
-  _view_node_group_inner(node) {
-    // console.log('inner group', node)
-
-    const node_table = this._view_node_group_table(node.children, {
-      parent: 'group_inner',
-      col_count: 2,
-      style: 'width: 100%',
-      class: 'o_group_col_6'
-    })
-    // console.log('node_table, ', node_table)
-    return node_table
-  }
-
-  // ok
-  _view_node_group_outer(node) {
-    return {
-      ...node,
-      attr: {
-        class: mixin_class('o_group'),
-        attrs: get_attrs(node.attr)
-      },
-      children: node.children.map(item => this._view_node_group_inner(item)),
-
-      // children: [`${node.tagName}, ${node.attr.name},${node.attr.class} `],
-      tagName: 'div'
-    }
-  }
-
-  // ok
-  _view_node_group_one(node) {
-    console.log('inner group 1', node)
-    // col: "4"
-    const node_table = this._view_node_group_table(node.children, {
-      parent: 'group_one',
-      col_count: 4,
-      style: 'width: 50%'
-    })
-    // console.log('node_table, ', node_table)
-    return node_table
-  }
-  // ok
-  _view_node_group(node) {
-    const check_type = () => {
-      if (!node.children) {
-        return 0
-      }
-      if (node.children.length !== 2) {
-        return 1
-      }
-      const child0 = node.children[0]
-      const child1 = node.children[0]
-
-      if (child0.tagName === 'group' && child1.tagName === 'group') {
-        return 2
-      } else {
-        return 1
-      }
-    }
-
-    const my_type = check_type()
-
-    if (my_type === 1) {
-      return this._view_node_group_one(node)
-    } else if (my_type === 2) {
-      return this._view_node_group_outer(node)
-    } else {
-      // return this._view_node_default(node)
-    }
+  async get_selection(field, payload) {
+    const meta = this._columns[field]
+    return meta.get_selection(this, payload)
   }
 
   // 不再用了

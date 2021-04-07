@@ -9,17 +9,17 @@
       />
     </div>
 
-    <OWidgetFieldJS v-for="(fld, index) in fields" :key="index" :node="fld" />
+    <OWidgetField v-for="(fld, index) in fields" :key="index" :node="fld" />
   </div>
 </template>
 
 <script>
-import OButton from '@/components/OButton.vue'
-import OWidgetFieldJS from '@/components/OWidgetFieldJS.js'
+import OButton from '@/components/OButton'
+import OWidgetField from '@/components/OWidgetField'
 
 export default {
   name: 'OFormHeader',
-  components: { OButton, OWidgetFieldJS },
+  components: { OButton, OWidgetField },
   props: {
     node: {
       type: Object,

@@ -1,39 +1,33 @@
+import renderMixin from '@/components/aadell/zzzrenderMixin'
+
 export default {
-  // props: {},
+  name: 'ONode',
+  components: {},
 
-  components: {
-    OWidgetFieldJS: () => import('@/components/OWidgetFieldJS.js'),
-    OButton: () => import('@/components/OButton.vue'),
-    OGroup: () => import('@/components/OGroup.vue'),
-    OInnerGroup: () => import('@/components/OInnerGroup.vue')
-  },
-
-  data() {
-    return {
-      is_title: 0,
-      list: []
+  mixins: [renderMixin],
+  props: {
+    node: {
+      type: Object,
+      default: () => {
+        return { children: [] }
+      }
     }
   },
 
-  methods: {
-    className(node) {
-      const classList = [
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
-      ]
-      const meta = node.meta || {}
-      if (meta.invisible) {
-        classList.push('o_invisible_modifier')
-      }
-      if (meta.readonly) {
-        classList.push('o_readonly_modifier')
-      }
-      if (meta.required) {
-        classList.push('o_required_modifier')
-      }
-      return classList.join(' ')
-    },
+  computed: {},
 
+  render(createElement) {
+    const node = this.node
+
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+    return this.renderNode(createElement, node)
+  },
+
+  methods: {
     renderNode(createElement, node, payload = {}) {
+      console.log(' lable2 node,', node)
       const { parent } = payload
 
       if (!node) {
@@ -82,11 +76,12 @@ export default {
           class: this.className(node),
           props: { node: node }
         },
+        // ['label2']
         children
       )
     },
 
-    renderGroup(createElement, node, payload = {}) {
+    renderGroup2222222(createElement, node, payload = {}) {
       const { level = 0 } = payload
       // console.log(
       //   'group,xxxxxxxx, is:',

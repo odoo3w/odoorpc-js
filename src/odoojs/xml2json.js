@@ -9,16 +9,23 @@
  *
  */
 
+function object2Array(dict) {
+  const indexs = Array.from(new Array(dict.length).keys())
+  return indexs.map(index => dict[index])
+}
+
 /**
  * @private
  */
 function _getAllAttr(node) {
   var attributes = node.attributes
-  if (node.hasAttributes() === false) {
+
+  if (!attributes.length) {
     return {}
   }
   var result = {}
-  for (let attr of attributes) {
+
+  for (let attr of object2Array(attributes)) {
     result[attr.name] = attr.value
   }
   return result
@@ -28,7 +35,7 @@ function _getAllAttr(node) {
  * @private
  */
 function _getContent(node) {
-  return node.innerHTML
+  return node.textContent
 }
 
 /**
@@ -41,11 +48,12 @@ function _getTagName(node) {
 /**
  * @private
  */
+
 function _getChildren(parent) {
   var childNodes = parent.childNodes
   var children = []
-  for (let child of childNodes) {
-    // console.log(child.nodeType, child)
+
+  for (let child of object2Array(childNodes)) {
     if (child.nodeType === 3) {
       children.push(child)
     } else if (child.nodeType !== 1) {
@@ -62,28 +70,11 @@ function _getChildren(parent) {
  */
 function _getChildInfo(children) {
   var resultArr = []
-  for (var child of children) {
+  for (var child of object2Array(children)) {
     if (child.nodeType === 3) {
       const text = child.nodeValue.trim()
       if (text.length) {
-        // console.log(
-        //   'text',
-        //   child.nodeValue.trim(),
-        //   child.nodeValue.trim().length
-        //   // typeof child.nodeValue
-        // )
-
-        resultArr.push(text)
-
-        // const textInfo = {
-        //   tagName: 'text',
-        //   content: text,
-        //   attr: {},
-        //   isParent: false,
-        //   hasAttr: false,
-        // }
-
-        // resultArr.push(textInfo)
+        resultArr.push(child.nodeValue)
       }
       continue
     }
@@ -93,14 +84,16 @@ function _getChildInfo(children) {
       content: _getContent(child),
       attr: _getAllAttr(child),
       isParent: false,
-      hasAttr: child.hasAttributes(),
+      hasAttr: child.hasAttributes()
     }
+
     var subChildren = _getChildren(child)
     if (subChildren.length !== 0) {
       var no_loop = subChildren.length === 1 && subChildren[0].nodeType === 3
 
       if (!no_loop) {
         eachChildInfo.isParent = true
+        eachChildInfo.content = ''
         eachChildInfo.children = _getChildInfo(subChildren)
       }
     }
@@ -163,18 +156,45 @@ function toXML(json) {
  * @param {string} xmlString
  * @return {object} xmlObject
  */
+
 function getXmlObject(xmlString) {
-  var parser = new DOMParser()
-  // var parser = new window.DOMParser()
-  var xmlDoc = parser.parseFromString(xmlString, 'text/xml')
-  // console.log('xmldoc', xmlDoc, typeof xmlDoc)
-  return xmlDoc
+  var DOMParser2 = require('xmldom').DOMParser
+  var parser2 = new DOMParser2({
+    /**
+     * locator is always need for error position info
+     */
+    locator: {},
+    /**
+     * you can override the errorHandler for xml parser
+     * @link http://www.saxproject.org/apidoc/org/xml/sax/ErrorHandler.html
+     */
+    errorHandler: {
+      warning: function(w) {
+        console.warn(w)
+      }
+      // error: callback,
+      // fatalError: callback
+    }
+    //only callback model
+    //errorHandler:function(level,msg){console.log(level,msg)}
+  })
+  var xmlDoc2 = parser2.parseFromString(xmlString, 'text/xml')
+  // console.log('xmldoc2', xmlDoc2, typeof xmlDoc2)
+  return xmlDoc2
 }
+
+// function getXmlObject1(xmlString) {
+//   var parser = new DOMParser()
+//   // var parser = new window.DOMParser()
+//   var xmlDoc = parser.parseFromString(xmlString, 'text/xml')
+//   // console.log('xmldoc', xmlDoc, typeof xmlDoc)
+//   return xmlDoc
+// }
 
 export { toJSON, toXML, getXmlObject }
 
 export default {
   toJSON,
   toXML,
-  getXmlObject,
+  getXmlObject
 }

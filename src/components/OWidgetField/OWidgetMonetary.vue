@@ -12,8 +12,8 @@ export default {
       type: Object,
       default: () => {
         return { children: [] }
-      },
-    },
+      }
+    }
   },
 
   computed: {
@@ -23,7 +23,7 @@ export default {
         'o_field_monetary',
         'o_field_number',
         'o_field_widget',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
 
       if (node.meta.invisible) {
@@ -36,12 +36,12 @@ export default {
         classList.push('o_required_modifier')
       }
       return classList.join(' ')
-    },
+    }
   },
 
   methods: {
     //
-  },
+  }
 }
 </script>
 

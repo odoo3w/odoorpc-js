@@ -18,21 +18,18 @@
         :class="ClassNamePage(page)"
       >
         <!-- {{ page.attribute.attrs.string }} -->
-        <OFormNodeJS :node="page" />
+        <ONode :node="page" />
       </TabPane>
     </Tabs>
   </div>
 </template>
 
 <script>
-import OFormNodeJS from '@/components/OFormNodeJS.js'
-const deep_copy = node => {
-  return JSON.parse(JSON.stringify(node))
-}
+import ONode from '@/components/ONodeRender'
 
 export default {
   name: 'ONoteBook',
-  components: { OFormNodeJS },
+  components: { ONode },
 
   props: {
     node: {
@@ -43,14 +40,17 @@ export default {
     }
   },
   async created() {
-    console.log(
-      'Notebook, xxxxxx:',
-      deep_copy(
-        this.node.children.filter(
-          item => item.attribute.attrs.name === 'sales_purchases'
-        )
-      )
-    )
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log(
+    //   'Notebook, xxxxxx:',
+    //   deep_copy(
+    //     this.node.children.filter(
+    //       item => item.attribute.attrs.name === 'sales_purchases'
+    //     )
+    //   )
+    // )
   },
 
   methods: {

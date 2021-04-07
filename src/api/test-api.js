@@ -1,60 +1,78 @@
 import api from '@/api_connect'
 
-import { login } from '@/api/login'
-import { get_sportType } from '@/api/home-serve'
-import { get_bookvenue } from '@/api/bookvenue-serve'
-import { get_presetData } from '@/api/bookitem-serve'
+import { Database } from '@/api_connect/api_config'
+
+// import { login } from '@/api/login'
+// import { get_sportType } from '@/api/home-serve'
+// import { get_bookvenue } from '@/api/bookvenue-serve'
+// import { get_presetData } from '@/api/bookitem-serve'
 
 export const test_api = async () => {
-  //   await test_login()
-  //   await test_schedule_event()
-  //   await test_get_sportType()
-  //   await test_get_bookvenue()
+  await login()
+  await test_get_sportType()
+  await test_get_bookvenue()
   // await test_get_presetData()
+  // test_xmldom()
 }
 
-const test_login = async () => {
+const login = async () => {
   const username = 'admin'
   const password = '123456'
-  await login({ username, password })
-  // 登陆后 , 有 cookie, 无需 重复登陆
-}
 
-const test_schedule_event = async () => {
-  // 查询 场馆时, 执行下这个函数
-  // 自动创建 未来7天的 可预定场地
-  // 若已经创建 则 这个函数仅仅检查是否已经存在
-  const model = 'event.event'
-  const Model = api.env.model(model)
-
-  const loop_times = 2 // 调试用的, 每次只创建两条记录, 若为 null, 则全部创建
-  const date_count = 7 // 自动创建的天数, 默认 未来 7天
-  const hour_min = 8 // 每天第一场的时间, 默认 早8点
-  const hour_max = 20 // 每天最后一场的时间, 默认晚上8点
-  // const minute_count = 60  // 每场的时间长度 分钟数, 暂时不实现
-
-  // 系统自动检查 当日此时下个整点时刻开始 到 未来7天后的23时止, 所有场地的所有可预定记录, 若无 则创建
-  // 注意 若修改 hour_min, hour_max, 已创建的可预定场次, 将 有问题, 需要删除后, 才能 更改这个参数 重新创建
-
-  await Model.schedule_event({ loop_times, date_count, hour_min, hour_max })
+  const res = await api.login({
+    db: Database,
+    login: username,
+    password: password
+  })
+  return res
 }
 
 const test_get_sportType = async () => {
-  // 返回 项目类型
-  const res = await get_sportType()
-  console.log(res)
+  const model = 'res.partner'
+  const Model = api.env.model(model)
+  const records = await Model.get_sportType()
 
-  //   const res_print = [
-  //     { floor: '5', id: 7, introduction: '简介', name: '乒乓球', totalNum: 2 },
-  //     { floor: '6', id: 8, introduction: false, name: '羽毛球', totalNum: 3 }
-  //   ]
+  console.log('room', 'records', records)
+
+  const records2 = records.map(item => {
+    return {
+      id: item.id,
+      name: item.name,
+      floor: item.street,
+      totalNum: item.child_ids.length, // 所有场地数, 不考虑时段及是否被预定
+      introduction: item.comment
+      // latestBook: null
+    }
+  })
+
+  console.log('room2', records2)
 }
 
 const test_get_bookvenue = async () => {
   //
-  // 返回 预定场地
-  const res = await get_bookvenue()
-  console.log(res)
+  const model = 'res.partner'
+  const Model = api.env.model(model)
+  const sportTypes = await Model.get_sportType()
+
+  // 选择一项运动
+  const sportType = sportTypes[0]
+  const sportType_id = sportType.id
+
+  // 根据 sportType_id 查询所有的 场地
+  const records = await Model.get_bookvenue(sportType_id)
+  console.log('venue:', records)
+
+  const records2 = records.map(item => {
+    return {
+      id: item.id,
+      type: sportType.ref,
+      name: item.parent_id__name,
+      num: item.name,
+      msg: item.comment
+    }
+  })
+
+  console.log('venue 2:', records2)
 
   //   const res_print = [
   //     { id: 9, type: 'pingpang', name: '乒乓球', num: '1号台', msg: false },
@@ -67,7 +85,51 @@ const test_get_bookvenue = async () => {
 
 const test_get_presetData = async () => {
   // 返回 预定场地时间数据
-  const res = await get_presetData()
+
+  const model1 = 'res.partner'
+  const Model1 = api.env.model(model1)
+  const sportTypes = await Model1.get_sportType()
+
+  // 选择一项运动
+  const sportType = sportTypes[0]
+  const sportType_id = sportType.id
+
+  // 根据 sportType_id 查询所有的 场地
+
+  const venues = await Model1.get_bookvenue(sportType_id)
+
+  // 选择一块场地
+  const venue = venues[0]
+  const address_id = venue.id
+
+  const dates = [
+    '2021-04-08',
+    '2021-04-09',
+    '2021-04-10',
+    '2021-04-11',
+    '2021-04-12',
+    '2021-04-13'
+  ]
+
+  // 选择日期
+  const date = dates[0]
+
+  const HOUR_MIN = 8
+  const HOUR_MAX = 20
+
+  // 每日的有效时间段, 若不传, 则会取默认值 8-21
+  const hour_min = HOUR_MIN
+  const hour_max = HOUR_MAX
+
+  const model = 'event.event'
+  const Model = api.env.model(model)
+
+  const res = await Model.search_future_event({
+    address_id,
+    date,
+    hour_min,
+    hour_max
+  })
   console.log(res)
 
   //   const res_print = [
@@ -105,4 +167,44 @@ const test_get_presetData = async () => {
   //       // seats_expected: 0
   //     }
   //   ]
+}
+
+//
+
+const test_xmldom = () => {
+  //
+
+  var DOMParser = require('xmldom').DOMParser
+  var doc = new DOMParser().parseFromString(
+    '<xml xmlns="a" xmlns:c="./lite">\n' +
+      '\t<child>test</child>\n' +
+      '\t<child></child>\n' +
+      '\t<child/>\n' +
+      '</xml>',
+    'text/xml'
+  )
+  doc.documentElement.setAttribute('x', 'y')
+  doc.documentElement.setAttributeNS('./lite', 'c:x', 'y2')
+  var nsAttr = doc.documentElement.getAttributeNS('./lite', 'x')
+  console.info(nsAttr)
+  console.info(doc)
+}
+
+const test_schedule_event = async () => {
+  // 查询 场馆时, 执行下这个函数
+  // 自动创建 未来7天的 可预定场地
+  // 若已经创建 则 这个函数仅仅检查是否已经存在
+  const model = 'event.event'
+  const Model = api.env.model(model)
+
+  const loop_times = 2 // 调试用的, 每次只创建两条记录, 若为 null, 则全部创建
+  const date_count = 7 // 自动创建的天数, 默认 未来 7天
+  const hour_min = 8 // 每天第一场的时间, 默认 早8点
+  const hour_max = 20 // 每天最后一场的时间, 默认晚上8点
+  // const minute_count = 60  // 每场的时间长度 分钟数, 暂时不实现
+
+  // 系统自动检查 当日此时下个整点时刻开始 到 未来7天后的23时止, 所有场地的所有可预定记录, 若无 则创建
+  // 注意 若修改 hour_min, hour_max, 已创建的可预定场次, 将 有问题, 需要删除后, 才能 更改这个参数 重新创建
+
+  await Model.schedule_event({ loop_times, date_count, hour_min, hour_max })
 }

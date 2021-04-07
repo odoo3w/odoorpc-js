@@ -1,45 +1,20 @@
 <template>
   <div>
     <div>
+      <OContent>
+        <OFormView :record="record" :node="node" editable />
+      </OContent>
+
+      <div>&nbsp;-----version-----</div>
+      <div>{{ api.version }}</div>
+
       <div>&nbsp;</div>
-      <div>Form Page</div>
+      <div>&nbsp;</div>
 
-      <button @click="toHome">
-        goto home
-      </button>
-      <div>id: {{ dataDict.id }}</div>
+      <button type="info" @click="toHome">goto home</button>
+      <button type="info" @click="submit">submit</button>
 
-      <div>name: {{ dataDict.name }}</div>
-      <div>note: {{ dataDict.note || JSON.stringify(dataDict.note) }}</div>
-      <div>line:{{ dataDict.order_line }}</div>
-      <div>partner:{{ dataDict.partner_id }}</div>
-      <div>partner:{{ dataDict.partner_id__name }}</div>
-      <div>amount:{{ dataDict.amount_total }}</div>
-      <div>shiper:{{ dataDict.partner_shipping_id__name }}</div>
-      <div>pricelist:{{ dataDict.pricelist_id__name }}</div>
-
-      <button @click="clicktest">
-        test
-      </button>
-
-      <div>line</div>
-      <div>
-        <div v-for="line in dataDict.order_line__record || []" :key="line.id">
-          id: {{ line.id }}, name: {{ line.name }}, price:
-          {{ line.price_unit }}, prodcut: {{ line.product_id }},
-          {{ line.product_id__name }}, qty:
-          {{ line.product_uom_qty }}
-          , total: {{ line.price_subtotal }}
-        </div>
-      </div>
-
-      <!-- <div>{{ dataDict.order_line__record }}</div> -->
-
-      <div>
-        <div v-for="(index, col) in dataDict" :key="col">
-          {{ col }}: {{ dataDict[col] }} : {{ typeof dataDict[col] }}
-        </div>
-      </div>
+      <div>&nbsp;</div>
 
       <div>&nbsp;</div>
     </div>
@@ -48,38 +23,88 @@
 
 <script>
 import api from '@/api'
+import OContent from '@/components/OContent'
+import OFormView from '@/components/OFormView'
+
 import { sleep } from '@/odoojs/utils'
 
 const Timeout = 500
 
 export default {
-  name: 'Home',
-  components: {},
+  name: 'FormPage',
+  components: { OContent, OFormView },
   mixins: [],
 
   data() {
     return {
-      modelName: 'sale.order',
-      dataDict: {},
-      record: {},
-      selections: {},
-      readonlys: {}
+      api,
+      record: null,
+      node: {}
+
+      // modelName: 'sale.order',
+      // dataDict: {},
+      // record: {},
+      // selections: {},
+      // readonlys: {}
     }
   },
   computed: {},
   async created() {
-    const xml_id = 'sale.view_order_form'
-    const Model = api.env.model(this.modelName, 'form')
-    const so = Model.search([])
+    // await this.init_data_so()
+    await this.init_data_ptn_title()
+    // await this.init_data_ptn()
 
-    // const Model2 = api.env.model(this.modelName)
+    await this.renderMe()
   },
 
   methods: {
     toHome() {
-      this.$router.replace({
-        path: '/home'
-      })
+      this.$router.replace({ path: '/home' })
+    },
+
+    async submit() {
+      const record = this.record
+      console.log('submit')
+      await record.commit()
+      console.log('submit ok')
+      // record.$order_line
+    },
+
+    async renderMe() {
+      const node = this.record.view_node()
+      // console.log('view node,', node)
+      this.node = node
+    },
+
+    async init_data_ptn_title() {
+      // const model_name = 'res.partner'
+      const model_name = 'res.partner.category'
+      const view_ref = null
+      const domain = [['parent_id.name', '=', 'test']]
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
+    },
+
+    async init_data({ model_name, view_ref, domain }) {
+      const view_type = 'form'
+      const SO = api.env.model(model_name, view_type, view_ref)
+      let ids = await SO.search(domain, { order: 'id' })
+
+      let ids2 = ids
+
+      // if (!ids.length) {
+      //   ids2 = null
+      // }
+
+      ids2 = null
+
+      const so = await SO.browse(ids2)
+
+      this.record = so
+
+      const dd = so.fetch_all()
+
+      console.log(dd)
     },
 
     async form_edit() {
@@ -240,12 +265,6 @@ export default {
         await lines.remove(line)
       }
 
-      // record.$order_line
-    },
-
-    async submit() {
-      const record = this.record
-      await record.commit()
       // record.$order_line
     }
   }

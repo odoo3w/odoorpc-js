@@ -31,6 +31,8 @@ export class ODOO {
     // odoorpc2 append
     this._session_info = {}
     this._virtual_id = 1
+    this._input_id = 1
+    this._input_value_id = 1
 
     this._config = {
       //
@@ -99,6 +101,13 @@ export class ODOO {
     const int_virtual_id = this._virtual_id
     this._virtual_id = this._virtual_id + 1
     return `virtual_${int_virtual_id}`
+  }
+
+  _get_input_id() {
+    // new a o2m field, need an unique virtual id
+    const int_input_id = this._input_id
+    this._input_id = this._input_id + 1
+    return `o_field_input_${int_input_id}`
   }
 
   async json_call(url, payload) {

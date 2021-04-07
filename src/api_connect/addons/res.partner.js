@@ -26,6 +26,21 @@ export class ResPartner extends Model {
 
     return ids
   }
+
+  static async get_sportType() {
+    const ids = await this.search_location_room()
+    const records = await this.browse(ids)
+    const records2 = records.fetch_all()
+    return records2
+  }
+
+  static async get_bookvenue(room_id) {
+    const domain = [['parent_id', '=', room_id]]
+    const ids = await this.search(domain)
+    const records = await this.browse(ids)
+    const records2 = records.fetch_all()
+    return records2
+  }
 }
 
 const AddonsModels = {

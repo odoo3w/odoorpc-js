@@ -2,11 +2,11 @@
   <div>
     <div>
       <OContent>
-        <OFormViewJS :node="node" readonly />
+        <OFormView :node="node" />
       </OContent>
 
       <div>&nbsp;-----version-----</div>
-      <div class="oe_chatter">{{ api.version }}</div>
+      <div>{{ api.version }}</div>
 
       <div>&nbsp;</div>
       <div>&nbsp;</div>
@@ -23,11 +23,11 @@ import api from '@/api'
 
 import OContent from '@/components/OContent'
 
-import OFormViewJS from '@/components/OFormViewJS.js'
+import OFormView from '@/components/OFormView'
 
 export default {
-  name: 'Home',
-  components: { OContent, OFormViewJS },
+  name: 'ViewPage',
+  components: { OContent, OFormView },
   mixins: [],
 
   data() {
@@ -40,19 +40,9 @@ export default {
   },
   computed: {},
   async created() {
-    // const domain = ['&', true, '|', '!', false, true]
-    // const domain = ['&', false, true]
-    // const domain = [true]
-    // const domain = [true, '!', false, true]
-    // const domain = ['!', false]
-    // const domain = [true, '!', false]
-    // const domain = [10, 20, 30]
-    // compute_domain(domain)
-    // console.log('xxxx, ')
-
     // await this.init_data_so()
-    await this.init_data_ptn_title()
-    // await this.init_data_ptn()
+    // await this.init_data_ptn_title()
+    await this.init_data_ptn()
 
     await this.renderMe()
   },
@@ -98,16 +88,8 @@ export default {
       // this.viewIndex = this.viewIndex + 1
     },
 
-    async page_next() {
-      //
-    },
-
-    async testSO() {},
-
     toHome() {
-      this.$router.replace({
-        path: '/home'
-      })
+      this.$router.replace({ path: '/home' })
     }
   }
 }

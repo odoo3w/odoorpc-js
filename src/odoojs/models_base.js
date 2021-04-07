@@ -1007,18 +1007,14 @@ export class Model extends BaseModel {
     return this.execute_kw('search', [domain], kwargs)
   }
 
-  static async search_or_create(domain, vals) {
-    const ids = await this.search(domain, { limit: 1 })
-    if (ids.length) {
-      // await this.write(ids[0], vals)
-
-      // this.browse(ids[0], {view_ref: 'xml_id'})
-
-      return ids[0]
-    } else {
-      return this.create(vals)
-    }
-  }
+  // static async search_or_create(domain, vals) {
+  //   const ids = await this.search(domain, { limit: 1 })
+  //   if (ids.length) {
+  //     return this.browse(ids[0], {view_ref: 'xml_id'})
+  //   } else {
+  //     // return this.create(vals)
+  //   }
+  // }
 
   static async default_get(fields) {
     return this.execute('default_get', fields)
@@ -1034,6 +1030,7 @@ export class Model extends BaseModel {
 
   static _onchange_spec(view_info) {
     const result = {}
+
     const process = (node, info, prefix) => {
       if (node.tagName === 'field') {
         const name = node.attr.name
@@ -1053,8 +1050,11 @@ export class Model extends BaseModel {
       }
     }
 
-    const root = xml2json.toJSON(view_info.arch)
-    process(root, view_info, '')
+    if (view_info.arch) {
+      const root = xml2json.toJSON(view_info.arch)
+      process(root, view_info, '')
+    }
+
     return result
   }
 
@@ -1159,9 +1159,7 @@ export class Model extends BaseModel {
     return onchange2
   }
 
-  // for odoo call
-
-  // 这个 应该没有用了
+  // for odoo call  这个 应该没有用了
   async get_selection(kwargs = {}) {
     const { fields = [] } = kwargs
     const selections = {}

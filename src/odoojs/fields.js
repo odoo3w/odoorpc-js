@@ -164,6 +164,7 @@ class BaseField {
     this.help = data.help || false
     this.states = data.states || false
     this.views = data.views || {}
+    this._input_ids = {}
   }
 
   print2(method, instance, ...args) {
@@ -251,6 +252,15 @@ class BaseField {
     return this._getValue(instance)
   }
 
+  getInputId(instance) {
+    const input_id_key = `${instance._name},${instance.id},${this.name}`
+    const input_id = this._input_ids[input_id_key]
+    if (!input_id) {
+      this._input_ids[input_id_key] = instance._odoo._get_input_id()
+    }
+    return this._input_ids[input_id_key]
+  }
+
   getValue(instance) {
     // console.log(' get value,', instance._name, instance.id, this.name)
     // 给 instance  __defineGetter__ 使用
@@ -298,6 +308,7 @@ class BaseField {
   }
 
   async setValue(instance, value) {
+    console.log('set:', instance._name, instance.id, this.name, value)
     // 给 instance  __defineSetter__ 使用
     // 这个是 触发 odoo set value
     // value = this.check_value(value)
@@ -651,9 +662,25 @@ class Many2one extends _Relational {
     }
   }
 
-  async get_selection(instance) {
+  async get_selection(instance, kwargs = {}) {
     //
     // console.log(' get selection,', instance._name, instance.id, this.name)
+
+    const {
+      default: default2,
+      name = '',
+      operator = 'ilike',
+      limit = 8
+    } = kwargs
+
+    if (default2) {
+      console.log(instance._values_relation, this.getValue(instance))
+      const relation = this.getValue(instance)
+      if (relation.id) {
+        return [[relation.id, relation.$display_name]]
+      }
+      return []
+    }
 
     const domain = await this._get_domain(instance)
 
@@ -662,7 +689,7 @@ class Many2one extends _Relational {
     // const context = this.context
     const selection = await instance.env
       .model(relation)
-      .execute_kw('name_search', [], { args: domain })
+      .execute_kw('name_search', [], { args: domain, name, operator, limit })
 
     //
     // console.log(' get selection,2 ', selection)
