@@ -45,7 +45,30 @@ const dateHelper = {
   }
 }
 
-const get_hours = ({ date, hour_min, hour_max }) => {}
+const get_hours = ({ date, hour_min, hour_max }) => {
+  const hours = Array.from(new Array(24).keys()).filter(
+    item => item >= hour_min && item <= hour_max
+  )
+  const date2 = new Date(date)
+  const oneday_hours = hours.map(item => dateHelper.new_hour(date2, item))
+  const all_hours = oneday_hours.filter(item => item > new Date())
+
+  const all_hours2 = all_hours.map(item => {
+    return {
+      date_begin: item,
+      date_end: dateHelper.hour_add(item, 1)
+    }
+  })
+
+  const utc_hours = all_hours2.map(item => {
+    return {
+      date_begin: dateHelper.toUTCString(item.date_begin),
+      date_end: dateHelper.toUTCString(item.date_end)
+    }
+  })
+
+  return utc_hours
+}
 
 const get_hours2 = ({ date_count, hour_min, hour_max }) => {
   const now = new Date()
@@ -176,17 +199,18 @@ export class EventEvent extends Model {
     rec.$event_type_id = vals.event_type_id
     await rec.awaiter
     await rec.commit()
-    return rec
+    return rec.id
   }
 
-  static async find_or_create(vals) {
+  static async search_or_create(vals) {
     const domain = [
       ['address_id', '=', vals.address_id],
       ['date_begin', '=', vals.date_begin]
     ]
     const ids = await this.search(domain, { limit: 1 })
     if (ids.length) {
-      return this.browse(ids)
+      return ids[0]
+      // return this.browse(ids)
     }
     return this.create_by_values(vals)
   }
@@ -212,35 +236,98 @@ export class EventEvent extends Model {
      *
      */
 
-    const get_isPreset = (seats_expected, reg_by_me) => {
-      if (seats_expected === 0) {
-        return 1 // 空闲
-      } else if (reg_by_me) {
-        return 2 // 我已经预定
-      } else {
-        return 0 // 被别人预定
+    const records = await this.search_future_event_1({
+      address_id,
+      date,
+      hour_min,
+      hour_max
+    })
+
+    const Reg = this.env.model('event.registration')
+
+    const event_reg_ids = await Reg.search_by_event(records.ids)
+    const event_regs = await Reg.browse(event_reg_ids)
+    const event_regs2 = event_regs.fetch_all()
+
+    const event_regs3 = event_regs2.reduce((acc, cur) => {
+      acc[cur.event_id] = cur
+      return acc
+    }, {})
+
+    console.log('event_regs', event_regs3, this._odoo.session_info.partner_id)
+
+    const records2 = records.fetch_all()
+    const records3 = records2.map(item => {
+      const seats_expected = item.seats_expected // 0, 空闲, 1, 已经被预定
+      const reg_partner_id = (event_regs3[item.id] || {}).partner_id
+      const reg_by_me = reg_partner_id === this._odoo.session_info.partner_id
+
+      const get_isPreset = () => {
+        if (seats_expected === 0) {
+          return 1 // 空闲
+        } else if (reg_by_me) {
+          return 2 // 我已经预定
+        } else {
+          return 0 // 被别人预定
+        }
       }
+
+      const isPreset = get_isPreset()
+
+      return {
+        ...item,
+        // id: item.id,
+        // address_id: item.address_id, // 场地 id, 对应 bookvenue
+        // address_id__name: item.address_id__name, // 场地名称, bookvenue 的 name + num
+        // date_begin: item.date_begin, // 开始时间
+        // date_end: item.date_end, // 结束时间
+        // seats_expected, // 0, 空闲, 1, 已经被预定
+
+        reg_partner_id, // 被谁预定, false: 空闲
+        reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
+        isPreset
+      }
+    })
+
+    return records3
+  }
+
+  static async search_future_event_1({ address_id, date, hour_min, hour_max }) {
+    const get_address = async address_id => {
+      const res = await this.env.model('res.partner').name_get([address_id])
+      return res[0]
     }
-
-    // find_or_create
-
-    const now = new Date()
-    const utc_now = dateHelper.toUTCString(now)
-
-    get_hours({ date, hour_min, hour_max })
+    const address = await get_address(address_id)
 
     const event_type_id = await this.search_event_type()
+    // find_or_create
 
-    // const domain = [
-    //   ['event_type_id', '=', event_type_id],
-    //   ['address_id', '=', address_id],
-    //   ['date_begin', '>', utc_now]
-    // ]
-    // const ids = await this.search(domain, { order: 'date_begin, address_id' })
-    // const records = await Model.browse(ids)
-    // const records2 = records.fetch_all()
-    // // console.log(' ids', ids)
-    // return ids
+    const hours = get_hours({ date, hour_min, hour_max })
+
+    // console.log(hours)
+
+    const values_list = hours.map(hour => {
+      return {
+        name: `${address[1]} ${hour.date_begin.substr(0, 13)}`,
+        event_type_id,
+        address_id,
+        ...hour
+      }
+    })
+
+    // console.log(values_list)
+
+    const event_ids = []
+    for (const vals of values_list) {
+      const event_id = await this.search_or_create(vals)
+      event_ids.push(event_id)
+      // break
+    }
+
+    console.log(event_ids)
+
+    const event = await this.browse(event_ids)
+    return event
   }
 }
 

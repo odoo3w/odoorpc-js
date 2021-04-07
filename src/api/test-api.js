@@ -2,17 +2,11 @@ import api from '@/api_connect'
 
 import { Database } from '@/api_connect/api_config'
 
-// import { login } from '@/api/login'
-// import { get_sportType } from '@/api/home-serve'
-// import { get_bookvenue } from '@/api/bookvenue-serve'
-// import { get_presetData } from '@/api/bookitem-serve'
-
 export const test_api = async () => {
-  await login()
-  await test_get_sportType()
-  await test_get_bookvenue()
-  // await test_get_presetData()
-  // test_xmldom()
+  // await login()
+  // await test_get_sportType()
+  // await test_get_bookvenue()
+  await test_get_presetData()
 }
 
 const login = async () => {
@@ -112,7 +106,7 @@ const test_get_presetData = async () => {
   ]
 
   // 选择日期
-  const date = dates[0]
+  const date = dates[1]
 
   const HOUR_MIN = 8
   const HOUR_MAX = 20
@@ -124,13 +118,29 @@ const test_get_presetData = async () => {
   const model = 'event.event'
   const Model = api.env.model(model)
 
-  const res = await Model.search_future_event({
+  const records = await Model.search_future_event({
     address_id,
     date,
     hour_min,
     hour_max
   })
-  console.log(res)
+  console.log(records)
+
+  const records2 = records.map(item => {
+    return {
+      id: item.id,
+      address_id: item.address_id, // 场地 id, 对应 bookvenue
+      address_id__name: item.address_id__name, // 场地名称, bookvenue 的 name + num
+      date_begin: item.date_begin, // 开始时间
+      date_end: item.date_end, // 结束时间
+      seats_expected: item.seats_expected, // 0, 空闲, 1, 已经被预定
+      reg_partner_id: item.reg_partner_id, // 被谁预定, false: 空闲
+      reg_by_me: item.reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
+      isPreset: item.isPreset // 状态
+    }
+  })
+
+  console.log(records2)
 
   //   const res_print = [
   //     {
