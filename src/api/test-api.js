@@ -6,7 +6,8 @@ export const test_api = async () => {
   // await login()
   // await test_get_sportType()
   // await test_get_bookvenue()
-  await test_get_presetData()
+  // await test_get_presetData()
+  await test_reg_event()
 }
 
 const login = async () => {
@@ -179,7 +180,63 @@ const test_get_presetData = async () => {
   //   ]
 }
 
-//
+const test_reg_event = async () => {
+  const model1 = 'res.partner'
+  const Model1 = api.env.model(model1)
+  const sportTypes = await Model1.get_sportType()
+
+  // 选择一项运动
+  const sportType = sportTypes[0]
+  const sportType_id = sportType.id
+
+  // 根据 sportType_id 查询所有的 场地
+  const venues = await Model1.get_bookvenue(sportType_id)
+
+  // 选择一块场地
+  const venue = venues[0]
+  const address_id = venue.id
+
+  const dates = [
+    '2021-04-08',
+    '2021-04-09',
+    '2021-04-10',
+    '2021-04-11',
+    '2021-04-12',
+    '2021-04-13'
+  ]
+
+  // 选择日期
+  const date = dates[1]
+
+  const HOUR_MIN = 8
+  const HOUR_MAX = 20
+
+  // 每日的有效时间段, 若不传, 则会取默认值 8-21
+  const hour_min = HOUR_MIN
+  const hour_max = HOUR_MAX
+
+  const model2 = 'event.event'
+  const Model2 = api.env.model(model2)
+
+  // 根据 address_id,date 查询所有的 可预定
+  const events = await Model2.search_future_event({
+    address_id,
+    date,
+    hour_min,
+    hour_max
+  })
+
+  // 选择 一个预定
+  const event = events[1]
+  const event_id = event.id
+
+  const model = 'event.registration'
+  const Model = api.env.model(model)
+
+  const reg = await Model.reg_event(event_id)
+
+  console.log(reg)
+}
 
 const test_xmldom = () => {
   //

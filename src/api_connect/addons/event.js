@@ -276,13 +276,6 @@ export class EventEvent extends Model {
 
       return {
         ...item,
-        // id: item.id,
-        // address_id: item.address_id, // 场地 id, 对应 bookvenue
-        // address_id__name: item.address_id__name, // 场地名称, bookvenue 的 name + num
-        // date_begin: item.date_begin, // 开始时间
-        // date_end: item.date_end, // 结束时间
-        // seats_expected, // 0, 空闲, 1, 已经被预定
-
         reg_partner_id, // 被谁预定, false: 空闲
         reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
         isPreset
@@ -324,7 +317,7 @@ export class EventEvent extends Model {
       // break
     }
 
-    console.log(event_ids)
+    // console.log(event_ids)
 
     const event = await this.browse(event_ids)
     return event
@@ -337,6 +330,29 @@ export class EventRegistration extends Model {
     const ids = await this.search(domain)
     // console.log(' ids', ids)
     return ids
+  }
+
+  static async reg_event(event_id) {
+    const partner_id = this._odoo.session_info.partner_id
+
+    const domain = [
+      ['event_id', '=', event_id],
+      ['partner_id', '=', partner_id]
+    ]
+
+    const ids = await this.search(domain, { limit: 1 })
+    if (ids.length) {
+      const rec = await this.browse(ids)
+      return rec.fetch_one()
+    } else {
+      const record = await this.browse(null)
+      record.$event_id = event_id
+      record.$partner_id = partner_id
+      await record.awaiter
+      await record.commit()
+
+      return record.fetch_one()
+    }
   }
 }
 
