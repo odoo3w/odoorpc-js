@@ -2,8 +2,6 @@
 // 1 使用者: 如果本地可能有修改 那么 应该复制一份, 而不是直接使用 旧的
 // 2 授权者: 把一个 Array 给了别人, 如果不想被修改, 那么给一个副本, 不要给原件
 
-import xml2json from './xml2json.js'
-
 const deep_copy = node => {
   return JSON.parse(JSON.stringify(node))
 }
@@ -190,7 +188,7 @@ export class Model extends BaseModel {
   //
 
   static async browse(ids, payload) {
-    // console.log('xxx, browse:', this._name, ids, payload)
+    console.log('xxx, browse:', this._name, ids, payload)
     if (ids === undefined) {
       throw 'call browse without ids'
     }
@@ -219,16 +217,19 @@ export class Model extends BaseModel {
     // main read, set callback
     records._callback_onchange = fetch_one
     records._callback_onchange_all = fetch_all
+    console.log('xxx, _browse_native 21:', this._name, ids, payload)
 
     if (ids) {
       await records._init_values()
     } else {
       await records._init_values_for_new_call_onchange()
     }
+    console.log('xxx, _browse_native 22:', this._name, ids, payload)
 
     // 按照约定, browse后, 要触发 callback, 返回数据
     records.event_onchange()
     records.event_onchange_all()
+    console.log('xxx, _browse_native 23:', this._name, ids, payload)
 
     return records
   }
@@ -596,9 +597,13 @@ export class Model extends BaseModel {
   }
 
   async _init_values_for_new_call_onchange(/* paylaod = {} */) {
+    console.log('xxx, _init_values_for_new_call_onchange 1:', this._name)
+
     // const { context = this.env.context } = paylaod
     this._init_values_for_new_default()
+    console.log('xxx, _init_values_for_new_call_onchange 12:', this._name)
     const onchange = await this._onchange2({}, [], this.field_onchange)
+    console.log('xxx, _init_values_for_new_call_onchange 13:', this._name)
     await this._after_onchange(onchange)
   }
 
@@ -999,6 +1004,16 @@ export class Model extends BaseModel {
     return this.execute(method, rid, vals)
   }
 
+  async unlink() {
+    const method = 'unlink'
+    return this.execute(method)
+  }
+
+  static async unlink(rid) {
+    const method = 'unlink'
+    return this.execute(method, rid)
+  }
+
   static async create(vals) {
     return this.execute('create', vals)
   }
@@ -1022,40 +1037,6 @@ export class Model extends BaseModel {
 
   static async name_get(ids) {
     return this.execute('name_get', ids)
-  }
-
-  //
-  // call by env _init_columns fields_view_get
-  //
-
-  static _onchange_spec(view_info) {
-    const result = {}
-
-    const process = (node, info, prefix) => {
-      if (node.tagName === 'field') {
-        const name = node.attr.name
-        const names_list = prefix ? [prefix, name] : [name]
-        const names = names_list.join('.')
-        if (!Object.keys(result).includes(names)) {
-          result[names] = node.attr.on_change || ''
-        }
-        Object.values(info.fields[name].views || {}).forEach(subinfo => {
-          process(xml2json.toJSON(subinfo.arch), subinfo, names)
-        })
-      } else {
-        const children = node.children || []
-        children.forEach(child => {
-          process(child, info, prefix)
-        })
-      }
-    }
-
-    if (view_info.arch) {
-      const root = xml2json.toJSON(view_info.arch)
-      process(root, view_info, '')
-    }
-
-    return result
   }
 
   //
@@ -1094,14 +1075,14 @@ export class Model extends BaseModel {
       fld => fld.split('.').length === 1
     )
 
-    // console.log(this._name, field_onchange, fields)
+    console.log('_default_get_onchange', this._name, field_onchange, fields)
 
     const default_get1 = await this.constructor.execute('default_get', fields)
 
-    // console.log('default get ', default_get1)
+    console.log('default get ', default_get1)
 
     const _get_default = col => {
-      const meta = this._columns[col] || {}
+      const meta = this._columns[col]
 
       if (['many2many'].includes(meta.type)) {
         return [[6, false, []]]
@@ -1132,19 +1113,22 @@ export class Model extends BaseModel {
     const args = [[], values_onchange, field_name, field_onchange]
     const onchange = await this.constructor.execute('onchange', ...args)
 
+    console.log('default get 2', onchange)
+
     // # TBD: default_get 里面 可能有 m2o o2m 需要处理
     // default_get, m2o 返回值 是 id, 需要 补充上 display_name
     const default_get2 = {}
 
     for (const col of Object.keys(default_get1)) {
-      if (this._columns[col].relation) {
+      const meta = this._columns[col]
+      if (meta.relation && meta.type === 'many2one') {
         const ref_val = default_get1[col]
 
         if (ref_val) {
           const ref_ids = Array.isArray(ref_val) ? ref_val : [ref_val]
           const domain = [['id', 'in', ref_ids]]
           const ref_records = await this.env
-            .model(this._columns[col].relation)
+            .model(meta.relation)
             .execute_kw('name_search', [], { args: domain })
 
           const ref_rec = ref_records[0]
@@ -1160,6 +1144,9 @@ export class Model extends BaseModel {
 
     const values_ret = { ...values, ...default_get2, ...onchange.value }
     const onchange2 = { ...onchange, value: values_ret }
+
+    console.log('default get 3', onchange2)
+
     return onchange2
   }
 

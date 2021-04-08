@@ -1,7 +1,9 @@
 #### 设计说明
 
-2 create users
-1 m2m 要处理
+1. create users
+2. m2m 要处理
+
+3. o2m 编辑还没做
 
 #### env
 

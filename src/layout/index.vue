@@ -1,6 +1,8 @@
 <template>
   <div>
-    <Layout>
+    <router-view />
+
+    <!-- <Layout>
       <Header class="layout-header-bar">Header</Header>
       <Layout>
         <Sider hide-trigger class="layout-sider">
@@ -18,7 +20,7 @@
         <Content><router-view /></Content>
       </Layout>
       <Footer>Footer</Footer>
-    </Layout>
+    </Layout> -->
 
     <!-- <div>------layout</div>
     <div>{{ fullWidth }}</div> -->
@@ -32,7 +34,7 @@ export default {
   mixins: [],
   data() {
     return {
-      fullWidth: document.documentElement.clientWidth,
+      fullWidth: document.documentElement.clientWidth
     }
   },
 
@@ -48,8 +50,8 @@ export default {
   methods: {
     handleResize() {
       this.fullWidth = document.documentElement.clientWidth
-    },
-  },
+    }
+  }
 }
 </script>
 

@@ -243,6 +243,15 @@ export class EventEvent extends Model {
       hour_max
     })
 
+    // const domain = [
+    //   ['address_id', '=', address_id],
+    //   ['date_begin', '>=', `${date} 00:00:00`],
+    //   ['date_begin', '<=', `${date} 23:59:59`]
+    // ]
+
+    // const records_ids = await this.search(domain)
+    // const records = await this.browse(records_ids)
+
     const Reg = this.env.model('event.registration')
 
     const event_reg_ids = await Reg.search_by_event(records.ids)
@@ -276,6 +285,7 @@ export class EventEvent extends Model {
 
       return {
         ...item,
+        reg_id: event_regs3.id, // 已有的预定 id
         reg_partner_id, // 被谁预定, false: 空闲
         reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
         isPreset

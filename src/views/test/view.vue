@@ -1,9 +1,9 @@
 <template>
   <div>
     <div>
-      <OContent>
+      <!-- <OContent>
         <OFormView :node="node" />
-      </OContent>
+      </OContent> -->
 
       <div>&nbsp;-----version-----</div>
       <div>{{ api.version }}</div>

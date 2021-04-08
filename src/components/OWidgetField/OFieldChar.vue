@@ -1,25 +1,16 @@
 <template>
   <span v-if="editable">
-    <Input
+    <input
       v-model="value2"
-      :element-id="node.meta.input_id"
+      type="text"
+      :id="node.meta.input_id"
       :class="className"
       :name="node.attribute.attrs.name"
       :placeholder="node.attribute.attrs.placeholder"
-      @on-blur="handleOnchange(value2)"
-      @on-enter="handleOnchange(value2)"
+      @change="handleOnchange(value2)"
     />
 
-    <!-- <input
-      v-model="value2"
-      type="text"
-    
-      @change="handleOnchange"
-    />
-
-    <span>
-      多语言
-    </span> -->
+    <!-- <span> 多语言 </span> -->
   </span>
   <span
     v-else
@@ -106,9 +97,7 @@ export default {
 
   methods: {
     handleOnchange(value) {
-      // console.log('handleOnchange', p, this.record, this.node)
-      // this.record[`$${field}`] = value
-
+      // console.log('handleOnchange', value, this.record, this.node)
       const feild = `$${this.node.meta.name}`
       this.record[feild] = value
     }

@@ -6,10 +6,10 @@
     :record="record"
     :editable="editable"
   />
-  <OFormChatter
+  <!-- <OFormChatter
     v-else-if="node.attribute.class === 'oe_chatter'"
     :node="node"
-  />
+  /> -->
 
   <!-- // partner 页面 有个  alert 需要单独处理 -->
   <ONode v-else :node="node" />

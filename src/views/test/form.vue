@@ -40,12 +40,6 @@ export default {
       api,
       record: null,
       node: {}
-
-      // modelName: 'sale.order',
-      // dataDict: {},
-      // record: {},
-      // selections: {},
-      // readonlys: {}
     }
   },
   computed: {},
@@ -53,8 +47,13 @@ export default {
     // await this.init_data_so()
     await this.init_data_ptn_title()
     // await this.init_data_ptn()
-
+    // await this.init_data_user()
     await this.renderMe()
+
+    // this.record.$login = 'u1234567'
+    // this.record.$name = 'u1234567'
+    // await this.record.awaiter
+    // this.record.commit()
   },
 
   methods: {
@@ -72,8 +71,18 @@ export default {
 
     async renderMe() {
       const node = this.record.view_node()
-      // console.log('view node,', node)
+      console.log('view node,', node)
       this.node = node
+    },
+
+    async init_data_user() {
+      // const model_name = 'res.partner'
+      const model_name = 'res.users'
+      // const view_ref = 'base.view_users_form'
+      const view_ref = null
+      const domain = []
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
     },
 
     async init_data_ptn_title() {
@@ -96,15 +105,17 @@ export default {
       //   ids2 = null
       // }
 
+      console.log(ids)
       ids2 = null
 
       const so = await SO.browse(ids2)
 
+      console.log(so)
       this.record = so
 
-      const dd = so.fetch_all()
+      // const dd = so.fetch_all()
 
-      console.log(dd)
+      // console.log(dd)
     },
 
     async form_edit() {

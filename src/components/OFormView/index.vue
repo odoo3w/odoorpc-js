@@ -46,8 +46,6 @@ export default {
       // const node = this.node
       const classList = ['o_form_view']
 
-      console.log('this.readonly', this.readonly)
-
       if (this.editable) {
         classList.push('o_form_editable')
       }
@@ -70,7 +68,13 @@ export default {
       return chatters.length ? chatters[0] : null
     }
   },
-
+  async created() {
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+    console.log('OFormView, xxxxxx:', deep_copy(this.node))
+    console.log('OFormView, xxxxxx:', this.editable)
+  },
   methods: {}
 }
 </script>

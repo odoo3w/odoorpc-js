@@ -1,6 +1,8 @@
 import { Model } from './models.js'
 import { generate_field } from './fields.js'
 
+import xml2json from './xml2json.js'
+
 const AddonsFiles = require.context('./addons', true, /\.js$/)
 
 // you do not need `import sale from './addons/sale'`
@@ -16,6 +18,44 @@ const AllModels = { ...AddonsModels }
 // console.log('xxxx,', AddonsModels)
 
 const FIELDS_RESERVED = ['id', 'ids', '__odoo__', '__osv__', '__data__', 'env']
+
+//
+// call by env _init_columns fields_view_get
+//
+
+const _onchange_spec = view_info => {
+  const result = {}
+
+  const process = (node, info, prefix) => {
+    if (node.tagName === 'field') {
+      const name = node.attr.name
+      const names_list = prefix ? [prefix, name] : [name]
+      const names = names_list.join('.')
+      if (!Object.keys(result).includes(names)) {
+        result[names] = node.attr.on_change || ''
+      }
+      Object.values(info.fields[name].views || {}).forEach(subinfo => {
+        process(xml2json.toJSON(subinfo.arch), subinfo, names)
+      })
+    } else {
+      const children = node.children || []
+      children.forEach(child => {
+        process(child, info, prefix)
+      })
+    }
+  }
+
+  if (view_info.arch) {
+    const root = xml2json.toJSON(view_info.arch)
+    process(root, view_info, '')
+  }
+
+  const res2 = { ...result }
+  delete res2.id
+  // console.log('res,', res2)
+
+  return res2
+}
 
 export class Environment {
   constructor(odoo, db, uid, kwargs = {}) {
@@ -235,7 +275,7 @@ export class Environment {
 
       static _init_columns(view_info) {
         this._view_info = view_info
-        this._field_onchange = this._onchange_spec(view_info)
+        this._field_onchange = _onchange_spec(view_info)
         const _get_cols_from_field_get = fg => {
           const cols = Object.keys(fg).reduce((acc, field_name) => {
             if (!FIELDS_RESERVED.includes(field_name)) {

@@ -3,11 +3,12 @@ import api from '@/api_connect'
 import { Database } from '@/api_connect/api_config'
 
 export const test_api = async () => {
-  // await login()
+  await login()
   // await test_get_sportType()
   // await test_get_bookvenue()
   // await test_get_presetData()
   // await test_reg_event()
+  await test_reg_event_delete()
   // test_register_mobile()
 }
 
@@ -237,6 +238,16 @@ const test_reg_event = async () => {
   const reg = await Model.reg_event(event_id)
 
   console.log(reg)
+}
+
+const test_reg_event_delete = async () => {
+  // 取消预定
+
+  // 在预定中 找到 reg_id
+  const reg_id = 8
+  const model = 'event.registration'
+  const Model = api.env.model(model)
+  const result = await Model.execute('unlink', reg_id)
 }
 
 const all_users = [
