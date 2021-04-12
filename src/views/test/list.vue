@@ -4,25 +4,15 @@
       <div>&nbsp;</div>
       <div>&nbsp;</div>
 
-      <!-- home 222222 -->
-      <div>Test page</div>
+      <h1>{{ node.meta.string }}</h1>
 
-      <div>{{ api.version }}</div>
-
-      <button type="info" @click="toHome">
-        goto home
-      </button>
-
-      <!-- <div v-if="viewInfo.arch.tagName === 'tree'">
-        -------
-        <TreeView :viewInfo="viewInfo" :dataList="dataList" />
-      </div> -->
-
-      <!-- <div>
-        <div v-for="rec in dataList" :key="rec.id">
-          {{ rec.id }} -- {{ rec.partner_id__name }} -- {{ rec.name }}
-        </div>
-      </div> -->
+      <OViewTree
+        :isMain="true"
+        :record="record"
+        :node="node"
+        :editable="false"
+        :key="keyIndex"
+      />
 
       <div>&nbsp;</div>
     </div>
@@ -32,18 +22,22 @@
 <script>
 import api from '@/api'
 
-import TreeView from '@/components/TreeView'
-
+import OViewTree from '@/components/OViewTree'
 export default {
   name: 'Home',
-  components: { TreeView },
+  components: { OViewTree },
   mixins: [],
 
   data() {
     return {
       api,
       dataList: [],
-      viewInfo: { arch: { tagName: '' } },
+      keyIndex: 0,
+      node: {
+        children: [],
+        meta: {}
+      },
+      record: {}
     }
   },
   computed: {},
@@ -53,8 +47,34 @@ export default {
 
   methods: {
     async init() {
-      // await this.init_data()
-      await this.init_test()
+      const query = this.$route.query
+      // console.log(query)
+      const model = query.model
+      const views = JSON.parse(query.views)
+      const view_type = 'tree'
+      const view_ref = views[view_type].view_ref
+
+      const Model = api.env.model(model, view_type, view_ref)
+      // console.log([Model])
+
+      const domain = []
+
+      const records = await Model.pageSearch(domain, { order: 'id' })
+      // console.log(records)
+      const page0 = await records.pageGoto(0)
+      const data = page0.fetch_all()
+      // console.log(page0)
+      this.record = page0
+
+      this.dataList = data
+
+      // console.log('view _view_info,', page0._view_info)
+
+      const node = page0.view_node()
+      // console.log('view node,', node)
+      this.node = node
+
+      this.keyIndex = this.keyIndex + 1
     },
 
     async init_test() {
@@ -63,44 +83,10 @@ export default {
       console.log(SO)
     },
 
-    async init_data() {
-      const model_name = 'sale.order'
-      // const view_type = 'form'
-      // const view_ref = 'sale.view_order_tree'
-      // // const view_ref = "sale.view_quotation_tree_with_onboarding";
-      // const SO = api.env.model(model_name, view_type, view_ref)
-      // const viewInfo = await SO.view_info2()
-      // this.viewInfo = { ...viewInfo }
-      // console.log(viewInfo)
-      // const domain = []
-      // let sos = await SO.pageSearch(domain, { order: 'id' })
-      // console.log('next:', sos.totalIds, sos.count, sos.pageCount)
-      // const so = await sos.pageGoto(0)
-      // const data = so.fetch_all()
-      // // const data = so && so.toArray()
-      // console.log(data)
-      // this.dataList = [...data]
-    },
-
     async page_next() {
       //
-    },
-
-    async testSO() {
-      //
-      this.dataList = []
-
-      const so = await sos.pageGoto(0)
-      const data = so && so.toArray()
-      // console.log(data)
-    },
-
-    toHome() {
-      this.$router.replace({
-        path: '/home',
-      })
-    },
-  },
+    }
+  }
 }
 </script>
 

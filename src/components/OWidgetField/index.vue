@@ -12,6 +12,25 @@
     :node="node"
   />
 
+  <!-- <OWidgetMany2manyTags
+    v-else-if="node.attribute.attrs.widget === 'many2many_tags'"
+    :node="node"
+  /> -->
+
+  <!-- <OWidgetEmail
+    v-else-if="node.attribute.attrs.widget === 'email'"
+    :node="node"
+  /> -->
+  <!-- <OWidgetUrl
+    v-else-if="node.attribute.attrs.widget === 'url'"
+    :node="node"
+  /> -->
+
+  <!-- <OWidgetRes_partner_many2one
+    v-else-if="node.attribute.attrs.widget === 'res_partner_many2one'"
+    :node="node"
+  /> -->
+
   <OFieldBoolean
     v-else-if="node.meta.type === 'boolean'"
     :editable="editable"
@@ -25,6 +44,26 @@
     :record="record"
     :node="node"
   />
+  <OFieldSelection
+    v-else-if="node.meta.type === 'selection'"
+    :editable="editable"
+    :record="record"
+    :node="node"
+  />
+
+  <OFieldMany2many
+    v-else-if="node.meta.type === 'many2many'"
+    :editable="editable"
+    :record="record"
+    :node="node"
+  />
+
+  <OFieldOne2many
+    v-else-if="node.meta.type === 'one2many'"
+    :editable="editable"
+    :record="record"
+    :node="node"
+  />
 
   <OFieldChar
     v-else-if="node.meta.type === 'char'"
@@ -33,9 +72,26 @@
     :node="node"
   />
 
+  <OFieldInteger
+    v-else-if="node.meta.type === 'integer'"
+    :editable="editable"
+    :record="record"
+    :node="node"
+  />
+
   <span v-else>
     <span v-if="editable">
-      <input
+      <Input
+        v-model="value2"
+        :class="classInput"
+        :element-id="node.meta.input_id"
+        :name="node.attribute.attrs.name"
+        :placeholder="node.attribute.attrs.placeholder"
+        @on-enter="handleOnchange(value2)"
+        @on-blur="handleOnchange(value2)"
+      />
+
+      <!-- <input
         v-model="node.meta.value"
         type="text"
         :class="classInput"
@@ -43,7 +99,7 @@
         :name="node.attribute.attrs.name"
         :placeholder="node.attribute.attrs.placeholder"
         @change="handleOnchange(node.attribute.attrs.name, node.meta.value)"
-      />
+      /> -->
     </span>
 
     <span
@@ -69,48 +125,55 @@
 </template>
 
 <script>
-import api from '@/api'
+import OFieldMixin from './OFieldMixin'
 
 import OWidgetStatinfo from './OWidgetStatinfo'
 import OWidgetMonetary from './OWidgetMonetary'
 import OWidgetStatusbar from './OWidgetStatusbar'
 
 import OFieldBoolean from './OFieldBoolean'
+
+import OFieldSelection from './OFieldSelection'
 import OFieldMany2one from './OFieldMany2one'
+
+import OFieldMany2many from './OFieldMany2many'
+// import OFieldOne2many from './OFieldOne2many'
 
 import OFieldChar from './OFieldChar'
 
+import OFieldInteger from './OFieldInteger'
+
 export default {
   name: 'OWidgetField',
+  mixins: [OFieldMixin],
   components: {
     OWidgetStatinfo,
     OWidgetMonetary,
     OWidgetStatusbar,
     OFieldBoolean,
+    OFieldSelection,
     OFieldMany2one,
-    OFieldChar
+    OFieldMany2many,
+    OFieldOne2many: () => import('./OFieldOne2many'),
+    OFieldChar,
+    OFieldInteger
   },
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
-  },
+  props: {},
 
   data() {
     return {}
   },
 
   computed: {
+    value2: {
+      get() {
+        return JSON.stringify(this.node.meta.value)
+      },
+      set(value) {
+        // this.node.meta.value = value
+      }
+    },
+
     classInput() {
       const node = this.node
       const classList = []
@@ -121,6 +184,12 @@ export default {
         classList.push('o_input')
       }
 
+      if (node.meta.invisible) {
+        classList.push('o_invisible_modifier')
+      }
+      if (node.meta.readonly) {
+        classList.push('o_readonly_modifier')
+      }
       if (node.meta.required) {
         classList.push('o_required_modifier')
       }
@@ -174,16 +243,21 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('OWidgetField, xxxxxx:', deep_copy(this.node))
-    // console.log('OWidgetField, xxxxxx:', this.editable)
+    // console.log(
+    //   'OWidgetField 1, xxxxxx:',
+    //   this.node.meta.name,
+    //   deep_copy(this.node)
+    // )
+    // console.log(this.record)
+    // console.log('OWidgetField 2, xxxxxx:', this.editable)
   },
 
   methods: {
     //
-
-    handleOnchange(field, value) {
-      console.log('handleOnchange', field, value, this.record, this.node)
-      this.record[`$${field}`] = value
+    handleOnchange(value) {
+      console.log('handleOnchange', value, this.record, this.node)
+      // const field = `$${this.node.meta.name}`
+      // this.record[field] = value
     }
   }
 }

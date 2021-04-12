@@ -1,6 +1,39 @@
 <template>
-  <table :class="className">
-    <!-- <div>table {{ level }} start</div> -->
+  <Form label-position="left" :class="className" :label-width="120">
+    <span v-for="(row, index) in group_items" :key="index">
+      <div v-if="row.tagName === 'separator'" class="o_horizontal_separator">
+        {{ row.attribute.attrs.string }}
+      </div>
+
+      <FormItem
+        v-else-if="row.tagName === 'form-item'"
+        :class="classNameItem(row)"
+        :label="row.meta.string"
+        :label-for="row.meta.input_id"
+      >
+        <OFormLabel
+          slot="label"
+          v-if="
+            row.children[0].tagName === 'label' &&
+              row.children[0].children &&
+              row.children[0].children.length
+          "
+          :node="row.children[0]"
+        />
+
+        <ONode
+          :record="record"
+          :node="row.children[row.children.length - 1]"
+          :editable="editable"
+        />
+      </FormItem>
+
+      <ONode v-else :record="record" :node="row" :editable="editable" />
+    </span>
+  </Form>
+  <!-- by table  -->
+  <!-- <div>table {{ level }} start</div> -->
+  <!-- <table :class="className">
     <tbody>
       <tr v-for="(row, index) in matrix" :key="index">
         <td
@@ -8,37 +41,19 @@
           :key="index2"
           :colspan="td.attribute.attrs.colspan"
           :style="styleNameTd(td)"
-          :class="
-            td.tagName === 'label' || td.attribute.class === 'o_td_label'
-              ? 'o_td_label'
-              : undefined
-          "
+          :class="td.tagName === 'label' ? 'o_td_label' : undefined"
         >
           <div v-if="td.tagName === 'separator'" class="o_horizontal_separator">
             {{ td.attribute.attrs.string }}
           </div>
 
-          <div
-            v-else-if="
-              td.tagName === 'div' && td.attribute.class === 'o_td_label'
-            "
-            :class="td.meta.invisible ? 'o_invisible_modifier' : undefined"
-          >
-            <OFormLabel
-              v-for="(child_of_label, index3) in td.children"
-              :key="index3"
-              :node="child_of_label"
-            />
-          </div>
-
           <OFormLabel v-else-if="td.tagName === 'label'" :node="td" />
-
           <ONode v-else :record="record" :node="td" :editable="editable" />
         </td>
       </tr>
     </tbody>
-    <!-- <div>table {{ level }} end</div> -->
-  </table>
+  </table> -->
+  <!-- <div>table {{ level }} end</div> -->
 </template>
 
 <script>
@@ -68,11 +83,17 @@ export default {
     level: { type: Number, default: 0 }
   },
 
+  data() {
+    return {}
+  },
+
   computed: {
     className() {
       const classList = ['o_group', 'o_inner_group']
       if (this.level) {
         classList.push(`o_group_col_${this.level * 6}`)
+      } else {
+        classList.push('o_group_col_6')
       }
 
       const node = this.node
@@ -85,6 +106,13 @@ export default {
     },
 
     matrix() {
+      const items = this.group_items
+      return items.map(item => {
+        return item.tagName === 'form-item' ? item.children : [item]
+      })
+    },
+
+    group_items() {
       const node_group = this.node
 
       const get_matrix = () => {
@@ -98,21 +126,23 @@ export default {
             tagName: 'separator'
           }
 
-          matrix.push([separator])
+          matrix.push(separator)
         }
 
         const children = [...node_group.children]
-        let count = 2 - this.level
+        // let count = 2 - this.level
         let row = []
 
         while (children.length) {
           const child = children.shift()
-          if (
-            child.tagName === 'label' ||
-            child.attribute.class === 'o_td_label'
-          ) {
+          if (child.tagName === 'label') {
             const ch_value = children.shift()
             row.push(child)
+            // ch_value.meta.string = child.meta.string
+            row.push(ch_value)
+          } else if (child.attribute.class === 'o_td_label') {
+            const ch_value = children.shift()
+            row.push(child.children[0])
             row.push(ch_value)
           } else if (child.tagName === 'field') {
             if (child.attribute.attrs.nolabel) {
@@ -129,17 +159,30 @@ export default {
           } else {
             row.push(child)
           }
-          count = count - 1
-          if (!count) {
-            matrix.push(row)
-            row = []
-            count = 2 - this.level
+          // count = count - 1
+          // if (!count) {
+          // matrix.push(row)
+          // row = []
+          //   count = 2 - this.level
+          // }
+
+          if (row.length === 1) {
+            matrix.push(row[0])
+          } else if (row.length === 2) {
+            matrix.push({
+              attribute: { attrs: { for: row[0].attribute.attrs.name } },
+              meta: row[0].meta,
+              children: row,
+              tagName: 'form-item'
+            })
           }
+
+          row = []
         }
 
-        if (row.length) {
-          matrix.push(row)
-        }
+        // if (row.length) {
+        //   matrix.push(row)
+        // }
 
         return matrix
       }
@@ -154,11 +197,22 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('OInnerGroup , xxxxxx:', this.seq, deep_copy(this.node))
+    // console.log(
+    //   'OInnerGroup , xxxxxx:',
+    //   deep_copy(this.group_items),
+    //   deep_copy(this.node)
+    // )
+    // console.log(this.record)
   },
 
   methods: {
-    //
+    classNameItem(row) {
+      if (row.meta.invisible) {
+        return 'o_invisible_modifier'
+      }
+
+      return undefined
+    },
 
     styleNameTd(node) {
       //  colspan = null, 50%

@@ -3,22 +3,13 @@
     <!-- // note book -->
 
     <Tabs :animated="false" type="card" class="o_note_headers">
-      <!-- v-for="(page, index) in node.children.filter(
-          item => item.attribute.attrs.name === 'sales_purchases'
-        )" -->
-
-      <!-- v-for="(page, index) in node.children.filter(
-          item => !item.meta.invisible
-        )" -->
-
       <TabPane
-        v-for="(page, index) in node.children"
+        v-for="(page, index) in children"
         :key="index"
         :label="page.attribute.attrs.string"
         :class="ClassNamePage(page)"
       >
-        <!-- {{ page.attribute.attrs.string }} -->
-        <ONode :node="page" />
+        <ONode :record="record" :node="page" :editable="editable" />
       </TabPane>
     </Tabs>
   </div>
@@ -32,6 +23,14 @@ export default {
   components: { ONode },
 
   props: {
+    editable: { type: Boolean, default: undefined },
+    record: {
+      type: Object,
+      default: () => {
+        return {}
+      }
+    },
+
     node: {
       type: Object,
       default: () => {
@@ -39,6 +38,14 @@ export default {
       }
     }
   },
+
+  computed: {
+    //
+    children() {
+      return this.node.children.filter(item => !item.meta.invisible)
+    }
+  },
+
   async created() {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))

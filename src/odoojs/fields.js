@@ -21,6 +21,8 @@ import { parseTime } from './utils.js'
 
 import { is_virtual_id, Model } from './models.js'
 
+import xml2json from './xml2json.js'
+
 const image2url = (baseURL, model, res_id, field) => {
   // const baseURL = process.env.VUE_APP_BASE_API
   const imgUrl = '/web/image'
@@ -164,6 +166,7 @@ class BaseField {
     this.help = data.help || false
     this.states = data.states || false
     this.views = data.views || {}
+
     this._input_ids = {}
   }
 
@@ -308,7 +311,7 @@ class BaseField {
   }
 
   async setValue(instance, value) {
-    console.log('set:', instance._name, instance.id, this.name, value)
+    // console.log('set:', instance._name, instance.id, this.name, value)
     // 给 instance  __defineSetter__ 使用
     // 这个是 触发 odoo set value
     // value = this.check_value(value)
@@ -674,7 +677,7 @@ class Many2one extends _Relational {
     } = kwargs
 
     if (default2) {
-      console.log(instance._values_relation, this.getValue(instance))
+      // console.log(instance._values_relation, this.getValue(instance))
       const relation = this.getValue(instance)
       if (relation.id) {
         return [[relation.id, relation.$display_name]]
@@ -963,6 +966,31 @@ class One2many extends _Relational {
     }
     const context = { ...instance.env.context, ...this.context }
     return instance.env.copy(context)
+  }
+
+  // 返回 异步 对象
+  async asyncGetValue(instance) {
+    // console.log('asyncGetValue')
+    const Relation = this._get_Relation(instance)
+    const env = this._get_env(instance)
+    const ids = this._getValue(instance)
+    const kwargs = { from_record: [instance, this] }
+
+    const relation = await Relation._browse_relation_o2m_async(env, ids, kwargs)
+
+    return relation
+
+    // const ids = this._getValue(instance)
+    // const Relation = instance.env.model(this.relation)
+
+    // const get_env = () => {
+    //   if (!this.context) {
+    //     return instance.env
+    //   }
+    //   const context = { ...instance.env.context, ...this.context }
+    //   return instance.env.copy(context)
+    // }
+    // return Relation._browse_native(get_env(), ids)
   }
 
   // 返回 同步对象

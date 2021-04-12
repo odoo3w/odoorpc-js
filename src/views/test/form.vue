@@ -1,9 +1,7 @@
 <template>
   <div>
     <div>
-      <OContent>
-        <OFormView :record="record" :node="node" editable />
-      </OContent>
+      <OViewForm :record="record" :node="node" editable />
 
       <div>&nbsp;-----version-----</div>
       <div>{{ api.version }}</div>
@@ -23,8 +21,7 @@
 
 <script>
 import api from '@/api'
-import OContent from '@/components/OContent'
-import OFormView from '@/components/OFormView'
+import OViewForm from '@/components/OViewForm'
 
 import { sleep } from '@/odoojs/utils'
 
@@ -32,7 +29,7 @@ const Timeout = 500
 
 export default {
   name: 'FormPage',
-  components: { OContent, OFormView },
+  components: { OViewForm },
   mixins: [],
 
   data() {
@@ -45,8 +42,8 @@ export default {
   computed: {},
   async created() {
     // await this.init_data_so()
-    await this.init_data_ptn_title()
-    // await this.init_data_ptn()
+    // await this.init_data_ptn_title()
+    await this.init_data_ptn()
     // await this.init_data_user()
     await this.renderMe()
 
@@ -71,7 +68,7 @@ export default {
 
     async renderMe() {
       const node = this.record.view_node()
-      console.log('view node,', node)
+      // console.log('view node,', node)
       this.node = node
     },
 
@@ -85,11 +82,19 @@ export default {
       await this.init_data({ model_name, view_ref, domain })
     },
 
+    async init_data_ptn() {
+      const model_name = 'res.partner'
+      const view_ref = null
+      const domain = [['id', '=', '3']]
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
+    },
+
     async init_data_ptn_title() {
       // const model_name = 'res.partner'
       const model_name = 'res.partner.category'
       const view_ref = null
-      const domain = [['parent_id.name', '=', 'test']]
+      const domain = [['parent_id.name', '=', 'test222']]
       // const domain = []
       await this.init_data({ model_name, view_ref, domain })
     },
@@ -101,21 +106,18 @@ export default {
 
       let ids2 = ids
 
-      // if (!ids.length) {
-      //   ids2 = null
-      // }
-
-      console.log(ids)
-      ids2 = null
+      if (!ids.length) {
+        ids2 = null
+      }
 
       const so = await SO.browse(ids2)
 
-      console.log(so)
+      // console.log(so)
       this.record = so
 
       // const dd = so.fetch_all()
 
-      // console.log(dd)
+      // console.log('form, record', this.record)
     },
 
     async form_edit() {

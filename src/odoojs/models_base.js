@@ -188,7 +188,7 @@ export class Model extends BaseModel {
   //
 
   static async browse(ids, payload) {
-    console.log('xxx, browse:', this._name, ids, payload)
+    // console.log('xxx, browse:', this._name, ids, payload)
     if (ids === undefined) {
       throw 'call browse without ids'
     }
@@ -217,19 +217,19 @@ export class Model extends BaseModel {
     // main read, set callback
     records._callback_onchange = fetch_one
     records._callback_onchange_all = fetch_all
-    console.log('xxx, _browse_native 21:', this._name, ids, payload)
+    // console.log('xxx, _browse_native 21:', this._name, ids, payload)
 
     if (ids) {
       await records._init_values()
     } else {
       await records._init_values_for_new_call_onchange()
     }
-    console.log('xxx, _browse_native 22:', this._name, ids, payload)
+    // console.log('xxx, _browse_native 22:', this._name, ids, payload)
 
     // 按照约定, browse后, 要触发 callback, 返回数据
     records.event_onchange()
     records.event_onchange_all()
-    console.log('xxx, _browse_native 23:', this._name, ids, payload)
+    // console.log('xxx, _browse_native 23:', this._name, ids, payload)
 
     return records
   }
@@ -286,6 +286,12 @@ export class Model extends BaseModel {
     }
     const [parent, field] = this._from_record
     field.remove(parent, record)
+  }
+
+  static async _browse_relation_o2m_async(env, ids, payload = {}) {
+    const records = this._browse_relation_base(env, ids, payload)
+    await records._init_values()
+    return records
   }
 
   static async _browse_relation_o2m_new_async(env, ids, payload = {}) {
@@ -510,14 +516,15 @@ export class Model extends BaseModel {
     const { partial_ids = [], context = this.env.context } = paylaod
 
     const columns = this.constructor._columns
-    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
-      // 应该特殊处理 二进制字段
-      const Field = columns[field_name]
-      if (Field.type !== 'binary') {
-        acc = [...acc, field_name]
-      }
-      return acc
-    }, [])
+    const basic_fields = Object.keys(columns)
+    // .reduce((acc, field_name) => {
+    //   // 应该特殊处理 二进制字段
+    //   const Field = columns[field_name]
+    //   if (Field.type !== 'binary') {
+    //     acc = [...acc, field_name]
+    //   }
+    //   return acc
+    // }, [])
 
     const ids = partial_ids.length ? partial_ids : this.ids
 
@@ -597,13 +604,13 @@ export class Model extends BaseModel {
   }
 
   async _init_values_for_new_call_onchange(/* paylaod = {} */) {
-    console.log('xxx, _init_values_for_new_call_onchange 1:', this._name)
+    // console.log('xxx, _init_values_for_new_call_onchange 1:', this._name)
 
     // const { context = this.env.context } = paylaod
     this._init_values_for_new_default()
-    console.log('xxx, _init_values_for_new_call_onchange 12:', this._name)
+    // console.log('xxx, _init_values_for_new_call_onchange 12:', this._name)
     const onchange = await this._onchange2({}, [], this.field_onchange)
-    console.log('xxx, _init_values_for_new_call_onchange 13:', this._name)
+    // console.log('xxx, _init_values_for_new_call_onchange 13:', this._name)
     await this._after_onchange(onchange)
   }
 
@@ -995,8 +1002,7 @@ export class Model extends BaseModel {
   }
 
   async write(vals) {
-    const method = 'write'
-    return this.execute(method, vals)
+    return this.constructor.write(this.id, vals)
   }
 
   static async write(rid, vals) {
@@ -1075,11 +1081,11 @@ export class Model extends BaseModel {
       fld => fld.split('.').length === 1
     )
 
-    console.log('_default_get_onchange', this._name, field_onchange, fields)
+    // console.log('_default_get_onchange', this._name, field_onchange, fields)
 
     const default_get1 = await this.constructor.execute('default_get', fields)
 
-    console.log('default get ', default_get1)
+    // console.log('default get ', default_get1)
 
     const _get_default = col => {
       const meta = this._columns[col]
@@ -1113,7 +1119,7 @@ export class Model extends BaseModel {
     const args = [[], values_onchange, field_name, field_onchange]
     const onchange = await this.constructor.execute('onchange', ...args)
 
-    console.log('default get 2', onchange)
+    // console.log('default get 2', onchange)
 
     // # TBD: default_get 里面 可能有 m2o o2m 需要处理
     // default_get, m2o 返回值 是 id, 需要 补充上 display_name
@@ -1145,38 +1151,38 @@ export class Model extends BaseModel {
     const values_ret = { ...values, ...default_get2, ...onchange.value }
     const onchange2 = { ...onchange, value: values_ret }
 
-    console.log('default get 3', onchange2)
+    // console.log('default get 3', onchange2)
 
     return onchange2
   }
 
-  // for odoo call  这个 应该没有用了
-  async get_selection(kwargs = {}) {
-    const { fields = [] } = kwargs
-    const selections = {}
+  // // for odoo call  这个 应该没有用了
+  // async get_selection(kwargs = {}) {
+  //   const { fields = [] } = kwargs
+  //   const selections = {}
 
-    for (const field_name of fields) {
-      // M2m 字段 有两种情况,
-      // 1 是 partner.category 这种的, 前端用 select 选择框
-      // 2 是 sale.order 里的 invoice_ids 这种的, 前端 大概不是  select 选择框
-      // TBD 2021-3-10
+  //   for (const field_name of fields) {
+  //     // M2m 字段 有两种情况,
+  //     // 1 是 partner.category 这种的, 前端用 select 选择框
+  //     // 2 是 sale.order 里的 invoice_ids 这种的, 前端 大概不是  select 选择框
+  //     // TBD 2021-3-10
 
-      const fs = field_name.split('.')
-      if (fs.length > 1) {
-        // TBD , 这个 需要 子模型的 values , 显然 不能在父 模型中 这样直接获取
-        // const [parent_field, child_field] = fs
-        // const Relation = this.env.model(this._columns[parent_field].relation)
-        // const selection = Relation.get_selection(child_field, kwargs)
-        // return selection
-      } else {
-        const meta = this._columns[field_name]
-        selections[field_name] = await meta.get_selection(this)
-      }
-    }
+  //     const fs = field_name.split('.')
+  //     if (fs.length > 1) {
+  //       // TBD , 这个 需要 子模型的 values , 显然 不能在父 模型中 这样直接获取
+  //       // const [parent_field, child_field] = fs
+  //       // const Relation = this.env.model(this._columns[parent_field].relation)
+  //       // const selection = Relation.get_selection(child_field, kwargs)
+  //       // return selection
+  //     } else {
+  //       const meta = this._columns[field_name]
+  //       selections[field_name] = await meta.get_selection(this)
+  //     }
+  //   }
 
-    // console.log(selections)
-    return selections
-  }
+  //   // console.log(selections)
+  //   return selections
+  // }
 
   //  这个 应该没有用了
   static async fields_view_get(view_id_or_xml_id) {

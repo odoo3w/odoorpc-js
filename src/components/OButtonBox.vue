@@ -1,6 +1,12 @@
 <template>
   <div :class="className">
-    <ONode v-for="(child, index) in node.children" :key="index" :node="child" />
+    <ONode
+      v-for="(child, index) in node.children"
+      :key="index"
+      :record="record"
+      :node="child"
+      :editable="editable"
+    />
   </div>
 </template>
 
@@ -12,6 +18,14 @@ export default {
 
   components: { ONode },
   props: {
+    editable: { type: Boolean, default: undefined },
+    record: {
+      type: Object,
+      default: () => {
+        return {}
+      }
+    },
+
     node: {
       type: Object,
       default: () => {
@@ -33,10 +47,11 @@ export default {
   },
 
   async created() {
-    // const deep_copy = node => {
-    //   return JSON.parse(JSON.stringify(node))
-    // }
-    // console.log('OButtonBox, xxxxxx:', deep_copy(this.node))
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+    console.log('OButtonBox, xxxxxx:', deep_copy(this.node))
+    console.log(this.record)
   },
   methods: {
     //

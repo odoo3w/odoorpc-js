@@ -2,10 +2,10 @@
   <button
     type="button"
     :name="node.attribute.attrs.name"
+    :class="className"
     :aria-label="node.attribute.attrs['aria-label']"
     title
     :data-original-title="node.attribute.attrs.title"
-    :class="className"
     @click="btnClick"
   >
     <i v-if="node.attribute.attrs.icon" :class="classNameIcon" />
@@ -16,8 +16,6 @@
       :key="index"
       :node="child"
     />
-
-    <slot />
   </button>
 </template>
 
@@ -30,6 +28,12 @@ export default {
   components: { ONode },
 
   props: {
+    record: {
+      type: Object,
+      default: () => {
+        return {}
+      }
+    },
     node: {
       type: Object,
       default: () => {
@@ -37,7 +41,7 @@ export default {
       }
     },
 
-    parent: { type: String, default: '' }
+    isHeader: { type: Boolean, default: false }
   },
   computed: {
     string() {
@@ -65,7 +69,7 @@ export default {
         ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
 
-      if (this.parent === 'header') {
+      if (this.isHeader) {
         const highlight =
           node.attribute.class === 'oe_highlight' ||
           node.attribute.class === 'btn-primary'
@@ -88,9 +92,18 @@ export default {
     }
   },
 
+  async created() {
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('Obutton 1, xxxxxx:', deep_copy(this.node))
+    // console.log('Obutton 2, xxxxxx:', this.record)
+  },
+
   methods: {
     btnClick() {
       console.log('onclick', this.node.attribute.attrs)
+      console.log('onclick', this.record)
     }
   }
 }

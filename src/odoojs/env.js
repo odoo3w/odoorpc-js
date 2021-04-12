@@ -114,7 +114,7 @@ export class Environment {
     if (view_ref && typeof view_ref === 'object') {
       return this._model_from_parent(model, view_type2, view_ref)
     } else {
-      const view_type = view_type || 'form'
+      const view_type = view_type2 || 'form'
       const reg_name_list = [model]
       if (view_type) {
         reg_name_list.push(view_type)
@@ -131,7 +131,13 @@ export class Environment {
 
   _model_from_parent(model, view_type, { isSync, view_info }) {
     // const [parent, field] = from_record
-    // console.log('_model_from_parent', view_info, parent, field)
+    // console.log(
+    //   'xxxxxxx, _model_from_parent',
+    //   model,
+    //   view_type,
+    //   isSync,
+    //   view_info
+    // )
 
     // console.log('_model_by_view_info', view_info, field.name)
 
@@ -202,6 +208,16 @@ export class Environment {
     const { view_type, view_ref, isSync, view_info } = payload
     const Model2 = this._addons[model] || AllModels[model] || Model
 
+    // console.log(
+    //   'xxxxxxx, _create_model_class',
+    //   model,
+    //   view_type,
+    //   isSync,
+    //   view_info
+    // )
+
+    // console.log('xxxxxxx, _create_model_class', [Model2])
+
     class Cls extends Model2 {
       constructor() {
         super()
@@ -265,6 +281,10 @@ export class Environment {
         return _wait_awaiter()
       }
 
+      get _view_type() {
+        return this.constructor._view_type
+      }
+
       get _view_info() {
         return this.constructor._view_info
       }
@@ -313,6 +333,8 @@ export class Environment {
 
     // step 2: all columns from odoo call fields_get
     Cls._columns = {}
+
+    Cls._view_type = view_type
     Cls._view_info = {}
     Cls._field_onchange = {}
 

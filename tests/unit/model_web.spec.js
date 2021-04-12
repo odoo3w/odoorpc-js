@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import { expect, assert } from 'chai'
 
 import { get_odoo } from './config.js'

@@ -1,7 +1,7 @@
 <template>
   <div :class="className">
     <div class="o_form_sheet_bg">
-      <OFormViewItem
+      <OViewFormItem
         v-for="(child, index) in node_children"
         :key="index"
         :record="record"
@@ -9,18 +9,16 @@
         :editable="editable"
       />
     </div>
-    <OFormViewItem v-if="node_chatter" :node="node_chatter" />
+    <!-- <OViewFormItem v-if="node_chatter" :node="node_chatter" /> -->
   </div>
 </template>
 
 <script>
-import OFormViewItem from './OFormViewItem'
+import OViewFormItem from './OViewFormItem'
 
 export default {
-  name: 'OFormView',
-  components: { OFormViewItem },
-
-  // mixins: [renderTag],
+  name: 'OViewForm',
+  components: { OViewFormItem },
 
   props: {
     editable: { type: Boolean, default: undefined },
@@ -30,18 +28,13 @@ export default {
       default: () => {
         return {}
       }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return {
-          children: []
-        }
-      }
     }
   },
 
   computed: {
+    node() {
+      return this.record.view_node()
+    },
     className() {
       // const node = this.node
       const classList = ['o_form_view']
@@ -69,12 +62,21 @@ export default {
     }
   },
   async created() {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-    console.log('OFormView, xxxxxx:', deep_copy(this.node))
-    console.log('OFormView, xxxxxx:', this.editable)
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OViewForm, xxxxxx:', deep_copy(this.node))
+    // console.log('OViewForm, xxxxxx:', this.record)
   },
+
+  mounted() {
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OViewForm, xxxxxx:', deep_copy(this.node))
+    // console.log('OViewForm, xxxxxx:', this.record)
+  },
+
   methods: {}
 }
 </script>

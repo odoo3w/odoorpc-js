@@ -1,11 +1,19 @@
 <template>
   <OInnerGroup
-    v-if="is_inner_group"
+    v-if="is_inner_group && level > 0"
     :record="record"
     :node="node"
     :level="level"
     :editable="editable"
   />
+  <div v-else-if="is_inner_group && level === 0" :class="className">
+    <OInnerGroup
+      :record="record"
+      :node="node"
+      :level="level"
+      :editable="editable"
+    />
+  </div>
   <div v-else :class="className">
     <!-- <div>Group {{ level }} Satrt</div> -->
     <OGroup

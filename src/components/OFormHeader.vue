@@ -5,7 +5,7 @@
         v-for="(btn, index) in buttons"
         :key="index"
         :node="btn"
-        parent="header"
+        isHeader
       />
     </div>
 

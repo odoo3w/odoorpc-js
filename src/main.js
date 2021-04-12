@@ -1,3 +1,4 @@
+import '@babel/polyfill'
 import Vue from 'vue'
 import App from './App.vue'
 
@@ -15,9 +16,9 @@ import 'view-design/dist/styles/iview.css'
 
 Vue.use(ViewUI)
 
-// import '@/styles/base/fontawesome/css/font-awesome.css'
-// import '@/styles/global.scss'
-// import '@/styles/style.scss'
+import '@/styles/base/fontawesome/css/font-awesome.css'
+import '@/styles/global.scss'
+import '@/styles/style.scss'
 
 Vue.config.productionTip = false
 

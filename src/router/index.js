@@ -33,6 +33,11 @@ const homeRoutes = [
         name: 'home'
       },
       {
+        path: '/web',
+        component: () => import('@/views/home/web'),
+        name: 'web'
+      },
+      {
         path: '/test/api2',
         component: () => import('@/views/test/test_api'),
         name: 'test-api'

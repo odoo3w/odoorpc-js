@@ -1,17 +1,7 @@
 <template>
   <div>
     <div>
-      <!-- <OContent>
-        <OFormView :node="node" />
-      </OContent> -->
-
-      <div>&nbsp;-----version-----</div>
-      <div>{{ api.version }}</div>
-
-      <div>&nbsp;</div>
-      <div>&nbsp;</div>
-
-      <button type="info" @click="toHome">goto home</button>
+      <OViewForm :record="record" :node="node" :editable="false" />
 
       <div>&nbsp;</div>
     </div>
@@ -21,77 +11,43 @@
 <script>
 import api from '@/api'
 
-import OContent from '@/components/OContent'
-
-import OFormView from '@/components/OFormView'
+import OViewForm from '@/components/OViewForm'
 
 export default {
   name: 'ViewPage',
-  components: { OContent, OFormView },
+  components: { OViewForm },
   mixins: [],
 
   data() {
     return {
       api,
 
-      record: null,
+      record: {},
       node: {}
     }
   },
   computed: {},
   async created() {
-    // await this.init_data_so()
-    // await this.init_data_ptn_title()
-    await this.init_data_ptn()
+    const query = this.$route.query
+    const model = query.model
+    const views = JSON.parse(query.views)
+    const view_type = 'form'
+    const view_ref = views[view_type].view_ref
 
-    await this.renderMe()
+    const rid = Number(query.id)
+    console.log('view 1', model, view_type, view_ref, rid)
+    const Model = api.env.model(model, view_type, view_ref)
+    const record = await Model.browse(rid)
+
+    console.log('view 2', model, view_type, view_ref)
+    const node = record.view_node()
+    // console.log('view node,', node)
+    this.node = node
+    this.record = record
+    console.log('view 3', model, view_type, view_ref, this.node, this.record)
   },
 
-  methods: {
-    async renderMe() {
-      //
-      const node = this.record.view_node()
-      // console.log('view node,', node)
-      this.node = node
-    },
-
-    async init_data_so() {
-      const model_name = 'sale.order'
-      const view_ref = 'sale.view_order_form'
-      const domain = []
-      await this.init_data({ model_name, view_ref, domain })
-    },
-
-    async init_data_ptn_title() {
-      // const model_name = 'res.partner'
-      const model_name = 'res.partner.category'
-      const view_ref = null
-      const domain = []
-      await this.init_data({ model_name, view_ref, domain })
-    },
-
-    async init_data_ptn() {
-      const model_name = 'res.partner'
-      // const model_name = 'res.partner.title'
-      const view_ref = null
-      const domain = [['id', 'in', [3]]]
-      await this.init_data({ model_name, view_ref, domain })
-    },
-
-    async init_data({ model_name, view_ref, domain }) {
-      const view_type = 'form'
-      const SO = api.env.model(model_name, view_type, view_ref)
-      let ids = await SO.search(domain, { order: 'id' })
-      const so = await SO.browse(ids[0])
-
-      this.record = so
-      // this.viewIndex = this.viewIndex + 1
-    },
-
-    toHome() {
-      this.$router.replace({ path: '/home' })
-    }
-  }
+  methods: {}
 }
 </script>
 

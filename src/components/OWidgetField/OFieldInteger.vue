@@ -2,16 +2,16 @@
   <span v-if="editable">
     <Input
       v-model="value2"
+      type="number"
       :class="className"
       style="width:200px"
+      number
       :element-id="node.meta.input_id"
       :name="node.attribute.attrs.name"
       :placeholder="node.attribute.attrs.placeholder"
       @on-enter="handleOnchange(value2)"
       @on-blur="handleOnchange(value2)"
     />
-
-    <!-- <span> 多语言 </span> -->
   </span>
   <span
     v-else
@@ -26,7 +26,7 @@
 <script>
 import OFieldMixin from './OFieldMixin'
 export default {
-  name: 'OFieldChar',
+  name: 'OFieldInteger',
   mixins: [OFieldMixin],
   props: {},
   computed: {}

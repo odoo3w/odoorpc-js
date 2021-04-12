@@ -6,12 +6,15 @@
   />
   <OButtonBox
     v-else-if="node.attribute.attrs.name === 'button_box'"
+    :record="record"
     :node="node"
+    :editable="editable"
   />
   <ONoteBook
     v-else-if="node.tagName === 'notebook'"
     :record="record"
     :node="node"
+    :editable="editable"
   />
 
   <!-- in v-else:

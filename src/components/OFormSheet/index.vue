@@ -1,15 +1,7 @@
 <template>
   <div class="clearfix position-relative o_form_sheet">
-    <!-- 
-            item.attribute.attrs.name === 'button_box' ||
-            item.tagName === 'group2'
-            item.attribute.class === 'oe_title' 
-    -->
-
-    <!-- .filter(  item =>  item.attribute.class === 'oe_title' ) -->
-
     <OFormSheetItem
-      v-for="(child, index) in node.children"
+      v-for="(child, index) in children"
       :key="index"
       :record="record"
       :node="child"
@@ -42,7 +34,19 @@ export default {
     }
   },
 
-  computed: {},
+  computed: {
+    children() {
+      //
+      // item.attribute.attrs.name === 'button_box' ||
+      //       item.tagName === 'group'
+      //       item.attribute.class === 'oe_title'
+      //       item.tagName === 'notebook'
+
+      return this.node.children.filter(item => {
+        return item.tagName === 'notebook'
+      })
+    }
+  },
 
   methods: {
     //

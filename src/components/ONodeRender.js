@@ -20,7 +20,7 @@ export default {
       default: undefined
     },
     node: {
-      type: [Object, String], // 子元素 可能是文本字符串 或者 node
+      type: [Object, String, Number], // 子元素 可能是文本字符串 或者 node
       default: () => {
         return { children: [] }
       }
@@ -36,6 +36,7 @@ export default {
 
   methods: {
     className(node) {
+      // console.log(node)
       const classList = [
         ...(node.attribute.class ? node.attribute.class.split(' ') : [])
       ]
@@ -66,13 +67,30 @@ export default {
 
       // console.log(' me,  parent node,', deep_copy(node), parent)
 
+      const is_node = node => {
+        if (typeof node !== 'object') {
+          return false
+        }
+        if (Array.isArray(node)) {
+          return false
+        }
+        if (typeof node === 'boolean') {
+          return false
+        }
+
+        return true
+      }
+
+      // console.log('ONode, xxxxxx: 2,', is_node(node))
+
+      if (!is_node(node)) {
+        // 单字符串 做节点, 只能加上一个  span, 如果要去掉 span, 只能在上一级, 处理掉
+        return createElement('span', {}, [node])
+      }
+
       if (!node) {
         console.log('error:  parent node,', parent)
         throw 'error node'
-      }
-      if (typeof node === 'string') {
-        // 单字符串 做节点, 只能加上一个  span, 如果要去掉 span, 只能在上一级, 处理掉
-        return createElement('span', {}, [node])
       }
 
       if (node.tagName === 'group') {

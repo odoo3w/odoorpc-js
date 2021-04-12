@@ -1,5 +1,7 @@
 import { Model } from '@/odoojs/models'
 
+import { parseTime } from '@/utils'
+
 const DATE_COUNT = 7
 const HOUR_MIN = 8
 const HOUR_MAX = 20
@@ -115,82 +117,61 @@ export class EventEvent extends Model {
     return res[0]
   }
 
-  static async search_location() {
-    const model = 'res.partner'
-    const Model = this.env.model(model)
-    const room_ids = await Model.search_location_area()
-    const rooms = await Model.name_get(room_ids)
-    // console.log(room_ids, rooms)
-    return rooms
-  }
-
-  static async get_schedule_event({ date_count, hour_min, hour_max }) {
-    const event_type_id = await this.search_event_type()
-    const rooms = await this.search_location()
-    const hours = get_hours({ date_count, hour_min, hour_max })
-    // console.log('rooms ', rooms)
-    // console.log('hours ', hours)
-
-    const events = hours.reduce((acc, hour) => {
-      const hs = rooms.reduce((acc2, address) => {
-        acc2.push({
-          name: `${address[1]} ${hour.date_begin.substr(0, 13)}`,
-          event_type_id,
-          address_id: address[0],
-          ...hour
-        })
-        return acc2
-      }, [])
-
-      return [...acc, ...hs]
-    }, [])
-
-    return events
-  }
-
-  static async schedule_event(payload = {}) {
-    const {
-      // loop_times = 1,
-      date_count = DATE_COUNT,
-      hour_min = HOUR_MIN,
-      hour_max = HOUR_MAX
-    } = payload
-
-    // let loops = loop_times || 100000
-
-    const values_list = await this.get_schedule_event({
-      date_count,
-      hour_min,
-      hour_max
-    })
-    // console.log('event', values_list)
-    const event_ids = []
-    for (const vals of values_list) {
-      // console.log('event', vals)
-      const domain = [
-        ['address_id', '=', vals.address_id],
-        ['date_begin', '=', vals.date_begin]
-      ]
-      const ids = await this.search(domain, { limit: 1 })
-      if (ids.length) {
-        event_ids.push(ids[0])
-        continue
-      }
-      const event_id = await this.create_by_values(vals)
-      event_ids.push(event_id)
-
-      // loops = loops - 1
-      // if (loops > 0) {
-      //   continue
-      // } else {
-      //   break
-      // }
+  static async search_one_date(payload) {
+    const { address_id, date } = payload
+    const domain = [
+      ['address_id', '=', address_id],
+      ['date_begin', '>=', `${date} 00:00:00`],
+      ['date_begin', '<=', `${date} 23:59:59`]
+    ]
+    const ids = await this.search(domain)
+    // console.log('in search_future_event', ids)
+    if (!ids.length) {
+      return []
+    } else {
+      const rec = await this.browse(ids)
+      const data = rec.fetch_all()
+      return data
     }
-
-    return event_ids
   }
 
-  static async create_by_values(vals) {
+  static async get_values_list(payload) {
+    // const { address_id, date, hour_min, hour_max } = payload
+    const values_list = await this.get_values_list_raw(payload)
+    // console.log(values_list)
+    const vals = values_list[0]
+    const vals_template = await this.get_vals_template(vals)
+    // console.log(vals_template)
+    const values_list2 = values_list.map(item => {
+      return { ...vals_template, ...item }
+    })
+
+    // console.log(values_list2)
+    return values_list2
+  }
+
+  static async get_values_list_raw({ address_id, date, hour_min, hour_max }) {
+    const get_address = async address_id => {
+      const res = await this.env.model('res.partner').name_get([address_id])
+      return res[0]
+    }
+    const address = await get_address(address_id)
+    const event_type_id = await this.search_event_type()
+    const hours = get_hours({ date, hour_min, hour_max })
+    // console.log(hours)
+    const values_list = hours.map(hour => {
+      return {
+        name: `${address[1]} ${hour.date_begin.substr(0, 13)}`,
+        event_type_id,
+        address_id,
+        ...hour
+      }
+    })
+
+    return values_list
+  }
+
+  static async get_vals_template(vals) {
     const rec = await this.browse(null)
     rec.$name = vals.name
     rec.$date_begin = vals.date_begin
@@ -198,24 +179,90 @@ export class EventEvent extends Model {
     rec.$address_id = vals.address_id
     rec.$event_type_id = vals.event_type_id
     await rec.awaiter
-    await rec.commit()
-    return rec.id
+    return rec._get_values_for_create()
+    // await rec.commit()
+    // return rec.id
   }
 
-  static async search_or_create(vals) {
-    const domain = [
-      ['address_id', '=', vals.address_id],
-      ['date_begin', '=', vals.date_begin]
-    ]
-    const ids = await this.search(domain, { limit: 1 })
-    if (ids.length) {
-      return ids[0]
-      // return this.browse(ids)
+  static async _search_future_event(payload) {
+    const { hour_min, hour_max } = payload
+    console.log('in search_future_event')
+    const today_events = await this.search_one_date(payload)
+
+    const hours = today_events.map(item =>
+      dateHelper.toUTCString(item.date_begin)
+    )
+    // console.log('in search_future_event', hours)
+
+    const count_ok = hour_max - hour_min + 1
+    if (hours.length >= count_ok) {
+      return today_events
     }
-    return this.create_by_values(vals)
+
+    const values_list = await this.get_values_list(payload)
+    // console.log('in search_future_event 1', values_list)
+
+    const values_list2 = values_list.filter(
+      item => !hours.includes(item.date_begin)
+    )
+    // console.log('in search_future_event 2', values_list2)
+
+    await this.create(values_list2)
+
+    return await this.search_one_date(payload)
   }
 
-  static async search_future_event({ address_id, date, hour_min, hour_max }) {
+  static async with_reg(records) {
+    const Reg = this.env.model('event.registration')
+
+    const event_reg_ids = await Reg.search_by_event(
+      records.map(item => item.id)
+    )
+    const event_regs = await Reg.browse(event_reg_ids)
+    const event_regs2 = event_regs.fetch_all()
+
+    const event_regs3 = event_regs2.reduce((acc, cur) => {
+      acc[cur.event_id] = cur
+      return acc
+    }, {})
+
+    console.log('event_regs', event_regs3, this._odoo.session_info.partner_id)
+
+    const records2 = records
+    const records3 = records2.map(item => {
+      const seats_expected = item.seats_expected // 0, 空闲, 1, 已经被预定
+
+      const reg = event_regs3[item.id] || {}
+
+      const reg_partner_id = reg.partner_id
+      const reg_by_me = reg_partner_id === this._odoo.session_info.partner_id
+
+      const get_isPreset = () => {
+        if (seats_expected === 0) {
+          return 1 // 空闲
+        } else if (reg_by_me) {
+          return 2 // 我已经预定
+        } else {
+          return 0 // 被别人预定
+        }
+      }
+
+      const isPreset = get_isPreset()
+
+      return {
+        ...item,
+        reg_id: reg.id, // 已有的预定 id
+        reg_id__object: reg, // 已有的预定 object
+        reg_partner_id, // 被谁预定, false: 空闲
+        reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
+        isPreset
+      }
+    })
+
+    return records3
+  }
+
+  static async search_future_event(payload) {
     /*
      *  params:
      *  address_id:  integer, 场地 id
@@ -236,102 +283,66 @@ export class EventEvent extends Model {
      *
      */
 
-    const records = await this.search_future_event_1({
-      address_id,
-      date,
-      hour_min,
-      hour_max
-    })
+    // const { address_id, date, hour_min, hour_max } = payload
 
-    // const domain = [
-    //   ['address_id', '=', address_id],
-    //   ['date_begin', '>=', `${date} 00:00:00`],
-    //   ['date_begin', '<=', `${date} 23:59:59`]
-    // ]
-
-    // const records_ids = await this.search(domain)
-    // const records = await this.browse(records_ids)
-
-    const Reg = this.env.model('event.registration')
-
-    const event_reg_ids = await Reg.search_by_event(records.ids)
-    const event_regs = await Reg.browse(event_reg_ids)
-    const event_regs2 = event_regs.fetch_all()
-
-    const event_regs3 = event_regs2.reduce((acc, cur) => {
-      acc[cur.event_id] = cur
-      return acc
-    }, {})
-
-    console.log('event_regs', event_regs3, this._odoo.session_info.partner_id)
-
-    const records2 = records.fetch_all()
-    const records3 = records2.map(item => {
-      const seats_expected = item.seats_expected // 0, 空闲, 1, 已经被预定
-      const reg_partner_id = (event_regs3[item.id] || {}).partner_id
-      const reg_by_me = reg_partner_id === this._odoo.session_info.partner_id
-
-      const get_isPreset = () => {
-        if (seats_expected === 0) {
-          return 1 // 空闲
-        } else if (reg_by_me) {
-          return 2 // 我已经预定
-        } else {
-          return 0 // 被别人预定
-        }
-      }
-
-      const isPreset = get_isPreset()
-
-      return {
-        ...item,
-        reg_id: event_regs3.id, // 已有的预定 id
-        reg_partner_id, // 被谁预定, false: 空闲
-        reg_by_me, // 被我预定, true: 我, false: 空闲或被别人预定
-        isPreset
-      }
-    })
-
-    return records3
+    const records = await this._search_future_event(payload)
+    return await this.with_reg(records)
   }
 
-  static async search_future_event_1({ address_id, date, hour_min, hour_max }) {
-    const get_address = async address_id => {
-      const res = await this.env.model('res.partner').name_get([address_id])
-      return res[0]
-    }
-    const address = await get_address(address_id)
-
-    const event_type_id = await this.search_event_type()
-    // find_or_create
-
-    const hours = get_hours({ date, hour_min, hour_max })
-
-    // console.log(hours)
-
-    const values_list = hours.map(hour => {
-      return {
-        name: `${address[1]} ${hour.date_begin.substr(0, 13)}`,
-        event_type_id,
-        address_id,
-        ...hour
-      }
-    })
-
-    // console.log(values_list)
-
-    const event_ids = []
-    for (const vals of values_list) {
-      const event_id = await this.search_or_create(vals)
-      event_ids.push(event_id)
-      // break
-    }
-
-    // console.log(event_ids)
-
-    const event = await this.browse(event_ids)
-    return event
+  static async reg_event(event_id) {
+    const model = 'event.registration'
+    const Model = this.env.model(model)
+    // const reg =
+    await Model.reg_event(event_id)
+    const rec = await this.browse(event_id)
+    const rec2 = await this.with_reg(rec.fetch_all())
+    return rec2[0]
   }
+
+  static async search_me() {
+    const partner_id = this._odoo.session_info.partner_id
+    const domain = [['registration_ids.partner_id', 'in', [partner_id]]]
+    const ids = await this.search(domain, {})
+    const rec = await this.browse(ids)
+    const records = rec.fetch_all()
+    const rec2 = await this.with_reg(records)
+    return rec2
+  }
+
+  static async cancel_me(event_id) {
+    const model = 'event.registration'
+    const Model = this.env.model(model)
+    // const reg =
+    await Model.cancel_me(event_id)
+    const rec = await this.browse(event_id)
+    const rec2 = await this.with_reg(rec.fetch_all())
+    return rec2[0]
+  }
+
+  // static async create_by_values(vals) {
+  //   const rec = await this.browse(null)
+  //   rec.$name = vals.name
+  //   rec.$date_begin = vals.date_begin
+  //   rec.$date_end = vals.date_end
+  //   rec.$address_id = vals.address_id
+  //   rec.$event_type_id = vals.event_type_id
+  //   await rec.awaiter
+  //   // await rec.commit()
+  //   // return rec.id
+  // }
+
+  // static async search_or_create(vals) {
+  //   const domain = [
+  //     ['address_id', '=', vals.address_id],
+  //     ['date_begin', '=', vals.date_begin]
+  //   ]
+  //   const ids = await this.search(domain, { limit: 1 })
+  //   if (ids.length) {
+  //     return ids[0]
+  //     // return this.browse(ids)
+  //   }
+  //   // return this.create_by_values(vals)
+  // }
 }
 
 export class EventRegistration extends Model {
@@ -341,6 +352,53 @@ export class EventRegistration extends Model {
     // console.log(' ids', ids)
     return ids
   }
+  static async search_me() {
+    const partner_id = this._odoo.session_info.partner_id
+    const domain = [['partner_id', '=', partner_id]]
+    const ids = await this.search(domain, {})
+
+    // registration_ids
+
+    // const rec = await this.browse(ids)
+
+    // const data = rec.fetch_all()
+    // const events = await this.env
+    //   .model('event.event')
+    //   .browse(data.map(item => item.event_id))
+    // console.log(' events', events.fetch_all())
+    // return rec.fetch_all()
+
+    // if (ids.length) {
+    // } else {
+    //   const record = await this.browse(null)
+    //   // record.$event_id = event_id
+    //   // record.$partner_id = partner_id
+    //   await record.awaiter
+    //   await record.commit()
+
+    //   return record.fetch_one()
+    // }
+
+    // await Model.search_me()
+  }
+
+  static async cancel_me(event_id) {
+    const partner_id = this._odoo.session_info.partner_id
+
+    const domain = [
+      ['event_id', '=', event_id],
+      ['partner_id', '=', partner_id]
+    ]
+    const ids = await this.search(domain, { limit: 1 })
+    if (ids.length) {
+      const record = await this.browse(ids)
+      await record.execute('button_reg_cancel')
+      // return rec.fetch_one()
+      return false
+    } else {
+      return false
+    }
+  }
 
   static async reg_event(event_id) {
     const partner_id = this._odoo.session_info.partner_id
@@ -348,11 +406,16 @@ export class EventRegistration extends Model {
     const domain = [
       ['event_id', '=', event_id],
       ['partner_id', '=', partner_id]
+      // ['state', '!=', 'cancel']
     ]
 
     const ids = await this.search(domain, { limit: 1 })
     if (ids.length) {
       const rec = await this.browse(ids)
+      if (rec.$state === 'cancel') {
+        await rec.execute('do_draft')
+        await rec.execute('confirm_registration')
+      }
       return rec.fetch_one()
     } else {
       const record = await this.browse(null)
