@@ -1,18 +1,10 @@
 <template>
   <div v-if="editable" :class="className" :name="node.attribute.attrs.name">
-    <Select
-      v-model="value2"
-      clearable
-      transfer
-      :placeholder="node.attribute.attrs.placeholder"
-      style="width:200px"
-      @on-open-change="handelOnOpenChange"
-      @on-change="handleOnchange"
-    >
-      <Option v-for="item in options" :value="item[0]" :key="item[0]">{{
-        item[1]
-      }}</Option>
-    </Select>
+    <RadioGroup v-model="value2" @on-change="handleOnchange">
+      <Radio v-for="one in options2" :key="one[0]" :label="one[0]">
+        <span>{{ one[1] }}</span>
+      </Radio>
+    </RadioGroup>
   </div>
 
   <span v-else :class="className" :name="node.attribute.attrs.name">
@@ -38,6 +30,14 @@ export default {
   },
 
   computed: {
+    options2() {
+      //
+      if (this.node.meta.type === 'selection') {
+        return this.node.meta.selection
+      } else {
+        return this.options
+      }
+    },
     value2: {
       get() {
         return this.node.meta.value || ''
@@ -72,24 +72,21 @@ export default {
       return classList.join(' ')
     }
   },
-  async created() {},
+  async created() {
+    // console.log('radio', this.options2)
+  },
 
   async mounted() {
-    //
-
-    // console.log('selection create', this.node)
-
-    // console.log('selection create', this.record._name, this.record)
-    // console.log('selection create', this.record._name, [
-    //   this.record.get_selection
-    // ])
-    if (this.record.get_selection) {
-      const res = await this.record.get_selection(this.node.meta.name, {
-        default: true
-      })
-      // console.log('dropdown', res)
-      this.options = [...res]
-    }
+    // console.log('radio create', this.node)
+    // console.log('radio create', this.record._name, this.record)
+    // console.log('radio create', this.record._name, [this.record.get_selection])
+    // if (this.record.get_selection) {
+    //   const res = await this.record.get_selection(this.node.meta.name, {
+    //     default: true
+    //   })
+    //   // console.log('dropdown', res)
+    //   this.options = [...res]
+    // }
   },
 
   methods: {
@@ -101,13 +98,6 @@ export default {
       this.selectOptionLoading = false
       console.log('getSelectOptions', res)
       this.options = [...res]
-    },
-
-    handelOnOpenChange(value) {
-      // console.log('handelOnOpenChange', p)
-      if (value) {
-        this.getSelectOptions()
-      }
     },
 
     btnClick() {

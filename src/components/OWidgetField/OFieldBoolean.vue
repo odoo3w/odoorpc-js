@@ -2,8 +2,15 @@
   <div :class="className" :name="node.attribute.attrs.name">
     <Checkbox
       v-model="node.meta.value"
+      readonly
       @on-change="handleOnchange(node.meta.value)"
     />
+
+    <!-- <i-switch
+      v-model="node.meta.value"
+      :before-change="handleBeforeChange"
+      @on-change="handleOnchange(node.meta.value)"
+    /> -->
   </div>
 </template>
 
@@ -34,6 +41,21 @@ export default {
     //   }
     //   return classList.join(' ')
     // }
+  },
+
+  methods: {
+    handleBeforeChange(...ppp) {
+      console.log('ppp,', ppp)
+      return new Promise(resolve => {
+        // this.$Modal.confirm({
+        //   title: '切换确认',
+        //   content: '您确认要切换开关状态吗？',
+        //   onOk: () => {
+        //     resolve()
+        //   }
+        // })
+      })
+    }
   }
 }
 </script>

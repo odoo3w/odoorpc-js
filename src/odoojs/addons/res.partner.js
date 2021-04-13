@@ -5,6 +5,9 @@ const kanban = `
   <div name="title">
     <field name="name" />
   </div>
+  <div >
+    <img src="" alt="" ><field name="image_128" /></img>
+  </div>
 </templates >
 `
 
@@ -14,7 +17,7 @@ export class ResPartner extends Model {
   }
 
   get_templates(node, field) {
-    console.log('get_templates', node, field)
+    // console.log('get_templates', node, field)
     if (field === 'child_ids') {
       return kanban
     }

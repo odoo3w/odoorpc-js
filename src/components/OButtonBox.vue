@@ -47,11 +47,11 @@ export default {
   },
 
   async created() {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-    console.log('OButtonBox, xxxxxx:', deep_copy(this.node))
-    console.log(this.record)
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OButtonBox, xxxxxx:', deep_copy(this.node))
+    // console.log(this.record)
   },
   methods: {
     //

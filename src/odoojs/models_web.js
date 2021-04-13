@@ -2,7 +2,7 @@ import { Model as BaseModel } from './models_base.js'
 
 import xml2json from './xml2json.js'
 
-import QWEB from './qweb'
+// import QWEB from './qweb'
 
 const PAGE_SIZE = 10
 
@@ -211,12 +211,12 @@ export class Model extends BaseModel {
     }
 
     if (node.tagName === 'templates') {
-      console.log('is templates:', node)
+      // console.log('is templates:', node)
       // const qweb = new QWEB(this)
       // const node2 = qweb.toNode(node)
       const node3 = this._get_templates(node)
 
-      console.log('temp, return:', node3)
+      // console.log('temp, return:', node3)
 
       // const node2 = node
 
@@ -295,6 +295,58 @@ export class Model extends BaseModel {
     }
   }
 
+  eval_safe_python(attr, items) {
+    // console.log('eval_safe_python', attr)
+    // options: "{'no_open':True,'no_create': True}"
+    // context: "{'default_is_company': True, 'show_vat': True}"
+    // domain: "[('is_company', '=', True)]"
+    const _eval_safe_python_one = value_str => {
+      // const to_replaced = { False: 'false', True: 'true' }
+      const to_replaced = {
+        '\\(': '[',
+        '\\)': ']',
+        False: 'false',
+        True: 'true'
+      }
+
+      let value_str2 = value_str
+      Object.keys(to_replaced).forEach(item => {
+        value_str2 = value_str2.replace(
+          new RegExp(item, 'g'),
+          to_replaced[item]
+        )
+      })
+
+      const fn_str = []
+      fn_str.push('() => {')
+      fn_str.push(`return ${value_str2}`)
+      fn_str.push('}')
+
+      const fn_str2 = fn_str.join('\n')
+      // console.log(fn_str2)
+      const fn = eval(fn_str2)
+      const ret = fn()
+      // console.log(ret)
+
+      return ret
+    }
+
+    // const items = ['options']
+
+    const result = items.reduce((acc, cur) => {
+      const value = attr[cur]
+      if (value) {
+        acc = {
+          ...acc,
+          [`${cur}_old`]: value,
+          [cur]: _eval_safe_python_one(value)
+        }
+      }
+      return acc
+    }, {})
+
+    return result
+  }
   // ok
   _view_node_field(node) {
     const meta = this._columns[node.attr.name]
@@ -323,33 +375,6 @@ export class Model extends BaseModel {
 
     const meta_data = get_meta_data()
 
-    const eval_safe_options = options => {
-      // "{'no_open':True,'no_create': True}"
-      if (!node.attr.options || typeof node.attr.options !== 'string') {
-        return null
-      }
-
-      const to_replaced = { False: 'false', True: 'true' }
-
-      let options2 = options
-      Object.keys(to_replaced).forEach(item => {
-        options2 = options2.replace(new RegExp(item, 'g'), to_replaced[item])
-      })
-
-      const fn_str = []
-      fn_str.push('() => {')
-      fn_str.push(`return ${options2}`)
-      fn_str.push('}')
-
-      const fn_str2 = fn_str.join('\n')
-      // console.log(fn_str2)
-      const fn = eval(fn_str2)
-      const ret = fn()
-      // console.log(ret)
-
-      return ret
-    }
-
     return {
       name: 'field',
       meta: {
@@ -367,7 +392,11 @@ export class Model extends BaseModel {
           // widget
           // options
           ...get_attrs(node.attr),
-          options: eval_safe_options(node.attr.options),
+          // options_old: node.attr.options,
+          ...this.eval_safe_python(node.attr, ['options']),
+
+          // options: eval_safe_python(node.attr.options),
+
           can_create: node.attr.can_create
             ? JSON.parse(node.attr.can_create)
             : null,
@@ -382,8 +411,11 @@ export class Model extends BaseModel {
 
   view_node() {
     const arch1 = this._view_info.arch
+    // console.log('this._view_info 1', deep_copy(this._view_info))
+    if (!arch1) {
+      return {}
+    }
     const node = xml2json.toJSON(arch1)
-    console.log('this._view_info 1', deep_copy(this._view_info))
     // console.log('this._view_info arch11', arch1)
     console.log('view_node 1', deep_copy(node))
     const node_form = this._view_node_default_html(node)
@@ -393,6 +425,52 @@ export class Model extends BaseModel {
     console.log('node_form', node_form2)
 
     return { ...node_form }
+  }
+
+  node_with_data(node_in, data) {
+    const is_node = node => {
+      if (typeof node !== 'object') {
+        return false
+      }
+      if (Array.isArray(node)) {
+        return false
+      }
+      if (typeof node === 'boolean') {
+        return false
+      }
+
+      return true
+    }
+
+    const process = node => {
+      const children = (node.children || []).map(item => process(item))
+      if (!is_node) {
+        return node
+      }
+
+      const node2 = {
+        ...node,
+        ...(children.length ? { children: children } : {})
+      }
+
+      if (node.tagName !== 'field') {
+        return node2
+      }
+
+      const rec = this.getById(data.id)
+      return {
+        ...node2,
+        meta: {
+          ...node.meta,
+          value: rec._columns[node.meta.name].value(rec),
+          valueName: rec._columns[node.meta.name].valueName(rec)
+        }
+      }
+    }
+
+    const node2 = process(node_in)
+
+    return node2
   }
 
   compute_domain(domain_in) {
@@ -584,7 +662,8 @@ export class Model extends BaseModel {
     return ret2
   }
 
-  async get_selection(field, payload) {
+  get_selection(field, payload) {
+    // console.log('get_selection', field, payload)
     const meta = this._columns[field]
     return meta.get_selection(this, payload)
   }

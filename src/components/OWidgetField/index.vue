@@ -12,10 +12,19 @@
     :node="node"
   />
 
-  <!-- <OWidgetMany2manyTags
-    v-else-if="node.attribute.attrs.widget === 'many2many_tags'"
+  <OWidgetRadio
+    v-else-if="node.attribute.attrs.widget === 'radio'"
+    :editable="editable"
+    :record="record"
     :node="node"
-  /> -->
+  />
+
+  <OWidgetMany2manyTags
+    v-else-if="node.attribute.attrs.widget === 'many2many_tags'"
+    :editable="editable"
+    :record="record"
+    :node="node"
+  />
 
   <!-- <OWidgetEmail
     v-else-if="node.attribute.attrs.widget === 'email'"
@@ -130,6 +139,7 @@ import OFieldMixin from './OFieldMixin'
 import OWidgetStatinfo from './OWidgetStatinfo'
 import OWidgetMonetary from './OWidgetMonetary'
 import OWidgetStatusbar from './OWidgetStatusbar'
+import OWidgetRadio from './OWidgetRadio'
 
 import OFieldBoolean from './OFieldBoolean'
 
@@ -137,6 +147,9 @@ import OFieldSelection from './OFieldSelection'
 import OFieldMany2one from './OFieldMany2one'
 
 import OFieldMany2many from './OFieldMany2many'
+
+import OWidgetMany2manyTags from './OWidgetMany2manyTags'
+
 // import OFieldOne2many from './OFieldOne2many'
 
 import OFieldChar from './OFieldChar'
@@ -150,10 +163,12 @@ export default {
     OWidgetStatinfo,
     OWidgetMonetary,
     OWidgetStatusbar,
+    OWidgetRadio,
     OFieldBoolean,
     OFieldSelection,
     OFieldMany2one,
     OFieldMany2many,
+    OWidgetMany2manyTags,
     OFieldOne2many: () => import('./OFieldOne2many'),
     OFieldChar,
     OFieldInteger

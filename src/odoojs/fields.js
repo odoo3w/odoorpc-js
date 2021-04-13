@@ -21,8 +21,6 @@ import { parseTime } from './utils.js'
 
 import { is_virtual_id, Model } from './models.js'
 
-import xml2json from './xml2json.js'
-
 const image2url = (baseURL, model, res_id, field) => {
   // const baseURL = process.env.VUE_APP_BASE_API
   const imgUrl = '/web/image'
@@ -126,10 +124,11 @@ const merge_tuples = (old_tuples, new_tuples) => {
 // 这是  odoo 中 仅有的 string domain 中需要的 变量
 // 如果 是扩展模块, 有额外的 需要, 则 该处代码需要改为可配置的
 // TBD 2021-3-10
-const Globals_Dict = ['company_id', 'country_id', 'product_uom_category_id']
+// const Globals_Dict = ['company_id', 'country_id', 'product_uom_category_id']
 
 const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
   const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
+  to_replaced['function'] = 'function2'
 
   let domain2 = domain
   Object.keys(to_replaced).forEach(item => {
@@ -141,14 +140,23 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
   const fn_str = []
   fn_str.push('() => {')
   Object.keys(kwargs).forEach(item => {
-    fn_str.push(`const ${item} = ${kwargs[item]}`)
+    const vals = kwargs[item]
+    const is_str = typeof vals === 'string'
+    const is_arr = Array.isArray(vals)
+    const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
+    // console.log('fn eval 1:', item, vals, vals2)
+    const item2 = item === 'function' ? 'function2' : item
+    const str_to_push = `const ${item2} = ${vals2}`
+    // console.log('fn eval 1:', item, vals, vals2, str_to_push)
+    fn_str.push(str_to_push)
   })
   fn_str.push(`return ${domain2}`)
   fn_str.push('}')
 
   const fn_str2 = fn_str.join('\n')
-  // console.log(fn_str2)
+  // console.log('fn eval:', fn_str2)
   const fn = eval(fn_str2)
+  // console.log('fn eval fn::', fn)
   const ret = fn()
   // console.log(ret)
 
@@ -342,6 +350,10 @@ class Binary extends BaseField {
     // 给 instance  fetch_one 使用
     return this.getValue(instance)
   }
+  valueName(instance) {
+    // 给 instance  fetch_one 使用
+    return this.getValue(instance)
+  }
 
   getValue(instance) {
     const url = image2url(
@@ -497,6 +509,14 @@ class _Relational extends BaseField {
     }
   }
 
+  _get_env(instance) {
+    if (!this.context) {
+      return instance.env
+    }
+    const context = { ...instance.env.context, ...this.context }
+    return instance.env.copy(context)
+  }
+
   async new(/*instance*/) {
     // only for o2m
     // console.log('new', instance._name, instance.ids, this.name)
@@ -543,22 +563,34 @@ class Many2many extends _Relational {
     return ids
   }
 
-  // 返回 异步 对象
+  // 返回 同步对象
   // TBD
-  async getValue(instance) {
-    const ids = this._getValue(instance)
-    const Relation = instance.env.model(this.relation)
+  getValue(instance) {
+    // console.log('m2m', this.name)
+    // const Relation = instance.env.model(this.relation)
 
-    const get_env = () => {
-      if (!this.context) {
-        return instance.env
-      }
-      const context = { ...instance.env.context, ...this.context }
-      return instance.env.copy(context)
-    }
+    const Relation = instance.env.model(this.relation, 'many2many', {
+      isSync: true,
+      view_info: { fields: {} }
+    })
+
+    const env = this._get_env(instance)
+    const ids = this._getValue(instance)
 
     const kwargs = { from_record: [instance, this] }
-    return Relation._browse(get_env(), ids, kwargs)
+    const relation = Relation._browse_relation_base(env, ids, kwargs)
+    return relation
+  }
+
+  // 返回 异步 对象
+  async asyncGetValue(instance) {
+    // console.log('asyncGetValue')
+    const Relation = instance.env.model(this.relation)
+    const env = this._get_env(instance)
+    const ids = this._getValue(instance)
+    const kwargs = { from_record: [instance, this] }
+    const relation = await Relation._browse_relation_m2m_async(env, ids, kwargs)
+    return relation
   }
 
   setValue(instance, value) {
@@ -584,7 +616,7 @@ class Many2one extends _Relational {
   }
 
   // ok call by get_selection
-  async _get_domain(instance) {
+  async _get_domain(instance, value_str) {
     /*
     // # 仅被 get_selection 使用
 
@@ -618,7 +650,13 @@ class Many2one extends _Relational {
     }
 
     const _get_values_for_domain = () => {
-      const globals_fields = Globals_Dict
+      // const globals_fields = Globals_Dict
+
+      // console.log('globals_fields', instance.fetch_one())
+      // // console.log('globals_fields', instance.field_onchange)
+      // const values2 = instance.fetch_one()
+
+      const globals_fields = Object.keys(instance._columns)
 
       const values = globals_fields.reduce((acc, col) => {
         const meta = instance._columns[col]
@@ -647,11 +685,12 @@ class Many2one extends _Relational {
       return model_id
     }
 
-    const domain = this.domain || false
+    const domain = value_str || false
 
     if (domain && typeof domain === 'string') {
       // console.log('domain: ', this.name, domain)
       const values = _get_values_for_domain()
+      // console.log('domain: ', values)
       const globals_dict = {
         res_model_id: await _get_res_model_id(),
         ...values
@@ -665,17 +704,8 @@ class Many2one extends _Relational {
     }
   }
 
-  async get_selection(instance, kwargs = {}) {
-    //
-    // console.log(' get selection,', instance._name, instance.id, this.name)
-
-    const {
-      default: default2,
-      name = '',
-      operator = 'ilike',
-      limit = 8
-    } = kwargs
-
+  get_selection(instance, kwargs = {}) {
+    const { default: default2 } = kwargs
     if (default2) {
       // console.log(instance._values_relation, this.getValue(instance))
       const relation = this.getValue(instance)
@@ -683,16 +713,29 @@ class Many2one extends _Relational {
         return [[relation.id, relation.$display_name]]
       }
       return []
+    } else {
+      return this.get_selection_async(instance, kwargs)
     }
+  }
 
-    const domain = await this._get_domain(instance)
+  async get_selection_async(instance, kwargs = {}) {
+    // console.log(' get selection,', instance._name, instance.id, this.name)
+    // console.log('get_selection', this.domain)
+    const { name = '', operator = 'ilike', limit = 8, domain, context } = kwargs
+
+    const domain1 = await this._get_domain(instance, this.domain)
+    const domain2 = await this._get_domain(instance, domain)
+    const context2 = await this._get_domain(instance, context)
+
+    const args = [...(domain1 || []), ...(domain2 || [])]
 
     const relation = this.relation
     // ? TBD, 是否 在 context 中, 有 string domain 需要的 values?
     // const context = this.context
+    const kwargs2 = { args, name, operator, limit, context: context2 }
     const selection = await instance.env
       .model(relation)
-      .execute_kw('name_search', [], { args: domain, name, operator, limit })
+      .execute_kw('name_search', [], kwargs2)
 
     //
     // console.log(' get selection,2 ', selection)
@@ -725,15 +768,8 @@ class Many2one extends _Relational {
   async asyncGetValue(instance) {
     const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
-
-    const get_env = () => {
-      if (!this.context) {
-        return instance.env
-      }
-      const context = { ...instance.env.context, ...this.context }
-      return instance.env.copy(context)
-    }
-    return Relation._browse_native(get_env(), ids)
+    const env = this._get_env(instance)
+    return Relation._browse_native(env, ids)
   }
 
   // 返回 同步对象
@@ -748,16 +784,9 @@ class Many2one extends _Relational {
       }
     })
 
-    const get_env = () => {
-      if (!this.context) {
-        return instance.env
-      }
-      const context = { ...instance.env.context, ...this.context }
-      return instance.env.copy(context)
-    }
-
+    const env = this._get_env(instance)
     const kwargs = { from_record: [instance, this] }
-    return Relation._browse_relation_m2o(get_env(), id_ || false, kwargs)
+    return Relation._browse_relation_m2o(env, id_ || false, kwargs)
   }
 
   _init_values(instance, instance_id, value) {
@@ -958,14 +987,6 @@ class One2many extends _Relational {
     } else {
       return instance.env.model(this.relation)
     }
-  }
-
-  _get_env(instance) {
-    if (!this.context) {
-      return instance.env
-    }
-    const context = { ...instance.env.context, ...this.context }
-    return instance.env.copy(context)
   }
 
   // 返回 异步 对象

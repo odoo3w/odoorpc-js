@@ -1,6 +1,7 @@
 export default {
   props: {
     editable: { type: Boolean, default: undefined },
+
     record: {
       type: Object,
       default: () => {

@@ -7,7 +7,7 @@ export const test_api = async () => {
   // await test_get_sportType()
   // await test_get_bookvenue()
   // await test_get_presetData()
-  await test_reg_event()
+  // await test_reg_event()
   // await test_search_event_me()
   // await test_reg_event_cancel()
   // test_register_mobile()
@@ -65,6 +65,13 @@ const search_event_me = async () => {
   const Model = api.env.model(model)
   const result = await Model.search_me()
   return result
+}
+
+const reg_event_cancel = async event_id => {
+  const model = 'event.event'
+  const Model = api.env.model(model)
+  const event = await Model.cancel_me(event_id)
+  return event
 }
 
 const test_get_sportType = async () => {
@@ -238,13 +245,6 @@ const test_reg_event = async () => {
 const test_search_event_me = async () => {
   const result = await search_event_me()
   console.log(result)
-}
-
-const reg_event_cancel = async event_id => {
-  const model = 'event.event'
-  const Model = api.env.model(model)
-  const event = await Model.cancel_me(event_id)
-  return event
 }
 
 const test_reg_event_cancel = async () => {

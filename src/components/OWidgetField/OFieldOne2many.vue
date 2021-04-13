@@ -49,13 +49,13 @@ export default {
     // console.log(this.record)
 
     const o2m_record = await this.record[`$$${this.node.meta.name}`]
-    console.log('O2m, ', this.node.meta.name, o2m_record._view_type)
+    // console.log('O2m, ', this.node.meta.name, o2m_record._view_type)
 
     this.o2m_view_type = o2m_record._view_type
     this.o2m_record = o2m_record
     this.keyIndex = this.keyIndex + 1
 
-    console.log('o2m,', this.o2m_view_type)
+    // console.log('o2m,', this.o2m_view_type)
   },
   methods: {}
 }

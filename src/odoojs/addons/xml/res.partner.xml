@@ -5,6 +5,11 @@
       <div name="title">
         <field name="name" />
       </div>
+      <div >
+        <img src="" alt="">
+          <field name="image_128" />
+        </img>
+      </div>
     </templates >
   </data>
 </odoo>

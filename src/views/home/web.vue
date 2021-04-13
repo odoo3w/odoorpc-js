@@ -1,13 +1,23 @@
 <template>
   <div>
     <h1>{{ node.meta.string }}</h1>
+    <Divider />
+    <span v-if="['tree', 'kanban'].includes(view_type)">
+      <Button type="primary" @click="handleOnCreate">创建</Button>
+      <Button @click="handleOnImport">导入</Button>
+    </span>
+    <span v-if="['form'].includes(view_type)">
+      <Button type="primary" @click="handleOnEdit">编辑</Button>
+      <Button @click="handleOnCreate">创建</Button>
+    </span>
 
+    <Divider />
     <OView
       :isMain="true"
       :record="record"
       :view_type="view_type"
       :node="node"
-      :editable="false"
+      :editable="editable"
       :key="keyIndex"
     />
   </div>
@@ -25,6 +35,7 @@ export default {
   data() {
     return {
       api,
+      editable: false,
       view_type: null,
       keyIndex: 0,
       node: {
@@ -71,8 +82,8 @@ export default {
         const domain = []
         const records = await Model.pageSearch(domain, { order: 'id' })
         const page0 = await records.pageGoto(0)
-        // const node = page0.view_node()
-        // this.node = node
+        const node = page0.view_node()
+        this.node = node
         this.view_type = view_type
         this.record = page0
       }
@@ -81,8 +92,8 @@ export default {
         const domain = []
         const records = await Model.pageSearch(domain, { order: 'id' })
         const page0 = await records.pageGoto(0)
-        // const node = page0.view_node()
-        // this.node = node
+        const node = page0.view_node()
+        this.node = node
 
         this.view_type = view_type
         this.record = page0
@@ -91,8 +102,8 @@ export default {
       const form_init = async () => {
         const rid = Number(query.id)
         const record = await Model.browse(rid)
-        // const node = record.view_node()
-        // this.node = node
+        const node = record.view_node()
+        this.node = node
         this.view_type = view_type
         this.record = record
       }
@@ -107,6 +118,22 @@ export default {
         //
       }
       this.keyIndex = this.keyIndex + 1
+    },
+
+    handleOnCreate() {
+      console.log(' handleOnCreate ')
+    },
+
+    handleOnEdit() {
+      console.log(' handleOnEdit ')
+      this.editable = true
+      this.keyIndex = this.keyIndex + 1
+    },
+
+    handleOnImport() {
+      //
+
+      console.log(' handleOnImport ')
     },
 
     async page_next() {

@@ -10,12 +10,12 @@
   <OViewKanban
     v-else-if="view_type === 'kanban'"
     :record="record"
-    :editable="false"
+    :editable="editable"
   />
   <OViewForm
     v-else-if="view_type === 'form'"
     :record="record"
-    :editable="false"
+    :editable="editable"
   />
 
   <span v-else>
@@ -35,10 +35,9 @@ export default {
 
   props: {
     isMain: { type: Boolean, default: undefined },
-
     view_type: { type: String, default: '' },
-
     editable: { type: Boolean, default: undefined },
+    keyIndex: { type: Number, default: 0 },
 
     record: {
       type: Object,

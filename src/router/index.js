@@ -43,14 +43,14 @@ const homeRoutes = [
         name: 'test-api'
       },
       {
-        path: '/test/list',
-        component: () => import('@/views/test/list'),
-        name: 'test-list'
+        path: '/test/select',
+        component: () => import('@/views/test/select'),
+        name: 'test-select'
       },
       {
-        path: '/test/view',
-        component: () => import('@/views/test/view'),
-        name: 'test-view'
+        path: '/test/select2',
+        component: () => import('@/views/home/index2'),
+        name: 'test-select2'
       },
       {
         path: '/test/form',

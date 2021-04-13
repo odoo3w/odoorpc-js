@@ -2,9 +2,9 @@
 // 1 使用者: 如果本地可能有修改 那么 应该复制一份, 而不是直接使用 旧的
 // 2 授权者: 把一个 Array 给了别人, 如果不想被修改, 那么给一个副本, 不要给原件
 
-const deep_copy = node => {
-  return JSON.parse(JSON.stringify(node))
-}
+// const deep_copy = node => {
+//   return JSON.parse(JSON.stringify(node))
+// }
 
 // NORMALIZED_TYPES = (int, str, bytes)
 
@@ -288,6 +288,35 @@ export class Model extends BaseModel {
     field.remove(parent, record)
   }
 
+  static async _browse_relation_base_async(env, ids, payload = {}) {
+    await this.awaiter
+    const { from_record } = payload
+    const [parent, field] = from_record
+    const records = new this()
+    await records.awaiter
+    records._env_local = env
+
+    records._ids = _normalize_ids(ids)
+
+    const storage = parent._values_relation[field.name]
+    records._values = storage._values
+    records._values_to_write = storage._values_to_write
+    records._values_relation = storage._values_relation
+
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._init_storage(records)
+    )
+
+    records._from_record = from_record
+    return records
+  }
+
+  static async _browse_relation_m2m_async(env, ids, payload = {}) {
+    const records = await this._browse_relation_base_async(env, ids, payload)
+    await records._init_values()
+    return records
+  }
+
   static async _browse_relation_o2m_async(env, ids, payload = {}) {
     const records = this._browse_relation_base(env, ids, payload)
     await records._init_values()
@@ -516,15 +545,14 @@ export class Model extends BaseModel {
     const { partial_ids = [], context = this.env.context } = paylaod
 
     const columns = this.constructor._columns
-    const basic_fields = Object.keys(columns)
-    // .reduce((acc, field_name) => {
-    //   // 应该特殊处理 二进制字段
-    //   const Field = columns[field_name]
-    //   if (Field.type !== 'binary') {
-    //     acc = [...acc, field_name]
-    //   }
-    //   return acc
-    // }, [])
+    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
+      // 应该特殊处理 二进制字段
+      const Field = columns[field_name]
+      if (Field.type !== 'binary') {
+        acc = [...acc, field_name]
+      }
+      return acc
+    }, [])
 
     const ids = partial_ids.length ? partial_ids : this.ids
 

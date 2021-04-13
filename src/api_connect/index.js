@@ -12,8 +12,8 @@ const AddonsModels = AddonsFiles.keys().reduce((models, modulePath) => {
   return models
 }, {})
 
-const addons = { ...AddonsModels }
-// const addons = {}
+// const addons = { ...AddonsModels }
+const addons = {}
 
 // import Event from './addons/event.js'
 // import Ptn from './addons/res.partner.js'

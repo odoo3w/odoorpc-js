@@ -42,9 +42,10 @@ export default {
       //       item.attribute.class === 'oe_title'
       //       item.tagName === 'notebook'
 
-      return this.node.children.filter(item => {
-        return item.tagName === 'notebook'
-      })
+      return this.node.children
+      // .filter(item => {
+      //   return item.tagName === 'notebook'
+      // })
     }
   },
 

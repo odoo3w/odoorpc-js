@@ -305,11 +305,11 @@ export class Environment {
           }, {})
 
           // this is a bug in odoorpc.  'display_name' field is ok,
-          // if (!cols.name) {
-          //   const field_data = { type: 'text', string: 'Name', readonly: true }
-          //   const Field = generate_field('name', field_data)
-          //   cols.name = Field
-          // }
+          if (!cols.display_name) {
+            const field_data = { type: 'text', string: 'Name', readonly: true }
+            const Field = generate_field('display_name', field_data)
+            cols.display_name = Field
+          }
           return cols
         }
 

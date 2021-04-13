@@ -33,6 +33,19 @@
       </Option>
     </Select>
 
+    <!-- @on-ok="searchMoreOk" -->
+    <!-- @on-cancel="searchMoreCancel" -->
+
+    <Modal v-model="showSearchMore" title="Common Modal dialog box title">
+      <div slot="footer">
+        <Button @click="searchMoreCancel">取消</Button>
+      </div>
+
+      <p>Content of dialog</p>
+      <p>Content of dialog</p>
+      <p>Content of dialog</p>
+    </Modal>
+
     <!-- 查看 编辑 m2o 字段的 按钮 -->
     <!-- class="fa fa-external-link btn btn-secondary o_external_button" -->
     <!-- <button
@@ -82,12 +95,23 @@ export default {
     return {
       options: [],
       selectOptionLoading: false,
-      query: ''
+      query: '',
+
+      showSearchMore: false
     }
   },
 
   computed: {
+    options_default() {
+      return this.record.get_selection(this.node.meta.name, {
+        default: true
+      })
+    },
+
     options2() {
+      if (this.options.length === 0) {
+        return this.options_default
+      }
       if (this.options.length < 8) {
         return this.options
       } else {
@@ -148,22 +172,11 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('m2o, xxxxxx:', deep_copy(this.node))
-    // // console.log('OWidgetField, xxxxxx:', this.editable)
+    // console.log('m2o, xxxxxx:', this.node.meta.name, deep_copy(this.node))
+    // console.log('OWidgetField, xxxxxx:', this.editable)
   },
 
-  async mounted() {
-    //
-    // console.log('m2o create', this.record._name, this.record)
-    // console.log('m2o create', this.record._name, [this.record.get_selection])
-    if (this.record.get_selection) {
-      const res = await this.record.get_selection(this.node.meta.name, {
-        default: true
-      })
-      // console.log('dropdown', res)
-      this.options = [...res]
-    }
-  },
+  async mounted() {},
 
   methods: {
     async remoteMethod1(query) {
@@ -173,28 +186,47 @@ export default {
 
     async searchMore() {
       console.log('searchMore')
+      this.showSearchMore = true
+    },
+
+    searchMoreOk() {
+      //
+    },
+
+    searchMoreCancel() {
+      console.log('cance:')
+      this.showSearchMore = false
     },
 
     async getSelectOptions(query = '') {
+      // console.log('getSelectOptions', query, this.node)
+      const domain = this.node.attribute.attrs.domain
+      const context = this.node.attribute.attrs.context
+      // console.log('getSelectOptions', query, domain, context)
+
       this.selectOptionLoading = true
       const res = await this.record.get_selection(this.node.meta.name, {
-        name: query
+        name: query,
+        domain,
+        context
       })
       this.selectOptionLoading = false
-      console.log('getSelectOptions', res)
+      // console.log('getSelectOptions', res)
       this.options = [...res]
     },
 
     handleOnchange(value) {
-      console.log('handleOnchange', value, this.record, this.node)
-      if (value !== VALUE_FOR_MORE) {
-        const feild = `$${this.node.meta.name}`
-        this.record[feild] = value
+      if (value !== undefined) {
+        if (value !== VALUE_FOR_MORE) {
+          const feild = `$${this.node.meta.name}`
+          console.log('handleOnchange, to set: ', value, this.record, this.node)
+          this.record[feild] = value
+        }
       }
     },
 
     handelOnOpenChange(value) {
-      // console.log('handelOnOpenChange', p)
+      console.log('handelOnOpenChange', value)
       if (value) {
         this.getSelectOptions()
       }

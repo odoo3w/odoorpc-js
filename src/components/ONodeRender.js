@@ -3,6 +3,7 @@ export default {
   components: {
     OWidgetField: () => import('@/components/OWidgetField'),
     OButton: () => import('@/components/OButton'),
+    OImg: () => import('@/components/OImg'),
     OGroup: () => import('@/components/OGroup')
   },
 
@@ -58,6 +59,7 @@ export default {
       const record = this.record
       const node = this.node
       const editable = this.editable
+
       // const deep_copy = node => {
       //   return JSON.parse(JSON.stringify(node))
       // }
@@ -107,6 +109,12 @@ export default {
 
       if (node.tagName === 'button') {
         return createElement('OButton', {
+          props: { record, parent, node, editable }
+        })
+      }
+
+      if (node.tagName === 'img') {
+        return createElement('OImg', {
           props: { record, parent, node, editable }
         })
       }

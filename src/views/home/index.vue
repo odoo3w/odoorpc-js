@@ -19,11 +19,11 @@
         test Api
       </button>
 
-      <button @click="toTestList">
-        test list
+      <button @click="toTestSelect">
+        test Select
       </button>
-      <button @click="toTestView">
-        test view
+      <button @click="toTestSelect2">
+        test toTestSelect2
       </button>
       <button @click="toTestForm">
         test form
@@ -63,6 +63,8 @@ export default {
   },
 
   methods: {
+    //
+
     async logout() {
       //
       console.log(' logout')
@@ -76,12 +78,12 @@ export default {
       this.$router.replace({ path: '/test/api2' })
     },
 
-    toTestList() {
-      this.$router.replace({ path: '/test/list' })
+    toTestSelect() {
+      this.$router.replace({ path: '/test/select' })
     },
 
-    toTestView() {
-      this.$router.replace({ path: '/test/view' })
+    toTestSelect2() {
+      this.$router.replace({ path: '/test/select2' })
     },
 
     toTestForm() {

@@ -22,6 +22,7 @@
         />
 
         <ONode
+          a-test-input
           :record="record"
           :node="row.children[row.children.length - 1]"
           :editable="editable"
