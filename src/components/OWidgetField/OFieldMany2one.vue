@@ -1,42 +1,34 @@
 <template>
-  <!-- 
-    过滤方法, 差点意思
-    1 清空时, 该触发, 不触发
-    2 选中时, 不该触发, 触发
-          filterable
-      :remote-method="remoteMethod1"
-      :loading="selectOptionLoading"
-
-   -->
   <div v-if="editable" :class="className" :name="node.attribute.attrs.name">
-    <Select
+    <!-- <div>currentValue: {{ value }},{{ label }}</div> -->
+
+    <OM2oSelect
       v-model="value2"
-      clearable
-      transfer
-      :placeholder="node.attribute.attrs.placeholder"
+      ref="select"
+      :label.sync="label"
+      :loading="loading"
+      :remote-method="remoteMethod"
+      placeholder="input here"
       style="width:200px"
-      @on-open-change="handelOnOpenChange"
       @on-change="handleOnchange"
     >
-      <Option v-for="item in options2" :value="item[0]" :key="item[0]">{{
-        item[1]
-      }}</Option>
-      <Option
-        v-if="options.length > options2.length"
-        :value="value4more"
-        :label="label4more"
-        key="all"
-      >
-        <p @click="searchMore">
-          {{ '搜索更多...' }}
-        </p>
-      </Option>
-    </Select>
+      <span v-show="!loading">
+        <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
+          op[1]
+        }}</Option>
+        <div v-show="options.length === 0">{{ '无...' }}</div>
 
-    <!-- @on-ok="searchMoreOk" -->
-    <!-- @on-cancel="searchMoreCancel" -->
+        <a
+          v-if="showSearchMore"
+          href="javascript:void(0)"
+          name=""
+          @click="searchMore"
+          >{{ '搜索更多...' }}</a
+        >
+      </span>
+    </OM2oSelect>
 
-    <Modal v-model="showSearchMore" title="Common Modal dialog box title">
+    <!-- <Modal v-model="showSearchMore" title="Common Modal dialog box title">
       <div slot="footer">
         <Button @click="searchMoreCancel">取消</Button>
       </div>
@@ -44,7 +36,7 @@
       <p>Content of dialog</p>
       <p>Content of dialog</p>
       <p>Content of dialog</p>
-    </Modal>
+    </Modal> -->
 
     <!-- 查看 编辑 m2o 字段的 按钮 -->
     <!-- class="fa fa-external-link btn btn-secondary o_external_button" -->
@@ -84,62 +76,33 @@
 <script>
 import OFieldMixin from './OFieldMixin'
 
-const VALUE_FOR_MORE = 999999
+import OM2oSelect from '@/components/OWidgetField/OM2oSelect'
+
 export default {
   name: 'OFieldMany2one',
-
+  components: { OM2oSelect },
   mixins: [OFieldMixin],
   props: {},
 
   data() {
     return {
-      options: [],
-      selectOptionLoading: false,
-      query: '',
+      value: 0,
+      label: '',
 
-      showSearchMore: false
+      showSearchMore: false,
+      options: [],
+
+      loading: false
     }
   },
 
   computed: {
-    options_default() {
-      return this.record.get_selection(this.node.meta.name, {
-        default: true
-      })
-    },
-
-    options2() {
-      if (this.options.length === 0) {
-        return this.options_default
-      }
-      if (this.options.length < 8) {
-        return this.options
-      } else {
-        return this.options.slice(0, 7)
-      }
-    },
-
-    value4more() {
-      return VALUE_FOR_MORE
-    },
-
-    label4more() {
-      const values = this.options.filter(item => item[0] === this.value2)
-      if (values.length) {
-        return values[0][1]
-      } else {
-        return '...'
-      }
-    },
-
     value2: {
       get() {
         return this.node.meta.value || 0
       },
       set(value) {
-        if (value !== VALUE_FOR_MORE) {
-          this.node.meta.value = value
-        }
+        this.node.meta.value = value
       }
     },
 
@@ -176,61 +139,87 @@ export default {
     // console.log('OWidgetField, xxxxxx:', this.editable)
   },
 
-  async mounted() {},
+  async mounted() {
+    await this.init()
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('m2o, xxxxxx:', this.node.meta.name, deep_copy(this.node))
+    // console.log(
+    //   'm2o, xxxxxx:',
+    //   this.node.meta.name,
+    //   deep_copy(this.options_default)
+    // )
+  },
 
   methods: {
-    async remoteMethod1(query) {
-      console.log('remoteMethod1', query)
-      this.getSelectOptions(query)
+    async init() {
+      this.value = this.node.meta.value || 0
+      this.label = this.node.meta.valueName || ''
+      // this.$refs.select.query = this.label
     },
 
-    async searchMore() {
-      console.log('searchMore')
-      this.showSearchMore = true
-    },
-
-    searchMoreOk() {
-      //
-    },
-
-    searchMoreCancel() {
-      console.log('cance:')
-      this.showSearchMore = false
-    },
-
-    async getSelectOptions(query = '') {
-      // console.log('getSelectOptions', query, this.node)
+    async _getSelectOptions(query = '') {
       const domain = this.node.attribute.attrs.domain
       const context = this.node.attribute.attrs.context
       // console.log('getSelectOptions', query, domain, context)
-
-      this.selectOptionLoading = true
-      const res = await this.record.get_selection(this.node.meta.name, {
+      // this.selectOptionLoading = true
+      if (!this.editable || !this.record.get_selection) {
+        return []
+      }
+      const options = await this.record.get_selection(this.node.meta.name, {
         name: query,
         domain,
         context
       })
-      this.selectOptionLoading = false
-      // console.log('getSelectOptions', res)
-      this.options = [...res]
+
+      const options1 = options.slice(0, 7)
+      const show_search_more = options.length > options1.length
+      this.showSearchMore = show_search_more
+
+      return options1
     },
 
-    handleOnchange(value) {
-      if (value !== undefined) {
-        if (value !== VALUE_FOR_MORE) {
-          const feild = `$${this.node.meta.name}`
-          console.log('handleOnchange, to set: ', value, this.record, this.node)
-          this.record[feild] = value
-        }
-      }
+    async remoteMethod(query) {
+      this.loading = true
+
+      // console.log('remoteMethod', JSON.stringify(query))
+      const options = await this._getSelectOptions(query)
+      this.options = [...options]
+      this.loading = false
     },
 
-    handelOnOpenChange(value) {
-      console.log('handelOnOpenChange', value)
-      if (value) {
-        this.getSelectOptions()
-      }
+    async searchMore() {
+      console.log('searchMore')
+      //   this.showSearchMore = true
     },
+
+    // onChange(value) {
+    //   console.log('onChange,', value)
+    //   // this.$emit('on-change', value)
+    // },
+
+    // handleOnchange(value) {
+    //   console.log(
+    //     ' handleOnchange',
+    //     this.node.meta.name,
+    //     value,
+    //     typeof value,
+    //     this.record,
+    //     this.node
+    //   )
+    //   const field = `$${this.node.meta.name}`
+    //   this.record[field] = value
+    // },
+
+    // searchMoreOk() {
+    //   //
+    // },
+
+    // searchMoreCancel() {
+    //   console.log('cance:')
+    //   this.showSearchMore = false
+    // },
 
     btnClick() {
       console.log('btnClick', this.node.meta)

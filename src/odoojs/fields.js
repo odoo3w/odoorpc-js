@@ -691,8 +691,10 @@ class Many2one extends _Relational {
       // console.log('domain: ', this.name, domain)
       const values = _get_values_for_domain()
       // console.log('domain: ', values)
+
       const globals_dict = {
         res_model_id: await _get_res_model_id(),
+        allowed_company_ids: instance._odoo.allowed_company_ids,
         ...values
       }
 
@@ -704,14 +706,33 @@ class Many2one extends _Relational {
     }
   }
 
+  _get_Relation(instance) {
+    const Relation = instance.env.model(this.relation, 'many2one', {
+      isSync: true,
+      view_info: {
+        fields: {
+          display_name: { type: 'char', string: 'Name', readonly: true }
+        }
+      }
+    })
+    return Relation
+  }
+
   get_selection(instance, kwargs = {}) {
     const { default: default2 } = kwargs
     if (default2) {
       // console.log(instance._values_relation, this.getValue(instance))
-      const relation = this.getValue(instance)
-      if (relation.id) {
-        return [[relation.id, relation.$display_name]]
+      const id_ = instance._values[this.name][instance.id] || false
+      if (id_) {
+        const Relation = this._get_Relation(instance)
+        const env = this._get_env(instance)
+        const kwargs = { from_record: [instance, this] }
+        const relation = Relation._browse_relation_m2o(env, id_, kwargs)
+        if (relation.id) {
+          return [[relation.id, relation.$display_name]]
+        }
       }
+
       return []
     } else {
       return this.get_selection_async(instance, kwargs)
@@ -732,7 +753,9 @@ class Many2one extends _Relational {
     const relation = this.relation
     // ? TBD, 是否 在 context 中, 有 string domain 需要的 values?
     // const context = this.context
-    const kwargs2 = { args, name, operator, limit, context: context2 }
+    const context3 = context2 || instance.env.context
+
+    const kwargs2 = { args, name, operator, limit, context: context3 }
     const selection = await instance.env
       .model(relation)
       .execute_kw('name_search', [], kwargs2)
@@ -775,15 +798,7 @@ class Many2one extends _Relational {
   // 返回 同步对象
   getValue(instance) {
     const id_ = this._getValue(instance)
-    const Relation = instance.env.model(this.relation, 'many2one', {
-      isSync: true,
-      view_info: {
-        fields: {
-          display_name: { type: 'char', string: 'Name', readonly: true }
-        }
-      }
-    })
-
+    const Relation = this._get_Relation(instance)
     const env = this._get_env(instance)
     const kwargs = { from_record: [instance, this] }
     return Relation._browse_relation_m2o(env, id_ || false, kwargs)

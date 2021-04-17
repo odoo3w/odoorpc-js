@@ -288,6 +288,22 @@ const all_users = [
   '13683398123'
 ]
 
+const register_mobile = async mobile => {
+  const model = 'res.users'
+  const Model = api.env.model(model)
+  const user = await Model.register_mobile(mobile)
+}
+
+const change_password = async (old_passwd, new_passwd) => {
+  const model = 'res.users'
+  const Model = api.env.model(model)
+  const ret_boolean = await Model.execute(
+    'change_password',
+    old_passwd,
+    new_passwd
+  )
+}
+
 const test_register_mobile = async () => {
   const model = 'res.users'
   const Model = api.env.model(model)

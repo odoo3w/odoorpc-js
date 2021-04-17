@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- <div>current:{{ value }},{{ label }}</div> -->
-
+    <!-- @on-change="onChange" -->
     <Select
       v-model="value2"
       ref="select"
@@ -12,11 +12,10 @@
       @on-open-change="onOpenChange"
       @on-select="onSelect"
       @on-clickoutside="onClickOutside"
-      @on-change="onChange"
     >
       <slot name="input">
         <Input
-          v-model="query"
+          v-model="query2"
           ref="input"
           slot="input"
           icon="ios-arrow-dropdown"
@@ -61,7 +60,7 @@ export default {
   data() {
     return {
       query: '',
-      init_finished: false, // 控制 on-open-change 只调用一次
+      init_finished: false, // 控制 设置 this.query2 = this.label 只在初始化时执行一次
       query_in_changing: [], // 判断 query 输入框, 是否在连续输入
       query_is_set: false // 主动 设置 query 时, 不触发 onQueryChange
     }
@@ -84,12 +83,25 @@ export default {
       set(value) {
         this.$emit('update:label', value)
       }
+    },
+
+    query2: {
+      get() {
+        if (!this.init_finished) {
+          return this.label
+        } else {
+          return this.query
+        }
+      },
+      set(value) {
+        this.query = value
+      }
     }
   },
 
   watch: {
     query(newValue /* oldValue */) {
-      if (!this.init_finished) {
+      if (this.loading) {
         return
       }
       if (this.query_is_set) {
@@ -115,21 +127,22 @@ export default {
   },
 
   mounted() {
-    this.query = this.label
+    // this.query = this.label
   },
 
   methods: {
-    onChange(value) {
-      // console.log('onChange,', value)
-      this.$emit('on-change', value)
-    },
+    // onChange(value) {
+    //   // console.log('onChange,', value)
+    //   // this.$emit('on-change', value)
+    // },
 
     onSelect(value) {
-      // console.log('onSelect,', value)
+      console.log('onSelect,', value)
       this.query_is_set = true
       this.query = value.label
       this.label2 = value.label
       this.$emit('on-select', value)
+      this.$emit('on-change', value.value)
     },
     onClickOutside() {
       // console.log('onClickOutside 1:', [this.label])
@@ -137,10 +150,11 @@ export default {
       this.query = this.label
     },
     async onOpenChange(open) {
-      // console.log('onOpenChange,', open, this.init_finished)
-      if (open && !this.init_finished) {
+      // console.log('onOpenChange,', open, )
+      if (open) {
+        // this.init_finished = true
         await this.remoteMethodMe()
-        this.init_finished = true
+        // this.init_finished = false
         // this.$emit('on-open-change', open)
       }
     },

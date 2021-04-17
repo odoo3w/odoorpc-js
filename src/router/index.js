@@ -49,7 +49,7 @@ const homeRoutes = [
       },
       {
         path: '/test/select2',
-        component: () => import('@/views/home/index2'),
+        component: () => import('@/views/test/select2'),
         name: 'test-select2'
       },
       {

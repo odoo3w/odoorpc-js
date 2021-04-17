@@ -3,9 +3,9 @@
     :node="node" -->
   <OViewTree
     v-if="view_type === 'tree'"
-    :isMain="isMain"
     :record="record"
     :editable="editable"
+    @on-row-click="handleOnRowClick"
   />
   <OViewKanban
     v-else-if="view_type === 'kanban'"
@@ -34,7 +34,6 @@ export default {
   components: { OViewTree, OViewKanban, OViewForm },
 
   props: {
-    isMain: { type: Boolean, default: undefined },
     view_type: { type: String, default: '' },
     editable: { type: Boolean, default: undefined },
     keyIndex: { type: Number, default: 0 },
@@ -74,7 +73,11 @@ export default {
     // console.log('OView, xxxxxx:', this.record)
   },
 
-  methods: {}
+  methods: {
+    handleOnRowClick(row) {
+      this.$emit('on-row-click', row)
+    }
+  }
 }
 </script>
 

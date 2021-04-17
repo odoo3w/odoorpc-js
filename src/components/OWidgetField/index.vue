@@ -144,12 +144,12 @@ import OWidgetRadio from './OWidgetRadio'
 import OFieldBoolean from './OFieldBoolean'
 
 import OFieldSelection from './OFieldSelection'
-import OFieldMany2one from './OFieldMany2one'
 
 import OFieldMany2many from './OFieldMany2many'
 
 import OWidgetMany2manyTags from './OWidgetMany2manyTags'
 
+// import OFieldMany2one from './OFieldMany2one'
 // import OFieldOne2many from './OFieldOne2many'
 
 import OFieldChar from './OFieldChar'
@@ -166,9 +166,10 @@ export default {
     OWidgetRadio,
     OFieldBoolean,
     OFieldSelection,
-    OFieldMany2one,
     OFieldMany2many,
     OWidgetMany2manyTags,
+
+    OFieldMany2one: () => import('./OFieldMany2one'),
     OFieldOne2many: () => import('./OFieldOne2many'),
     OFieldChar,
     OFieldInteger

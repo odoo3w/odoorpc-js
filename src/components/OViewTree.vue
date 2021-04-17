@@ -1,22 +1,14 @@
 <template>
-  <div v-if="isMain">
-    <Table :columns="columns" :data="dataList" @on-row-click="handleOnRowClick">
-    </Table>
-  </div>
-  <div v-else>
-    <Table :columns="columns" :data="dataList"> </Table>
-  </div>
+  <Table :columns="columns" :data="dataList" @on-row-click="handleOnRowClick">
+  </Table>
 </template>
 
 <script>
 import { parseTime } from '@/utils'
 
-const WEB_PATH = '/web'
-
 export default {
   name: 'OTreeView',
   props: {
-    isMain: { type: Boolean, default: undefined },
     editable: { type: Boolean, default: undefined },
 
     record: {
@@ -78,12 +70,7 @@ export default {
   },
   methods: {
     handleOnRowClick(row) {
-      const query = this.$route.query
-      const view_type = 'form'
-      this.$router.push({
-        path: WEB_PATH,
-        query: { ...query, view_type, id: row.id }
-      })
+      this.$emit('on-row-click', row)
     },
     renderCell(h, { row, column }) {
       // console.log(column.key, column.meta.type, column.attrs.widget)

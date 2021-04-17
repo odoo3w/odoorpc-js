@@ -10,15 +10,16 @@
       <Button type="primary" @click="handleOnEdit">编辑</Button>
       <Button @click="handleOnCreate">创建</Button>
     </span>
+    <Button type="primary" @click="handleOnCommit">保存</Button>
 
     <Divider />
     <OView
-      :isMain="true"
       :record="record"
       :view_type="view_type"
       :node="node"
       :editable="editable"
       :key="keyIndex"
+      @on-row-click="handleOnRowClick"
     />
   </div>
 </template>
@@ -26,6 +27,8 @@
 <script>
 import api from '@/api'
 import OView from '@/components/OView'
+
+const WEB_PATH = '/web'
 
 export default {
   name: 'Home',
@@ -60,6 +63,9 @@ export default {
 
   async created() {
     await this.init()
+
+    // console.log(' sessioin :', api.allowed_company_ids)
+    // allowed_company_ids
   },
 
   methods: {
@@ -120,6 +126,15 @@ export default {
       this.keyIndex = this.keyIndex + 1
     },
 
+    handleOnRowClick(row) {
+      const query = this.$route.query
+      const view_type = 'form'
+      this.$router.push({
+        path: WEB_PATH,
+        query: { ...query, view_type, id: row.id }
+      })
+    },
+
     handleOnCreate() {
       console.log(' handleOnCreate ')
     },
@@ -127,6 +142,13 @@ export default {
     handleOnEdit() {
       console.log(' handleOnEdit ')
       this.editable = true
+      this.keyIndex = this.keyIndex + 1
+    },
+
+    async handleOnCommit() {
+      console.log(' handleOnCommit ')
+      await this.record.commit()
+      this.editable = false
       this.keyIndex = this.keyIndex + 1
     },
 

@@ -18,9 +18,13 @@ export default {
   methods: {
     test1() {},
 
-    async test2() {},
-  },
+    async test2() {}
+  }
 }
 </script>
 
-<style></style>
+<style>
+* {
+  touch-action: none;
+}
+</style>
