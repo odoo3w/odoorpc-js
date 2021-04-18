@@ -62,10 +62,18 @@ export default {
     // console.log('char create', this.record)
   },
   methods: {
-    handleOnchange(value) {
+    async handleOnchange(value) {
       console.log('minxin, handleOnchange', value, this.record, this.node)
       const field = `$${this.node.meta.name}`
       this.record[field] = value
+      await this.record.awaiter
+      this.$emit('on-field-change', this.node.meta.name, value)
+      console.log(' change ok,', this.record)
+    },
+
+    onFieldChange(field, value) {
+      console.log(' field mixin: onFieldChange', field, value)
+      this.$emit('on-field-change', field, value)
     }
   }
 }

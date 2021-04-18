@@ -417,12 +417,12 @@ export class Model extends BaseModel {
     }
     const node = xml2json.toJSON(arch1)
     // console.log('this._view_info arch11', arch1)
-    console.log('view_node 1', deep_copy(node))
+    // console.log('view_node 1', deep_copy(node))
     const node_form = this._view_node_default_html(node)
 
-    const node_form2 = deep_copy(node_form)
+    // const node_form2 = deep_copy(node_form)
 
-    console.log('node_form', node_form2)
+    // console.log('node_form', node_form2)
 
     return { ...node_form }
   }
@@ -669,36 +669,6 @@ export class Model extends BaseModel {
   }
 
   // 不再用了
-  // toArray() {
-  //   console.log('to arr')
-  //   return this.ids.map(id_ => {
-  //     return this._toObject(id_)
-  //   })
-  // }
-
-  // toObject() {
-  //   const id_ = this.id
-  //   return this._toObject(id_)
-  // }
-
-  // _toObject(id_) {
-  //   return Object.keys(this._columns).reduce(
-  //     (acc, col) => {
-  //       const meta = this._columns[col]
-  //       const one = this.getById(id_)
-  //       const val = meta.value(one)
-  //       acc[col] = val
-  //       if (meta.type === 'many2one') {
-  //         acc[`${col}__name`] = meta.valueName(one)
-  //       } else if (meta.type === 'selection') {
-  //         // console.log(meta.selection)
-  //         acc[`${col}__name`] = meta.valueName(one)
-  //       }
-  //       return acc
-  //     },
-  //     { id: id_ }
-  //   )
-  // }
 
   get_readonlys() {
     const readonlys = {}
@@ -708,19 +678,6 @@ export class Model extends BaseModel {
     }
     return readonlys
   }
-
-  // event_onchange(field) {
-  //   console.log('event_onchange', field)
-  //   if (this._callback_onchange) {
-  //     // this.toObject()
-  //     this._callback_onchange(this.toObject())
-  //   }
-  // }
-
-  // onchange(callback) {
-  //   this._callback_onchange = callback
-  // }
-  //
 
   static async _bak_search_browse2(domain = [], kwargs = {}) {
     const { order, limit = 10 } = kwargs

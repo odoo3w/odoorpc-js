@@ -5,6 +5,7 @@
     :node="node"
     :record="record"
     :editable="editable"
+    @on-field-change="onFieldChange"
   />
   <!-- <OFormChatter
     v-else-if="node.attribute.class === 'oe_chatter'"
@@ -16,6 +17,8 @@
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import ONode from '@/components/ONodeRender'
 
 import OFormHeader from '@/components/OFormHeader'
@@ -26,24 +29,8 @@ export default {
   name: 'FormViewItem',
 
   components: { OFormHeader, OFormSheet, OFormChatter, ONode },
-  mixins: [],
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return {
-          children: []
-        }
-      }
-    }
-  },
+  mixins: [ONodeMixin],
+  props: {},
 
   data() {
     return {}

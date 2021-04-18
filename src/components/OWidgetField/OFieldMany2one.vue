@@ -8,6 +8,8 @@
       :label.sync="label"
       :loading="loading"
       :remote-method="remoteMethod"
+      :showSearchMore="showSearchMore"
+      :searchMoreTitle="'搜索'"
       placeholder="input here"
       style="width:200px"
       @on-change="handleOnchange"
@@ -16,27 +18,9 @@
         <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
           op[1]
         }}</Option>
-        <div v-show="options.length === 0">{{ '无...' }}</div>
-
-        <a
-          v-if="showSearchMore"
-          href="javascript:void(0)"
-          name=""
-          @click="searchMore"
-          >{{ '搜索更多...' }}</a
-        >
+        <!-- <div v-show="options.length === 0">{{ '无...' }}</div> -->
       </span>
     </OM2oSelect>
-
-    <!-- <Modal v-model="showSearchMore" title="Common Modal dialog box title">
-      <div slot="footer">
-        <Button @click="searchMoreCancel">取消</Button>
-      </div>
-
-      <p>Content of dialog</p>
-      <p>Content of dialog</p>
-      <p>Content of dialog</p>
-    </Modal> -->
 
     <!-- 查看 编辑 m2o 字段的 按钮 -->
     <!-- class="fa fa-external-link btn btn-secondary o_external_button" -->
@@ -77,7 +61,7 @@
 import OFieldMixin from './OFieldMixin'
 
 import OM2oSelect from '@/components/OWidgetField/OM2oSelect'
-
+// import { sleep } from '@/utils'
 export default {
   name: 'OFieldMany2one',
   components: { OM2oSelect },
@@ -131,6 +115,13 @@ export default {
       return classList.join(' ')
     }
   },
+
+  watch: {
+    record(value) {
+      console.log('watch, record,', value)
+    }
+  },
+
   async created() {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
@@ -145,18 +136,17 @@ export default {
     //   return JSON.parse(JSON.stringify(node))
     // }
     // console.log('m2o, xxxxxx:', this.node.meta.name, deep_copy(this.node))
-    // console.log(
-    //   'm2o, xxxxxx:',
-    //   this.node.meta.name,
-    //   deep_copy(this.options_default)
-    // )
+    // // console.log(
+    // //   'm2o, xxxxxx:',
+    // //   this.node.meta.name,
+    // //   deep_copy(this.options_default)
+    // // )
   },
 
   methods: {
     async init() {
       this.value = this.node.meta.value || 0
       this.label = this.node.meta.valueName || ''
-      // this.$refs.select.query = this.label
     },
 
     async _getSelectOptions(query = '') {
@@ -172,6 +162,8 @@ export default {
         domain,
         context
       })
+
+      // await sleep(1000)
 
       const options1 = options.slice(0, 7)
       const show_search_more = options.length > options1.length
@@ -189,36 +181,26 @@ export default {
       this.loading = false
     },
 
-    async searchMore() {
-      console.log('searchMore')
-      //   this.showSearchMore = true
-    },
-
     // onChange(value) {
     //   console.log('onChange,', value)
     //   // this.$emit('on-change', value)
     // },
 
-    // handleOnchange(value) {
-    //   console.log(
-    //     ' handleOnchange',
-    //     this.node.meta.name,
-    //     value,
-    //     typeof value,
-    //     this.record,
-    //     this.node
-    //   )
+    // async handleOnchange(value) {
+    //   // console.log(
+    //   //   ' handleOnchange',
+    //   //   this.node.meta.name,
+    //   //   value,
+    //   //   typeof value,
+    //   //   this.record,
+    //   //   this.node
+    //   // )
     //   const field = `$${this.node.meta.name}`
     //   this.record[field] = value
-    // },
 
-    // searchMoreOk() {
-    //   //
-    // },
-
-    // searchMoreCancel() {
-    //   console.log('cance:')
-    //   this.showSearchMore = false
+    //   await this.record.awaiter
+    //   this.$emit('on-field-change', this.node.meta.name, value)
+    //   console.log(' change ok,', this.record)
     // },
 
     btnClick() {

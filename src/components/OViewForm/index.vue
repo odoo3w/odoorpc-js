@@ -3,10 +3,11 @@
     <div class="o_form_sheet_bg">
       <OViewFormItem
         v-for="(child, index) in node_children"
-        :key="index"
+        :key="keyIndex * 1000 + index"
         :record="record"
         :node="child"
         :editable="editable"
+        @on-field-change="onFieldChange"
       />
     </div>
     <!-- <OViewFormItem v-if="node_chatter" :node="node_chatter" /> -->
@@ -31,10 +32,19 @@ export default {
     }
   },
 
+  data() {
+    return {
+      keyIndex: 0,
+      node2: this.record.view_node()
+    }
+  },
+
   computed: {
     node() {
-      return this.record.view_node()
+      console.log(' OView Form, get node,')
+      return this.node2
     },
+
     className() {
       // const node = this.node
       const classList = ['o_form_view']
@@ -61,6 +71,7 @@ export default {
       return chatters.length ? chatters[0] : null
     }
   },
+
   async created() {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
@@ -77,7 +88,18 @@ export default {
     // console.log('OViewForm, xxxxxx:', this.record)
   },
 
-  methods: {}
+  methods: {
+    onFieldChange(
+      //  field, value
+      field,
+      value
+    ) {
+      console.log('OViewForm, onFieldChange:', field, value)
+      const node = this.record.view_node()
+      this.node2 = { ...node }
+      this.keyIndex = this.keyIndex + 1
+    }
+  }
 }
 </script>
 

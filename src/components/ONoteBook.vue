@@ -9,35 +9,27 @@
         :label="page.attribute.attrs.string"
         :class="ClassNamePage(page)"
       >
-        <ONode :record="record" :node="page" :editable="editable" />
+        <ONode
+          :record="record"
+          :node="page"
+          :editable="editable"
+          @on-field-change="onFieldChange"
+        />
       </TabPane>
     </Tabs>
   </div>
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import ONode from '@/components/ONodeRender'
 
 export default {
   name: 'ONoteBook',
   components: { ONode },
-
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
-  },
+  mixins: [ONodeMixin],
+  props: {},
 
   computed: {
     //

@@ -1,3 +1,5 @@
+import ONodeMixin from '@/components/ONodeMixin'
+
 export default {
   name: 'ONode',
   components: {
@@ -7,24 +9,11 @@ export default {
     OGroup: () => import('@/components/OGroup')
   },
 
-  mixins: [],
+  mixins: [ONodeMixin],
   props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
     parent: {
       type: [Object, String], // 子元素 可能是文本字符串 或者 node
       default: undefined
-    },
-    node: {
-      type: [Object, String, Number], // 子元素 可能是文本字符串 或者 node
-      default: () => {
-        return { children: [] }
-      }
     }
   },
 
@@ -97,13 +86,15 @@ export default {
 
       if (node.tagName === 'group') {
         return createElement('OGroup', {
-          props: { record, parent, node, editable }
+          props: { record, parent, node, editable },
+          on: { 'on-field-change': this.onFieldChange }
         })
       }
 
       if (node.tagName === 'field') {
         return createElement('OWidgetField', {
-          props: { record, parent, node, editable }
+          props: { record, parent, node, editable },
+          on: { 'on-field-change': this.onFieldChange }
         })
       }
 
@@ -133,7 +124,8 @@ export default {
 
       const children = (node.children || []).map(sub_node => {
         return createElement('ONode', {
-          props: { record, parent: node, node: sub_node, editable }
+          props: { record, parent: node, node: sub_node, editable },
+          on: { 'on-field-change': this.onFieldChange }
         })
       })
 
@@ -142,7 +134,8 @@ export default {
         {
           ...node.attribute,
           class: this.className(node),
-          props: { record, node, editable }
+          props: { record, node, editable },
+          on: { 'on-field-change': this.onFieldChange }
         },
         children
       )

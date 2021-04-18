@@ -68,6 +68,10 @@ export default {
     // allowed_company_ids
   },
 
+  async mounted() {
+    //
+  },
+
   methods: {
     async init() {
       // const query = {

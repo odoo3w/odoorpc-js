@@ -15,16 +15,25 @@
     :record="record"
     :node="node"
     :editable="editable"
+    @on-field-change="onFieldChange"
   />
 
   <!-- in v-else:
     node.attribute.class === 'oe_title'
     node.tagName === 'group'
    -->
-  <ONode v-else :record="record" :node="node" :editable="editable" />
+  <ONode
+    v-else
+    :record="record"
+    :node="node"
+    :editable="editable"
+    @on-field-change="onFieldChange"
+  />
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import ONode from '@/components/ONodeRender'
 
 import OWidgetImage from '@/components/OWidgetField/OWidgetImage'
@@ -42,24 +51,8 @@ export default {
     ONoteBook,
     ONode
   },
-  mixins: [],
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return {
-          children: []
-        }
-      }
-    }
-  },
+  mixins: [ONodeMixin],
+  props: {},
 
   data() {
     return {}

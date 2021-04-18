@@ -8,6 +8,7 @@
       ref="select"
       filterable
       auto-complete
+      multiple
       :placeholder="placeholder"
       :loading="loading"
       @on-open-change="onOpenChange"
@@ -113,9 +114,9 @@ const extractOptions = options =>
   }, [])
 
 export default {
-  name: 'SelectM2o',
+  name: 'OSelect',
   props: {
-    value: { type: [String, Number], default: undefined },
+    value: { type: [String, Number, Array], default: undefined },
     label: { type: String, default: undefined },
     placeholder: { type: String, default: undefined },
     loading: { type: [Boolean], default: false },

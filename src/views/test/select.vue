@@ -5,7 +5,70 @@
 
       <div>currentValue: {{ value }}</div>
       <!-- <div>options: {{ options }}</div> -->
+      <!-- style="width:200px" -->
 
+      <!-- filterable
+        auto-complete -->
+
+      <Select
+        v-model="value2"
+        filterable
+        multiple
+        auto-complete
+        placeholder="input here"
+        style="width:200px"
+      >
+        <slot name="input">
+          <!-- v-model="query2" -->
+          <input
+            type="hidden"
+            ref="input"
+            slot="input"
+            icon="ios-arrow-down"
+            :placeholder="placeholder"
+          />
+          <SelectHead
+            ref="SelectHead"
+            :values="values"
+            filterable
+            multiple
+            :placeholder="placeholder"
+          >
+            2313</SelectHead
+          >
+        </slot>
+
+        <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
+          op[1]
+        }}</Option>
+
+        <a
+          v-if="showSearchMore"
+          href="javascript:void(0)"
+          name=""
+          @click="searchMore"
+        >
+          {{ '搜索更多...' }}
+        </a>
+      </Select>
+
+      <Divider />
+
+      1231313---00000
+
+      <Divider />
+
+      <OSelect
+        v-model="value2"
+        :showSearchMore="showSearchMore"
+        placeholder="input here"
+      >
+        <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
+          op[1]
+        }}</Option>
+      </OSelect>
+
+      <!-- 
       <SelectM2o
         v-model="value2"
         :label.sync="label"
@@ -28,7 +91,7 @@
             >{{ '搜索更多...' }}</a
           >
         </span>
-      </SelectM2o>
+      </SelectM2o> -->
 
       <div>&nbsp;</div>
     </div>
@@ -36,19 +99,21 @@
 </template>
 
 <script>
-import SelectM2o from '@/components/iview/SelectM2o'
-
+import OSelect from '@/components/iview/OSelect'
+import SelectHead from '../../../node_modules/view-design/src/components/select/select-head'
 import { sleep } from '@/utils'
 
 export default {
   name: 'Home',
-  components: { SelectM2o },
+  components: { OSelect, SelectHead },
   mixins: [],
 
   data() {
     return {
       value: 0,
+      values: [1, 2],
       label: '',
+      placeholder: 'pls input',
 
       showSearchMore: false,
       options: [],
@@ -81,37 +146,6 @@ export default {
     }
   },
   computed: {
-    // options_default() {
-    //   return this.list2.filter(item => item[0] === this.value)
-    // },
-
-    // option_default() {
-    //   const options_default = this.options_default
-    //   if (options_default.length) {
-    //     const op = options_default[0]
-    //     return op
-    //   } else {
-    //     return [null, null]
-    //   }
-    // },
-
-    // defaultValue() {
-    //   const op = this.option_default
-    //   return op[0]
-    // },
-
-    // defaultLabel() {
-    //   const op = this.option_default
-    //   return op[1]
-    // },
-
-    // options2() {
-    //   if (this.options.length === 0) {
-    //     return this.options_default
-    //   }
-    //   return this.options
-    // },
-
     value2: {
       get() {
         return this.value || 0
@@ -129,6 +163,9 @@ export default {
     async init() {
       this.value = 12
       this.label = '12上海'
+      this.options = await this._getSelectOptions()
+
+      console.log(this)
     },
 
     async _getSelectOptions(query) {
@@ -139,9 +176,9 @@ export default {
         : this.list2
 
       const options = res1.slice(0, 8)
-      await sleep(1000)
+      // await sleep(1000)
 
-      const options1 = options.slice(0, 7)
+      const options1 = options.slice(0, 3)
       const show_search_more = options.length > options1.length
       this.showSearchMore = show_search_more
 

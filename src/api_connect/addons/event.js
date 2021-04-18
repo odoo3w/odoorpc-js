@@ -403,6 +403,12 @@ export class EventRegistration extends Model {
   static async reg_event(event_id) {
     const partner_id = this._odoo.session_info.partner_id
 
+    // 增加这三句
+    const Partner = this.env.model('res.partner')
+    const parnter = await Partner.browse(partner_id)
+    const mobile = parnter.$mobile
+    // 增加这三句
+
     const domain = [
       ['event_id', '=', event_id],
       ['partner_id', '=', partner_id]
@@ -421,6 +427,10 @@ export class EventRegistration extends Model {
       const record = await this.browse(null)
       record.$event_id = event_id
       record.$partner_id = partner_id
+      // 增加这一句
+      record.$mobile = mobile
+      // 增加这一句
+
       await record.awaiter
       await record.commit()
 

@@ -52,6 +52,7 @@
     :editable="editable"
     :record="record"
     :node="node"
+    @on-field-change="onFieldChange"
   />
   <OFieldSelection
     v-else-if="node.meta.type === 'selection'"
@@ -274,6 +275,10 @@ export default {
       console.log('handleOnchange', value, this.record, this.node)
       // const field = `$${this.node.meta.name}`
       // this.record[field] = value
+    },
+    onFieldChange(field, value) {
+      console.log(' widget field:   ,onFieldChange', field, value)
+      this.$emit('on-field-change', field, value)
     }
   }
 }

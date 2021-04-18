@@ -5,6 +5,7 @@
     :node="node"
     :level="level"
     :editable="editable"
+    @on-field-change="onFieldChange"
   />
   <div v-else-if="is_inner_group && level === 0" :class="className">
     <OInnerGroup
@@ -12,6 +13,7 @@
       :node="node"
       :level="level"
       :editable="editable"
+      @on-field-change="onFieldChange"
     />
   </div>
   <div v-else :class="className">
@@ -23,33 +25,23 @@
       :node="child"
       :level="level + 1"
       :editable="editable"
+      @on-field-change="onFieldChange"
     />
     <!-- <div>Group {{ level }} End</div> -->
   </div>
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import OInnerGroup from '@/components/OGroup/OInnerGroup'
 
 export default {
   name: 'OGroup',
   components: { OInnerGroup },
 
-  mixins: [],
+  mixins: [ONodeMixin],
   props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    },
     level: { type: Number, default: 0 }
   },
 
@@ -79,9 +71,7 @@ export default {
     // console.log('OGroup, xxxxxx:', deep_copy(this.node))
   },
 
-  methods: {
-    //
-  }
+  methods: {}
 }
 </script>
 

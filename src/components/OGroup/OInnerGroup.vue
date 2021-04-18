@@ -26,10 +26,17 @@
           :record="record"
           :node="row.children[row.children.length - 1]"
           :editable="editable"
+          @on-field-change="onFieldChange"
         />
       </FormItem>
 
-      <ONode v-else :record="record" :node="row" :editable="editable" />
+      <ONode
+        v-else
+        :record="record"
+        :node="row"
+        :editable="editable"
+        @on-field-change="onFieldChange"
+      />
     </span>
   </Form>
   <!-- by table  -->
@@ -58,6 +65,8 @@
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import OFormLabel from '@/components/OFormLabel'
 import ONode from '@/components/ONodeRender'
 
@@ -65,22 +74,8 @@ export default {
   name: 'OInnerGroup',
   components: { OFormLabel, ONode },
 
-  mixins: [],
+  mixins: [ONodeMixin],
   props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    },
-
     level: { type: Number, default: 0 }
   },
 

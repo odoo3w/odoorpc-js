@@ -733,7 +733,7 @@ export class Model extends BaseModel {
 
     if (this._from_record) {
       // 1st, o2m update parent. so, value for onchange with parent
-      console.log('trigger_onchange,22 ', this._name, this.id, field_name)
+      // console.log('trigger_onchange,22 ', this._name, this.id, field_name)
       this._update_parent()
     }
 
@@ -754,10 +754,14 @@ export class Model extends BaseModel {
 
     // 3rd, onchange
     const args = [values, field_name, this.field_onchange]
+    // console.log('trigger_onchange,12 ', this._name, this.id, field_name)
     const onchange = await this._onchange2(...args)
+    // console.log('trigger_onchange,13 ', this._name, this.id, field_name)
 
     // 4th, update values_to_write
+    // console.log('trigger_onchange,14 ', this._name, this.id, field_name)
     await this._after_onchange(onchange)
+    // console.log('trigger_onchange,15 ', this._name, this.id, field_name)
 
     // 5th parent trigger onchange
     if (this._from_record) {
@@ -993,8 +997,6 @@ export class Model extends BaseModel {
   static async execute_kw(method, args = [], kwargs = {}) {
     await this.awaiter
 
-    // console.log('execute_kw', this._name, method, args, kwargs)
-
     const kwargs2 = { ...kwargs }
     if (!Object.keys(kwargs).includes('context')) {
       kwargs2.context = this.env.context
@@ -1079,6 +1081,8 @@ export class Model extends BaseModel {
 
   // ok
   async _onchange2(values, field_name, field_onchange) {
+    // console.log('_onchange2, ', this._name, this.id, field_name)
+
     const session_info = this._odoo.session_info
     const server_version_info = session_info.server_version_info
     const version = server_version_info[0]
@@ -1087,9 +1091,10 @@ export class Model extends BaseModel {
       version == 13
 
     if (is_call_default) {
-      const onchange = this._default_get_onchange(values, field_onchange)
+      const onchange = await this._default_get_onchange(values, field_onchange)
       return onchange
     }
+    // console.log('_onchange2,1, ', this._name, this.id, field_name)
 
     if (!this.id || is_virtual_id(this.id)) {
       const asrgs = [[], values, field_name, field_onchange]
@@ -1097,7 +1102,9 @@ export class Model extends BaseModel {
       return onchange
     } else {
       const asrgs = [values, field_name, field_onchange]
+      // console.log('_onchange2,12, ', this._name, this.id, field_name)
       const onchange = await this.execute('onchange', ...asrgs)
+      // console.log('_onchange2,13, ', this._name, this.id, field_name)
       return onchange
     }
   }

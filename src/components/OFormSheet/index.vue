@@ -6,33 +6,22 @@
       :record="record"
       :node="child"
       :editable="editable"
+      @on-field-change="onFieldChange"
     />
   </div>
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import OFormSheetItem from './OFormSheetItem'
 
 export default {
   name: 'OFormSheet',
   components: { OFormSheetItem },
 
-  mixins: [],
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
-  },
+  mixins: [ONodeMixin],
+  props: {},
 
   computed: {
     children() {
@@ -49,9 +38,7 @@ export default {
     }
   },
 
-  methods: {
-    //
-  }
+  methods: {}
 }
 </script>
 

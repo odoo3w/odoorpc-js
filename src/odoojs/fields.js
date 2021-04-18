@@ -326,7 +326,9 @@ class BaseField {
     this._setValue(instance, value)
 
     if (instance.field_onchange) {
+      console.log('to set, 1 ', this.name, value)
       await instance.trigger_onchange(this.name)
+      console.log('to set, 1999999 ', this.name, value)
     }
 
     return new Promise(resolve => resolve(this.name))
@@ -517,6 +519,153 @@ class _Relational extends BaseField {
     return instance.env.copy(context)
   }
 
+  // for m2o and m2m.tag
+
+  // ok call by get_selection1
+  async _get_domain(instance, value_str) {
+    /*
+    // # 仅被 get_selection1 使用
+
+    // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
+    // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
+    // # 该选择 需要 存储在 本地 config 中
+
+    // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
+    // #  其余的只是需要 company_id
+    // #  --- res.partner
+    // #  <-str---> state_id [('country_id', '=?', country_id)]
+
+    // #  --- sale.order.line
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+    // #  --- purchase.order.line
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+    // #  --- stock.move
+    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+    */
+
+    const _get_company_id = () => {
+      const session_info = instance._odoo.session_info
+      // # company_id = session_info['company_id']
+      const user_companies = session_info.user_companies
+      const current_company = user_companies.current_company[0]
+      // # allowed_companies = user_companies['allowed_companies']
+      // # allowed_company_ids = [com[0] for com in allowed_companies]
+      return current_company
+    }
+
+    const _get_values_for_domain = () => {
+      // const globals_fields = Globals_Dict
+
+      // console.log('globals_fields', instance.fetch_one())
+      // // console.log('globals_fields', instance.field_onchange)
+      // const values2 = instance.fetch_one()
+
+      const globals_fields = Object.keys(instance._columns)
+
+      const values = globals_fields.reduce((acc, col) => {
+        const meta = instance._columns[col]
+        if (meta) {
+          meta.value(instance)
+          // console.log('vsls', col, meta)
+          acc[col] = meta.value(instance)
+        }
+        return acc
+      }, {})
+      if (!values.company_id) {
+        values.company_id = _get_company_id()
+      }
+      return values
+    }
+
+    const _get_res_model_id = async () => {
+      if (instance._model_id) {
+        return instance._model_id
+      }
+
+      const dm = [['model', '=', instance._name]]
+      const model_ids = await instance._odoo.execute('ir.model', 'search', dm)
+      const model_id = model_ids.length ? model_ids[0] : 0
+      this._model_id = model_id
+      return model_id
+    }
+
+    const domain = value_str || false
+
+    if (domain && typeof domain === 'string') {
+      // console.log('domain: ', this.name, domain)
+      const values = _get_values_for_domain()
+      // console.log('domain: ', values)
+
+      const globals_dict = {
+        res_model_id: await _get_res_model_id(),
+        allowed_company_ids: instance._odoo.allowed_company_ids,
+        ...values
+      }
+
+      const domain2 = eval_safe(domain, globals_dict)
+      // console.log('domain2: ', domain2)
+      return domain2
+    } else {
+      return domain
+    }
+  }
+
+  // for m2o and m2m.tag
+
+  get_selection(instance, kwargs = {}) {
+    const { default: default2 } = kwargs
+    if (default2) {
+      // console.log(instance._values_relation, this.getValue(instance))
+      const id_ = instance._values[this.name][instance.id] || false
+      if (id_) {
+        const Relation = this._get_Relation(instance)
+        const env = this._get_env(instance)
+        const kwargs = { from_record: [instance, this] }
+        const relation = Relation._browse_relation_m2o(env, id_, kwargs)
+        if (relation.id) {
+          return [[relation.id, relation.$display_name]]
+        }
+      }
+
+      return []
+    } else {
+      return this.get_selection_async(instance, kwargs)
+    }
+  }
+
+  async get_selection_async(instance, kwargs = {}) {
+    // console.log(' get selection,', instance._name, instance.id, this.name)
+    // console.log('get_selection2', this.domain)
+    const { name = '', operator = 'ilike', limit = 8, domain, context } = kwargs
+
+    const domain1 = await this._get_domain(instance, this.domain)
+    const domain2 = await this._get_domain(instance, domain)
+    const context2 = await this._get_domain(instance, context)
+
+    const args = [...(domain1 || []), ...(domain2 || [])]
+
+    const relation = this.relation
+    // ? TBD, 是否 在 context 中, 有 string domain 需要的 values?
+    // const context = this.context
+    const context3 = context2 || instance.env.context
+
+    const kwargs2 = { args, name, operator, limit, context: context3 }
+    const selection = await instance.env
+      .model(relation)
+      .execute_kw('name_search', [], kwargs2)
+
+    //
+    // console.log(' get selection,2 ', selection)
+    selection.forEach(value => {
+      instance._values_relation[this.name]._values.display_name[value[0]] =
+        value[1]
+    })
+
+    return selection
+  }
+
   async new(/*instance*/) {
     // only for o2m
     // console.log('new', instance._name, instance.ids, this.name)
@@ -527,6 +676,12 @@ class Many2many extends _Relational {
   constructor(name, data) {
     super(name, data)
   }
+
+  // get_selection(/*instance*/) {
+  //   // return this.selection
+  //   console.log('get_selection', this.name)
+  //   console.log('get_selection', this)
+  // }
 
   get_for_onchange(instance) {
     // in _values:  (6, 0, ids)
@@ -615,97 +770,6 @@ class Many2one extends _Relational {
     relation_storage._values.display_name = {}
   }
 
-  // ok call by get_selection
-  async _get_domain(instance, value_str) {
-    /*
-    // # 仅被 get_selection 使用
-
-    // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
-    // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
-    // # 该选择 需要 存储在 本地 config 中
-
-    // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
-    // #  其余的只是需要 company_id
-    // #  --- res.partner
-    // #  <-str---> state_id [('country_id', '=?', country_id)]
-
-    // #  --- sale.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- purchase.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- stock.move
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-    */
-
-    const _get_company_id = () => {
-      const session_info = instance._odoo.session_info
-      // # company_id = session_info['company_id']
-      const user_companies = session_info.user_companies
-      const current_company = user_companies.current_company[0]
-      // # allowed_companies = user_companies['allowed_companies']
-      // # allowed_company_ids = [com[0] for com in allowed_companies]
-      return current_company
-    }
-
-    const _get_values_for_domain = () => {
-      // const globals_fields = Globals_Dict
-
-      // console.log('globals_fields', instance.fetch_one())
-      // // console.log('globals_fields', instance.field_onchange)
-      // const values2 = instance.fetch_one()
-
-      const globals_fields = Object.keys(instance._columns)
-
-      const values = globals_fields.reduce((acc, col) => {
-        const meta = instance._columns[col]
-        if (meta) {
-          meta.value(instance)
-          // console.log('vsls', col, meta)
-          acc[col] = meta.value(instance)
-        }
-        return acc
-      }, {})
-      if (!values.company_id) {
-        values.company_id = _get_company_id()
-      }
-      return values
-    }
-
-    const _get_res_model_id = async () => {
-      if (instance._model_id) {
-        return instance._model_id
-      }
-
-      const dm = [['model', '=', instance._name]]
-      const model_ids = await instance._odoo.execute('ir.model', 'search', dm)
-      const model_id = model_ids.length ? model_ids[0] : 0
-      this._model_id = model_id
-      return model_id
-    }
-
-    const domain = value_str || false
-
-    if (domain && typeof domain === 'string') {
-      // console.log('domain: ', this.name, domain)
-      const values = _get_values_for_domain()
-      // console.log('domain: ', values)
-
-      const globals_dict = {
-        res_model_id: await _get_res_model_id(),
-        allowed_company_ids: instance._odoo.allowed_company_ids,
-        ...values
-      }
-
-      const domain2 = eval_safe(domain, globals_dict)
-      // console.log('domain2: ', domain2)
-      return domain2
-    } else {
-      return domain
-    }
-  }
-
   _get_Relation(instance) {
     const Relation = instance.env.model(this.relation, 'many2one', {
       isSync: true,
@@ -716,58 +780,6 @@ class Many2one extends _Relational {
       }
     })
     return Relation
-  }
-
-  get_selection(instance, kwargs = {}) {
-    const { default: default2 } = kwargs
-    if (default2) {
-      // console.log(instance._values_relation, this.getValue(instance))
-      const id_ = instance._values[this.name][instance.id] || false
-      if (id_) {
-        const Relation = this._get_Relation(instance)
-        const env = this._get_env(instance)
-        const kwargs = { from_record: [instance, this] }
-        const relation = Relation._browse_relation_m2o(env, id_, kwargs)
-        if (relation.id) {
-          return [[relation.id, relation.$display_name]]
-        }
-      }
-
-      return []
-    } else {
-      return this.get_selection_async(instance, kwargs)
-    }
-  }
-
-  async get_selection_async(instance, kwargs = {}) {
-    // console.log(' get selection,', instance._name, instance.id, this.name)
-    // console.log('get_selection', this.domain)
-    const { name = '', operator = 'ilike', limit = 8, domain, context } = kwargs
-
-    const domain1 = await this._get_domain(instance, this.domain)
-    const domain2 = await this._get_domain(instance, domain)
-    const context2 = await this._get_domain(instance, context)
-
-    const args = [...(domain1 || []), ...(domain2 || [])]
-
-    const relation = this.relation
-    // ? TBD, 是否 在 context 中, 有 string domain 需要的 values?
-    // const context = this.context
-    const context3 = context2 || instance.env.context
-
-    const kwargs2 = { args, name, operator, limit, context: context3 }
-    const selection = await instance.env
-      .model(relation)
-      .execute_kw('name_search', [], kwargs2)
-
-    //
-    // console.log(' get selection,2 ', selection)
-    selection.forEach(value => {
-      instance._values_relation[this.name]._values.display_name[value[0]] =
-        value[1]
-    })
-
-    return selection
   }
 
   fetch_one(instance) {
