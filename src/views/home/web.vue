@@ -1,6 +1,7 @@
 <template>
   <div>
-    <h1>{{ node.meta.string }}</h1>
+    <h1>{{ node.attrs.string }}</h1>
+
     <Divider />
     <span v-if="['tree', 'kanban'].includes(view_type)">
       <Button type="primary" @click="handleOnCreate">创建</Button>
@@ -15,8 +16,8 @@
     <Divider />
     <OView
       :record="record"
+      :dataDict="dataDict"
       :view_type="view_type"
-      :node="node"
       :editable="editable"
       :key="keyIndex"
       @on-row-click="handleOnRowClick"
@@ -43,9 +44,10 @@ export default {
       keyIndex: 0,
       node: {
         children: [],
-        meta: {}
+        attrs: {}
       },
-      record: {}
+      record: {},
+      dataDict: {}
     }
   },
   computed: {},
@@ -74,12 +76,6 @@ export default {
 
   methods: {
     async init() {
-      // const query = {
-      //   model: 'sale.order',
-      //   view_type: 'tree'
-      //   tree_view_ref: 'sale.view_order_tree',
-      //   form_view_ref: 'sale.view_order_form',
-      // }
       const query = this.$route.query
       console.log('web, init,', query)
       const model = query.model
@@ -111,7 +107,22 @@ export default {
 
       const form_init = async () => {
         const rid = Number(query.id)
-        const record = await Model.browse(rid)
+        // const deep_copy = node => {
+        //   return JSON.parse(JSON.stringify(node))
+        // }
+
+        const callback = (res /*field*/) => {
+          // console.log('web callback,', field, deep_copy(res))
+          // console.log('web callback,', field, this.record)
+          this.dataDict = { ...res }
+
+          // console.log('web, xxxxxx:', deep_copy(this.dataDict))
+        }
+
+        const record = await Model.browse(rid, { fetch_one: callback })
+
+        console.log('web, record,xxxxxx:', record)
+
         const node = record.view_node()
         this.node = node
         this.view_type = view_type

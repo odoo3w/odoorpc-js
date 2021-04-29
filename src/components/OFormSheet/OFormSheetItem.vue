@@ -1,33 +1,41 @@
 <template>
-  <OWidgetImage v-if="node.tagName === 'field'" :node="node" />
+  <OWidgetImage
+    v-if="node.tagName === 'field'"
+    :node="node"
+    :record="record"
+    :dataDict="dataDict"
+  />
   <OWidgetRibbon
-    v-else-if="node.attribute.attrs.name === 'web_ribbon'"
+    v-else-if="node.attrs.name === 'web_ribbon'"
+    :dataDict="dataDict"
+    :record="record"
     :node="node"
   />
   <OButtonBox
-    v-else-if="node.attribute.attrs.name === 'button_box'"
+    v-else-if="node.attrs.name === 'button_box'"
     :record="record"
+    :dataDict="dataDict"
     :node="node"
     :editable="editable"
   />
   <ONoteBook
     v-else-if="node.tagName === 'notebook'"
     :record="record"
+    :dataDict="dataDict"
     :node="node"
     :editable="editable"
-    @on-field-change="onFieldChange"
   />
 
   <!-- in v-else:
-    node.attribute.class === 'oe_title'
+    node.class === 'oe_title'
     node.tagName === 'group'
    -->
   <ONode
     v-else
     :record="record"
+    :dataDict="dataDict"
     :node="node"
     :editable="editable"
-    @on-field-change="onFieldChange"
   />
 </template>
 

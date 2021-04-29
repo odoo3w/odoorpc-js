@@ -2,16 +2,16 @@
   <span v-if="editable">
     <Input
       v-model="value2"
-      type="number"
       :class="className"
       style="width:200px"
-      number
       :element-id="input_id"
       :name="node.attrs.name"
       :placeholder="node.attrs.placeholder"
       @on-enter="handleOnchange(value2)"
       @on-blur="handleOnchange(value2)"
     />
+
+    <!-- <span> 多语言 </span> -->
   </span>
   <span
     v-else
@@ -19,17 +19,25 @@
     :name="node.attrs.name"
     :placeholder="node.attrs.placeholder"
   >
-    {{ node.attrs.name }}: {{ value2 }}
+    {{ valueName }}
   </span>
 </template>
 
 <script>
 import OFieldMixin from './OFieldMixin'
 export default {
-  name: 'OFieldInteger',
+  name: 'OFieldDatetime',
   mixins: [OFieldMixin],
   props: {},
-  computed: {}
+  computed: {},
+  async mounted() {
+    // console.log(' char,', [
+    //   this.node.attrs.name,
+    //   this.node,
+    //   this.dataDict,
+    //   this.valueName
+    // ])
+  }
 }
 </script>
 

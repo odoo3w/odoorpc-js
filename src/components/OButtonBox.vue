@@ -13,25 +13,28 @@
 <script>
 import ONode from '@/components/ONodeRender'
 
+import ONodeMixin from '@/components/ONodeMixin'
+
 export default {
   name: 'OButtonBox',
 
   components: { ONode },
-  props: {
-    editable: { type: Boolean, default: undefined },
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
 
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
+  mixins: [ONodeMixin],
+  props: {
+    // editable: { type: Boolean, default: undefined },
+    // record: {
+    //   type: Object,
+    //   default: () => {
+    //     return {}
+    //   }
+    // },
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return { children: [] }
+    //   }
+    // }
   },
 
   computed: {
@@ -39,7 +42,7 @@ export default {
       const node = this.node
       const classList = [
         'o_not_full',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
+        ...(node.class ? node.class.split(' ') : [])
       ]
 
       return classList.join(' ')

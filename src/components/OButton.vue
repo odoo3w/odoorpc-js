@@ -1,52 +1,56 @@
 <template>
   <button
     type="button"
-    :name="node.attribute.attrs.name"
+    :name="node.attrs.name"
     :class="className"
-    :aria-label="node.attribute.attrs['aria-label']"
+    :aria-label="node.attrs['aria-label']"
     title
-    :data-original-title="node.attribute.attrs.title"
+    :data-original-title="node.attrs.title"
     @click="btnClick"
   >
-    <i v-if="node.attribute.attrs.icon" :class="classNameIcon" />
+    <i v-if="node.attrs.icon" :class="classNameIcon" />
     <span v-if="string"> {{ string }} </span>
     <ONode
       v-else
       v-for="(child, index) in node.children"
       :key="index"
       :node="child"
+      :record="record"
     />
   </button>
 </template>
 
 <script>
+import ONodeMixin from '@/components/ONodeMixin'
+
 import ONode from '@/components/ONodeRender'
 
 export default {
   name: 'OButton',
 
   components: { ONode },
+  mixins: [ONodeMixin],
 
   props: {
-    record: {
-      type: Object,
-      default: () => {
-        return {}
-      }
-    },
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    },
+    // record: {
+    //   type: Object,
+    //   default: () => {
+    //     return {}
+    //   }
+    // },
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return { children: [] }
+    //   }
+    // },
 
     isHeader: { type: Boolean, default: false }
   },
   computed: {
     string() {
       const node = this.node
-      return node.attribute.attrs.string
+      return node.attrs.string
     },
     classNameIcon() {
       const node = this.node
@@ -54,9 +58,7 @@ export default {
         'fa',
         'fa-fw',
         'o_button_icon',
-        ...(node.attribute.attrs.icon
-          ? node.attribute.attrs.icon.split(' ')
-          : [])
+        ...(node.attrs.icon ? node.attrs.icon.split(' ') : [])
       ]
 
       return classList.join(' ')
@@ -64,15 +66,11 @@ export default {
 
     className() {
       const node = this.node
-      let classList = [
-        'btn',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
-      ]
+      let classList = ['btn', ...(node.class ? node.class.split(' ') : [])]
 
       if (this.isHeader) {
         const highlight =
-          node.attribute.class === 'oe_highlight' ||
-          node.attribute.class === 'btn-primary'
+          node.class === 'oe_highlight' || node.class === 'btn-primary'
 
         classList = ['btn']
         if (highlight) {
@@ -82,7 +80,7 @@ export default {
         }
       }
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
 
@@ -102,7 +100,7 @@ export default {
 
   methods: {
     btnClick() {
-      console.log('onclick', this.node.attribute.attrs)
+      console.log('onclick', this.node.attrs)
       console.log('onclick', this.record)
     }
   }

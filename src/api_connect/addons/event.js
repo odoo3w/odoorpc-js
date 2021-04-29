@@ -1,10 +1,6 @@
 import { Model } from '@/odoojs/models'
 
-import { parseTime } from '@/utils'
-
-const DATE_COUNT = 7
-const HOUR_MIN = 8
-const HOUR_MAX = 20
+// import { parseTime } from '@/utils'
 
 const dateHelper = {
   // hour_min: 8,
@@ -69,39 +65,7 @@ const get_hours = ({ date, hour_min, hour_max }) => {
     }
   })
 
-  return utc_hours
-}
-
-const get_hours2 = ({ date_count, hour_min, hour_max }) => {
-  const now = new Date()
-
-  const all_days1 = Array.from(new Array(date_count).keys())
-  const all_days = all_days1.map(item => dateHelper.date_add(now, item))
-  const hours = Array.from(new Array(24).keys()).filter(
-    item => item >= hour_min && item <= hour_max
-  )
-
-  const all_day_hours = all_days.reduce((acc, day) => {
-    const oneday_hours = hours.map(item => dateHelper.new_hour(day, item))
-    return [...acc, ...oneday_hours]
-  }, [])
-
-  const all_hours = all_day_hours.filter(item => item > new Date())
-
-  const all_hours2 = all_hours.map(item => {
-    return {
-      date_begin: item,
-      date_end: dateHelper.hour_add(item, 1)
-    }
-  })
-
-  const utc_hours = all_hours2.map(item => {
-    return {
-      date_begin: dateHelper.toUTCString(item.date_begin),
-      date_end: dateHelper.toUTCString(item.date_end)
-    }
-  })
-
+  // console.log('get_hours, ', oneday_hours, all_hours, new Date())
   return utc_hours
 }
 
@@ -135,13 +99,31 @@ export class EventEvent extends Model {
     }
   }
 
+  static async delete_old(payload) {
+    const { address_id } = payload
+
+    const lastday = dateHelper.date_add(new Date(), -1)
+    const lastday2 = dateHelper.date2str(lastday)
+
+    const domain = [
+      ['address_id', '=', address_id],
+      ['date_begin', '<=', `${lastday2} 00:00:00`]
+    ]
+    const ids = await this.search(domain)
+    const Reg = this.env.model('event.registration')
+    await Reg.delete_by_event_id(ids)
+    await this.execute('unlink', ids)
+  }
+
   static async get_values_list(payload) {
     // const { address_id, date, hour_min, hour_max } = payload
     const values_list = await this.get_values_list_raw(payload)
-    // console.log(values_list)
+    if (values_list.length === 0) {
+      return []
+    }
+
     const vals = values_list[0]
     const vals_template = await this.get_vals_template(vals)
-    // console.log(vals_template)
     const values_list2 = values_list.map(item => {
       return { ...vals_template, ...item }
     })
@@ -168,10 +150,13 @@ export class EventEvent extends Model {
       }
     })
 
+    // console.log('get_values_list_raw, ', hours)
+
     return values_list
   }
 
   static async get_vals_template(vals) {
+    console.log('get_vals_template, ', vals)
     const rec = await this.browse(null)
     rec.$name = vals.name
     rec.$date_begin = vals.date_begin
@@ -185,14 +170,15 @@ export class EventEvent extends Model {
   }
 
   static async _search_future_event(payload) {
+    await this.delete_old(payload)
     const { hour_min, hour_max } = payload
-    console.log('in search_future_event')
     const today_events = await this.search_one_date(payload)
+    console.log('in search_future_event', today_events)
 
     const hours = today_events.map(item =>
       dateHelper.toUTCString(item.date_begin)
     )
-    // console.log('in search_future_event', hours)
+    console.log('in search_future_event', hours)
 
     const count_ok = hour_max - hour_min + 1
     if (hours.length >= count_ok) {
@@ -207,9 +193,12 @@ export class EventEvent extends Model {
     )
     // console.log('in search_future_event 2', values_list2)
 
-    await this.create(values_list2)
-
-    return await this.search_one_date(payload)
+    if (values_list2.length) {
+      await this.create(values_list2)
+      return await this.search_one_date(payload)
+    } else {
+      return today_events
+    }
   }
 
   static async with_reg(records) {
@@ -352,10 +341,12 @@ export class EventRegistration extends Model {
     // console.log(' ids', ids)
     return ids
   }
+
   static async search_me() {
     const partner_id = this._odoo.session_info.partner_id
     const domain = [['partner_id', '=', partner_id]]
-    const ids = await this.search(domain, {})
+    // const ids =
+    await this.search(domain, {})
 
     // registration_ids
 
@@ -437,6 +428,12 @@ export class EventRegistration extends Model {
       return record.fetch_one()
     }
   }
+
+  static async delete_by_event_id(event_ids) {
+    const domain = [['event_id', 'in', event_ids]]
+    const ids = await this.search(domain)
+    await this.execute('unlink', ids)
+  }
 }
 
 const AddonsModels = {
@@ -445,80 +442,3 @@ const AddonsModels = {
 }
 
 export default AddonsModels
-
-const test_write = async () => {
-  const model = 'event.event'
-
-  const Model = api.env.model(model)
-
-  //   const domain = [['id', '=', 1]]
-  const domain = []
-
-  const ids = await Model.search(domain, { limit: 1 })
-  console.log(ids)
-
-  const callback = res => {
-    console.log('call back, read', res)
-  }
-
-  const res = await Model.browse(ids, {
-    fetch_one: callback
-  })
-  console.log(res)
-  console.log(res.$state)
-  //   console.log(res.$address_id)
-  //   console.log(res.$event_type_id)
-
-  const event_type = res.$event_type_id
-
-  res.execute('button_confirm')
-
-  //   console.log('event_type_id', event_type.id)
-  //   const event_type_id = event_type.id
-
-  //   console.log('event_type_id', event_type_id)
-
-  //   res.$event_type_id = event_type_id
-
-  //   await res.awaiter
-  //   console.log(res)
-
-  //   res.commit()
-
-  //   res.$event_type_id
-}
-
-const test_read = async () => {
-  //
-  //   const model = 'res.partner'
-  const model = 'event.event'
-
-  const Model = api.env.model(model)
-
-  //   const domain = [['id', '=', 1]]
-  const domain = []
-
-  const ids = await Model.search(domain, { limit: 1 })
-  console.log(ids)
-
-  const callback = res => {
-    console.log('call back, read', res)
-  }
-
-  const res = await Model.browse(ids, {
-    fetch_one: callback
-  })
-  console.log(res)
-  console.log(res.$name)
-
-  console.log(res.fetch_all())
-
-  //   //   console.log(res.fetch_all())
-  //   //   const add = res.$address_id
-  //   //   console.log(add)
-  //   //   console.log(add.fetch_one())
-  //   //   console.log(add.$display_name)
-
-  //   const o2m = res.$event_mail_ids
-  //   console.log(o2m.ids)
-}

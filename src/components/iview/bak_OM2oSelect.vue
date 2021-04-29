@@ -8,7 +8,7 @@
       ref="select"
       filterable
       auto-complete
-      multiple
+      transfer
       :placeholder="placeholder"
       :loading="loading"
       @on-open-change="onOpenChange"
@@ -114,9 +114,9 @@ const extractOptions = options =>
   }, [])
 
 export default {
-  name: 'OSelect',
+  name: 'OM2oSelect',
   props: {
-    value: { type: [String, Number, Array], default: undefined },
+    value: { type: [String, Number], default: undefined },
     label: { type: String, default: undefined },
     placeholder: { type: String, default: undefined },
     loading: { type: [Boolean], default: false },
@@ -173,6 +173,9 @@ export default {
   },
 
   watch: {
+    value2(newValue, oldValue) {
+      console.log('watch, value2,', newValue, oldValue)
+    },
     query(newValue /* oldValue */) {
       if (this.loading) {
         return
@@ -199,8 +202,16 @@ export default {
     }
   },
 
+  created() {
+    const ops = this.get_options()
+    console.log('in created', this.value2, ops)
+  },
+
   mounted() {
     // this.query = this.label
+
+    const ops = this.get_options()
+    console.log('in mounted', this.value2, ops)
   },
 
   methods: {

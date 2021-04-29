@@ -35,7 +35,7 @@ import api from '@/api'
 
 import OM2oSelect from '@/components/OWidgetField/OM2oSelect'
 
-import { sleep } from '@/utils'
+// import { sleep } from '@/utils'
 
 export default {
   name: 'Home',

@@ -5,11 +5,21 @@
         v-for="(btn, index) in buttons"
         :key="index"
         :node="btn"
+        :record="record"
+        :dataDict="dataDict"
+        :editable="editable"
         isHeader
       />
     </div>
 
-    <OWidgetField v-for="(fld, index) in fields" :key="index" :node="fld" />
+    <OWidgetField
+      v-for="(fld, index) in fields"
+      :key="index"
+      :node="fld"
+      :record="record"
+      :dataDict="dataDict"
+      :editable="editable"
+    />
   </div>
 </template>
 
@@ -17,18 +27,23 @@
 import OButton from '@/components/OButton'
 import OWidgetField from '@/components/OWidgetField'
 
+import ONodeMixin from '@/components/ONodeMixin'
+
 export default {
   name: 'OFormHeader',
   components: { OButton, OWidgetField },
+
+  mixins: [ONodeMixin],
+
   props: {
-    node: {
-      type: Object,
-      default: () => {
-        return {
-          children: []
-        }
-      }
-    }
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return {
+    //       children: []
+    //     }
+    //   }
+    // }
   },
 
   computed: {

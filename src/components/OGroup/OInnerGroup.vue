@@ -2,14 +2,14 @@
   <Form label-position="left" :class="className" :label-width="120">
     <span v-for="(row, index) in group_items" :key="index">
       <div v-if="row.tagName === 'separator'" class="o_horizontal_separator">
-        {{ row.attribute.attrs.string }}
+        {{ row.attrs.string }}
       </div>
 
       <FormItem
         v-else-if="row.tagName === 'form-item'"
         :class="classNameItem(row)"
-        :label="row.meta.string"
-        :label-for="row.meta.input_id"
+        :label="row.attrs.string"
+        :label-for="input_id(row)"
       >
         <OFormLabel
           slot="label"
@@ -18,28 +18,29 @@
               row.children[0].children &&
               row.children[0].children.length
           "
+          :record="record"
           :node="row.children[0]"
         />
 
         <ONode
           a-test-input
           :record="record"
+          :dataDict="dataDict"
           :node="row.children[row.children.length - 1]"
           :editable="editable"
-          @on-field-change="onFieldChange"
         />
       </FormItem>
 
       <ONode
         v-else
         :record="record"
+        :dataDict="dataDict"
         :node="row"
         :editable="editable"
-        @on-field-change="onFieldChange"
       />
     </span>
   </Form>
-  <!-- by table  -->
+  <!-- by table,   to del -->
   <!-- <div>table {{ level }} start</div> -->
   <!-- <table :class="className">
     <tbody>
@@ -92,9 +93,7 @@ export default {
         classList.push('o_group_col_6')
       }
 
-      const node = this.node
-
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
 
@@ -114,11 +113,9 @@ export default {
       const get_matrix = () => {
         const matrix = []
 
-        if (node_group.attribute.attrs.string) {
+        if (node_group.attrs.string) {
           const separator = {
-            attribute: {
-              attrs: { colspan: 2, string: node_group.attribute.attrs.string }
-            },
+            attrs: { colspan: 2, string: node_group.attrs.string },
             tagName: 'separator'
           }
 
@@ -136,17 +133,16 @@ export default {
             row.push(child)
             // ch_value.meta.string = child.meta.string
             row.push(ch_value)
-          } else if (child.attribute.class === 'o_td_label') {
+          } else if (child.class === 'o_td_label') {
             const ch_value = children.shift()
             row.push(child.children[0])
             row.push(ch_value)
           } else if (child.tagName === 'field') {
-            if (child.attribute.attrs.nolabel) {
+            if (child.attrs.nolabel) {
               row.push(child)
             } else {
               const nd_label = {
-                attribute: { attrs: { for: child.attribute.attrs.name } },
-                meta: child.meta,
+                attrs: { for: child.attrs.name, ...child.attrs },
                 tagName: 'label'
               }
               row.push(nd_label)
@@ -166,8 +162,7 @@ export default {
             matrix.push(row[0])
           } else if (row.length === 2) {
             matrix.push({
-              attribute: { attrs: { for: row[0].attribute.attrs.name } },
-              meta: row[0].meta,
+              attrs: { ...row[0].attrs },
               children: row,
               tagName: 'form-item'
             })
@@ -184,7 +179,14 @@ export default {
       }
 
       const node_table = get_matrix()
+      // const deep_copy = node => {
+      //   return JSON.parse(JSON.stringify(node))
+      // }
       // console.log('node_table', deep_copy(node_table))
+
+      // const node_table2 = node_table.filter(item =>
+      //   ['title', 'category_id'].includes(item.children[1].meta.name)
+      // )
 
       return node_table
     }
@@ -198,12 +200,24 @@ export default {
     //   deep_copy(this.group_items),
     //   deep_copy(this.node)
     // )
-    // console.log(this.record)
+    // // console.log(this.record)
   },
 
   methods: {
+    input_id(row) {
+      // console.log('Label: input_id  ', row.attrs.for)
+      if (row.attrs.for) {
+        const meta = this.record._columns[row.attrs.name]
+        // console.log('Label: input_id  ', row.attrs.for, meta)
+        if (meta) {
+          return meta.getInputId(this.record)
+        }
+      }
+      return undefined
+    },
     classNameItem(row) {
-      if (row.meta.invisible) {
+      const invisible_modifier = this.record._view_invisible(row, this.dataDict)
+      if (invisible_modifier) {
         return 'o_invisible_modifier'
       }
 
@@ -216,10 +230,10 @@ export default {
       //  colsapn =4, 200%
       //  TBD
 
-      if (node.tagName !== 'label' && node.attribute.class !== 'o_td_label') {
+      if (node.tagName !== 'label' && node.class !== 'o_td_label') {
         const compute_x = () => {
-          if (node.attribute.attrs.colspan) {
-            return node.attribute.attrs.colspan
+          if (node.attrs.colspan) {
+            return node.attrs.colspan
           } else if (this.level) {
             return 2
           } else {

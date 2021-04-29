@@ -1,14 +1,17 @@
 <template>
   <div :class="className">
-    <span :class="node.attribute.attrs.bg_color">
-      {{ node.attribute.attrs.title }}
+    <span :class="node.attrs.bg_color">
+      {{ node.attrs.title }}
     </span>
   </div>
 </template>
 
 <script>
+import OFieldMixin from './OFieldMixin'
+
 export default {
   name: 'WidgetRibbon',
+  mixins: [OFieldMixin],
   props: {
     node: {
       type: Object,
@@ -20,11 +23,12 @@ export default {
 
   computed: {
     className() {
-      const node = this.node
       const classList = ['ribbon', 'ribbon-top-right']
-      if (node.meta.invisible) {
+
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
+
       classList.push('o_widget')
 
       return classList.join(' ')

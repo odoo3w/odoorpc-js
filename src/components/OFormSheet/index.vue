@@ -4,9 +4,9 @@
       v-for="(child, index) in children"
       :key="index"
       :record="record"
+      :dataDict="dataDict"
       :node="child"
       :editable="editable"
-      @on-field-change="onFieldChange"
     />
   </div>
 </template>
@@ -26,15 +26,14 @@ export default {
   computed: {
     children() {
       //
-      // item.attribute.attrs.name === 'button_box' ||
+      // item.attrs.name === 'button_box' ||
       //       item.tagName === 'group'
-      //       item.attribute.class === 'oe_title'
+      //       item.class === 'oe_title'
       //       item.tagName === 'notebook'
 
-      return this.node.children
-      // .filter(item => {
-      //   return item.tagName === 'notebook'
-      // })
+      return this.node.children.filter(item => {
+        return item.tagName === 'notebook'
+      })
     }
   },
 

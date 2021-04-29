@@ -89,7 +89,7 @@ export default {
       if (query === undefined) {
         console.log('get_selection 2', JSON.stringify(query))
         const options = await this._get_selection('')
-        await sleep(1000)
+        // await sleep(1000)
         this.options3 = [...options]
       }
     },

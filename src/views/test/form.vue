@@ -1,7 +1,7 @@
 <template>
   <div>
     <div>
-      <OViewForm :record="record" :node="node" editable />
+      <!-- <OViewForm :record="record" :node="node" editable /> -->
 
       <div>&nbsp;-----version-----</div>
       <div>{{ api.version }}</div>
@@ -21,15 +21,15 @@
 
 <script>
 import api from '@/api'
-import OViewForm from '@/components/OViewForm'
+// import OViewForm from '@/components/OViewForm'
 
-import { sleep } from '@/odoojs/utils'
+// import { sleep } from '@/odoojs/utils'
 
-const Timeout = 500
+// const Timeout = 500
 
 export default {
   name: 'FormPage',
-  components: { OViewForm },
+  // components: { OViewForm },
   mixins: [],
 
   data() {
@@ -41,11 +41,13 @@ export default {
   },
   computed: {},
   async created() {
-    // await this.init_data_so()
+    await this.init_data_so()
+
+    // await this.test_so()
     // await this.init_data_ptn_title()
-    await this.init_data_ptn()
+    // await this.init_data_ptn()
     // await this.init_data_user()
-    await this.renderMe()
+    // await this.renderMe()
 
     // this.record.$login = 'u1234567'
     // this.record.$name = 'u1234567'
@@ -54,22 +56,41 @@ export default {
   },
 
   methods: {
-    toHome() {
-      this.$router.replace({ path: '/home' })
+    async test_so() {
+      const so = this.record
+      const sol = await so.$order_line
+      console.log('record:', so, sol)
+
+      const soln = await sol.new()
+      console.log('record2:', so, sol, soln)
     },
 
-    async submit() {
-      const record = this.record
-      console.log('submit')
-      await record.commit()
-      console.log('submit ok')
-      // record.$order_line
+    async init_data_so() {
+      const model_name = 'sale.order'
+      const view_ref = 'sale.view_order_form'
+      const domain = [['id', '=', 1]]
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
     },
 
-    async renderMe() {
-      const node = this.record.view_node()
-      // console.log('view node,', node)
-      this.node = node
+    async init_data({ model_name, view_ref, domain }) {
+      const view_type = 'form'
+      const SO = api.env.model(model_name, view_type, view_ref)
+      let ids = await SO.search(domain, { order: 'id' })
+      let ids2 = ids
+
+      if (!ids.length) {
+        ids2 = null
+      }
+
+      const so = await SO.browse(ids2)
+
+      // console.log(so)
+      this.record = so
+
+      // const dd = so.fetch_all()
+
+      console.log('form, record', this.record)
     },
 
     async init_data_user() {
@@ -99,27 +120,19 @@ export default {
       await this.init_data({ model_name, view_ref, domain })
     },
 
-    async init_data({ model_name, view_ref, domain }) {
-      const view_type = 'form'
-      const SO = api.env.model(model_name, view_type, view_ref)
-      let ids = await SO.search(domain, { order: 'id' })
-
-      let ids2 = ids
-
-      if (!ids.length) {
-        ids2 = null
-      }
-
-      const so = await SO.browse(ids2)
-
-      // console.log(so)
-      this.record = so
-
-      // const dd = so.fetch_all()
-
-      // console.log('form, record', this.record)
+    async submit() {
+      const record = this.record
+      console.log('submit')
+      await record.commit()
+      console.log('submit ok')
+      // record.$order_line
     },
 
+    async renderMe() {
+      const node = this.record.view_node()
+      // console.log('view node,', node)
+      this.node = node
+    },
     async form_edit() {
       // edit
       // await this.init_browse()
@@ -174,7 +187,7 @@ export default {
     async edit_new() {
       const record = this.record
       record.$note = '1233'
-      await sleep(Timeout)
+      // await sleep(Timeout)
       record.$partner_id = 3
       // console.log(record._values_to_write)
     },
@@ -209,7 +222,7 @@ export default {
     async editSO() {
       const record = this.record
       record.$note = '1233'
-      await sleep(Timeout)
+      // await sleep(Timeout)
       record.$partner_id = 3
     },
 
@@ -253,7 +266,7 @@ export default {
       const fields = ['product_id', 'product_uom']
       const selections = await line1.get_selection({ fields })
       console.log('sol new , selections', selections)
-      await sleep(Timeout)
+      // await sleep(Timeout)
 
       // console.log('set product id = 1, xxxxxxxxxxx')
       line1.$product_id = 1
@@ -279,6 +292,10 @@ export default {
       }
 
       // record.$order_line
+    },
+
+    toHome() {
+      this.$router.replace({ path: '/home' })
     }
   }
 }

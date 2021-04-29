@@ -37,6 +37,8 @@ export class ODOO {
     this._config = {
       //
     }
+
+    this._allowed_company_ids = []
   }
 
   get config() {
@@ -84,6 +86,16 @@ export class ODOO {
   }
 
   get allowed_company_ids() {
+    return this._allowed_company_ids
+
+    // const cids_str = this.get_cookie('cids')
+    // const cids = cids_str
+    //   ? cids_str.split(',').map(item => Number(item))
+    //   : this._session_info.user_companies.allowed_companies.map(item => item[0])
+    // return cids
+  }
+
+  get_allowed_company_ids() {
     const cids_str = this.get_cookie('cids')
     const cids = cids_str
       ? cids_str.split(',').map(item => Number(item))
@@ -92,6 +104,11 @@ export class ODOO {
   }
 
   set allowed_company_ids(cids = []) {
+    this.set_allowed_company_ids(cids)
+    this._allowed_company_ids = cids
+  }
+
+  set_allowed_company_ids(cids = []) {
     const cids_str = cids.join(',')
     this.set_cookie('cids', cids_str || String(this.current_company_id))
   }
@@ -221,6 +238,7 @@ export class ODOO {
     })
 
     this._login = login
+    this._allowed_company_ids = this.get_allowed_company_ids()
   }
 
   async login(payload) {

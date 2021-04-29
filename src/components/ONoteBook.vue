@@ -6,14 +6,13 @@
       <TabPane
         v-for="(page, index) in children"
         :key="index"
-        :label="page.attribute.attrs.string"
-        :class="ClassNamePage(page)"
+        :label="page.attrs.string"
       >
         <ONode
           :record="record"
           :node="page"
+          :dataDict="dataDict"
           :editable="editable"
-          @on-field-change="onFieldChange"
         />
       </TabPane>
     </Tabs>
@@ -34,7 +33,17 @@ export default {
   computed: {
     //
     children() {
-      return this.node.children.filter(item => !item.meta.invisible)
+      return this.node.children.filter(item => {
+        const invisible_modifier = this.record._view_invisible(
+          item,
+          this.dataDict
+        )
+        return !invisible_modifier
+      })
+      // .filter(item => item.attrs.name === 'internal_notes')
+      // .filter(item => item.attrs.name === 'accounting_disabled')
+      // .filter(item => item.attrs.name === 'accounting')
+      // .filter(item => item.attrs.name === 'sales_purchases')
     }
   },
 
@@ -45,24 +54,15 @@ export default {
     // console.log(
     //   'Notebook, xxxxxx:',
     //   deep_copy(
-    //     this.node.children.filter(
-    //       item => item.attribute.attrs.name === 'sales_purchases'
-    //     )
+    //     this.node
+    //     // .children.filter(
+    //     //   item => item.attrs.name === 'sales_purchases'
+    //     // )
     //   )
     // )
   },
 
-  methods: {
-    ClassNamePage(page) {
-      const classList = []
-      if (page.meta.invisible) {
-        classList.push('o_invisible_modifier')
-      }
-
-      // console.log(page, classList)
-      return classList.join(' ')
-    }
-  }
+  methods: {}
 }
 </script>
 

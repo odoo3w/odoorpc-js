@@ -1,4 +1,6 @@
-import { Model } from '@/odoojs/models'
+// import { Model } from '@/odoojs/models'
+
+import { ResPartner as Model } from '@/odoojs/addons/res.partner'
 
 export class ResPartner extends Model {
   constructor() {

@@ -1,10 +1,10 @@
 <template>
   <span
     :class="className"
-    :name="node.attribute.attrs.name"
-    :placeholder="node.attribute.attrs.placeholder"
+    :name="node.attrs.name"
+    :placeholder="node.attrs.placeholder"
   >
-    {{ node.meta.valueName }}
+    {{ value2 }}
   </span>
 </template>
 

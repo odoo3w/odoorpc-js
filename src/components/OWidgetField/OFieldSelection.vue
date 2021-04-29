@@ -1,10 +1,10 @@
 <template>
-  <div v-if="editable" :class="className" :name="node.attribute.attrs.name">
+  <div v-if="editable" :class="className" :name="node.attrs.name">
     <Select
       v-model="value2"
       clearable
       transfer
-      :placeholder="node.attribute.attrs.placeholder"
+      :placeholder="node.attrs.placeholder"
       style="width:200px"
       @on-open-change="handelOnOpenChange"
       @on-change="handleOnchange"
@@ -15,8 +15,8 @@
     </Select>
   </div>
 
-  <span v-else :class="className" :name="node.attribute.attrs.name">
-    {{ node.meta.valueName }}
+  <span v-else :class="className" :name="node.attrs.name">
+    {{ valueName }}
   </span>
 </template>
 
@@ -38,17 +38,16 @@ export default {
   },
 
   computed: {
-    value2: {
-      get() {
-        return this.node.meta.value || ''
-      },
-      set(value) {
-        this.node.meta.value = value
-      }
-    },
+    // value2: {
+    //   get() {
+    //     return this.node.meta.value || ''
+    //   },
+    //   set(value) {
+    //     this.node.meta.value = value
+    //   }
+    // },
 
     className() {
-      const node = this.node
       const classList = []
 
       if (this.editable) {
@@ -60,15 +59,16 @@ export default {
         classList.push('o_field_widget')
       }
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      if (node.meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
+
       return classList.join(' ')
     }
   },
@@ -84,7 +84,7 @@ export default {
     //   this.record.get_selection
     // ])
     if (this.record.get_selection) {
-      const res = await this.record.get_selection(this.node.meta.name, {
+      const res = await this.record.get_selection(this.node.attrs.name, {
         default: true
       })
       // console.log('dropdown', res)
@@ -95,7 +95,7 @@ export default {
   methods: {
     async getSelectOptions(query = '') {
       this.selectOptionLoading = true
-      const res = await this.record.get_selection(this.node.meta.name, {
+      const res = await this.record.get_selection(this.node.attrs.name, {
         name: query
       })
       this.selectOptionLoading = false

@@ -1,15 +1,11 @@
 <template>
-  <div :class="className" :name="node.attribute.attrs.name">
-    <Checkbox
-      v-model="node.meta.value"
-      readonly
-      @on-change="handleOnchange(node.meta.value)"
-    />
+  <div :class="className" :name="node.attrs.name">
+    <Checkbox v-model="value2" readonly @on-change="handleOnchange(value2)" />
 
     <!-- <i-switch
-      v-model="node.meta.value"
+      v-model="value2"
       :before-change="handleBeforeChange"
-      @on-change="handleOnchange(node.meta.value)"
+      @on-change="handleOnchange(value2)"
     /> -->
   </div>
 </template>
@@ -23,6 +19,15 @@ export default {
   props: {},
 
   computed: {
+    value2: {
+      get() {
+        return this.dataDict[this.node.attrs.name]
+      },
+      set(value) {
+        this.value = value
+      }
+    }
+
     // className() {
     //   const node = this.node
     //   const classList = [
@@ -46,6 +51,8 @@ export default {
   methods: {
     handleBeforeChange(...ppp) {
       console.log('ppp,', ppp)
+
+      // eslint-disable-next-line no-unused-vars
       return new Promise(resolve => {
         // this.$Modal.confirm({
         //   title: '切换确认',

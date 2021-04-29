@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import api from '@/api_connect'
 
 import { Database } from '@/api_connect/api_config'
@@ -6,7 +7,7 @@ export const test_api = async () => {
   // await login()
   // await test_get_sportType()
   // await test_get_bookvenue()
-  // await test_get_presetData()
+  await test_get_presetData()
   // await test_reg_event()
   // await test_search_event_me()
   // await test_reg_event_cancel()
@@ -136,10 +137,17 @@ const test_get_presetData = async () => {
   const venue = venues[0]
   const address_id = venue.id
 
-  const dates = ['2021-04-12', '2021-04-13', '2021-04-14']
+  const dates = [
+    '2021-04-21',
+    '2021-04-14',
+    '2021-04-07',
+    '2021-04-08',
+    '2021-04-12',
+    '2021-04-13'
+  ]
 
   // 选择日期
-  const date = dates[1]
+  const date = dates[0]
 
   const HOUR_MIN = 8
   const HOUR_MAX = 20

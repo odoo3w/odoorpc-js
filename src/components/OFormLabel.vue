@@ -1,22 +1,18 @@
 <template>
   <label
-    v-if="node.tagName === 'label' && node.meta.string"
+    v-if="node.tagName === 'label' && node.attrs.string"
     :class="className"
-    :for="node.meta.input_id"
-    :name="node.attribute.attrs.name"
+    :name="node.attrs.name"
   >
-    {{ node.meta.string }}
+    {{ node.attrs.string }}
   </label>
-  <label
-    v-else-if="node.tagName === 'label'"
-    :class="className"
-    :for="node.meta.input_id"
-    :name="node.attribute.attrs.name"
-  >
+
+  <label v-else-if="node.tagName === 'label'" :name="node.attrs.name">
     <ONode
       v-for="(child_of_label, index3) in node.children"
       :key="index3"
       :node="child_of_label"
+      :record="record"
     />
   </label>
 </template>
@@ -24,40 +20,51 @@
 <script>
 import ONode from '@/components/ONodeRender'
 
+import ONodeMixin from '@/components/ONodeMixin'
+
 export default {
   name: 'OFormLabel',
 
   components: { ONode },
-  props: {
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
-  },
+
+  mixins: [ONodeMixin],
+  props: {},
   computed: {
+    value2() {
+      return this.dataDict[this.node.attrs.name] || ''
+    },
+
+    // input_id() {
+    //   console.log('Label: input_id  ', this.node.attrs.for)
+    //   if (this.node.attrs.for) {
+    //     const meta = this.record._columns[this.node.attrs.name]
+    //     console.log('Label: input_id  ', this.node.attrs.for, meta)
+    //     return meta.getInputId(this.record)
+    //   } else {
+    //     return undefined
+    //   }
+    // },
+
     className() {
       const node = this.node
 
       const classList = [
         'o_form_label',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
+        ...(node.class ? node.class.split(' ') : [])
       ]
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      // Label readonly TBD
-      if (node.meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
 
-      if (!node.meta.value) {
-        classList.push('o_form_label_empty')
+      if (!this.editable && !this.value2) {
+        classList.push('o_field_empty')
       }
 
       return classList.join(' ')

@@ -5,9 +5,9 @@
         v-for="(child, index) in node_children"
         :key="keyIndex * 1000 + index"
         :record="record"
+        :dataDict="dataDict"
         :node="child"
         :editable="editable"
-        @on-field-change="onFieldChange"
       />
     </div>
     <!-- <OViewFormItem v-if="node_chatter" :node="node_chatter" /> -->
@@ -29,19 +29,25 @@ export default {
       default: () => {
         return {}
       }
+    },
+    dataDict: {
+      type: Object,
+      default: () => {
+        return {}
+      }
     }
   },
 
   data() {
     return {
       keyIndex: 0,
-      node2: this.record.view_node()
+      node2: this.record.view_node ? this.record.view_node() : {}
     }
   },
 
   computed: {
     node() {
-      console.log(' OView Form, get node,')
+      // console.log(' OView Form, get node,')
       return this.node2
     },
 
@@ -57,15 +63,16 @@ export default {
 
     node_children() {
       const children = (this.node.children || []).filter(
-        item => !(item.attribute && item.attribute.class === 'oe_chatter')
+        item => !(item.class === 'oe_chatter')
       )
 
+      // console.log(' OView Form, node_children,', children)
       return children
     },
 
     node_chatter() {
       const chatters = (this.node.children || []).filter(
-        item => item.attribute && item.attribute.class === 'oe_chatter'
+        item => item.class === 'oe_chatter'
       )
 
       return chatters.length ? chatters[0] : null
@@ -84,22 +91,14 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('OViewForm, xxxxxx:', deep_copy(this.node))
-    // console.log('OViewForm, xxxxxx:', this.record)
+    // console.log('OViewForm, node, xxxxxx:', deep_copy(this.node))
+    // console.log('OViewForm, clss, xxxxxx:', this.record)
+    // console.log('OViewForm, data, xxxxxx:', this.dataDict)
+
+    console.log('date 99,', new Date().getTime())
   },
 
-  methods: {
-    onFieldChange(
-      //  field, value
-      field,
-      value
-    ) {
-      console.log('OViewForm, onFieldChange:', field, value)
-      const node = this.record.view_node()
-      this.node2 = { ...node }
-      this.keyIndex = this.keyIndex + 1
-    }
-  }
+  methods: {}
 }
 </script>
 

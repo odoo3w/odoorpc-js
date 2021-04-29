@@ -2,18 +2,18 @@
   <OInnerGroup
     v-if="is_inner_group && level > 0"
     :record="record"
+    :dataDict="dataDict"
     :node="node"
-    :level="level"
     :editable="editable"
-    @on-field-change="onFieldChange"
+    :level="level"
   />
   <div v-else-if="is_inner_group && level === 0" :class="className">
     <OInnerGroup
       :record="record"
       :node="node"
-      :level="level"
+      :dataDict="dataDict"
       :editable="editable"
-      @on-field-change="onFieldChange"
+      :level="level"
     />
   </div>
   <div v-else :class="className">
@@ -23,9 +23,9 @@
       :key="index"
       :record="record"
       :node="child"
-      :level="level + 1"
+      :dataDict="dataDict"
       :editable="editable"
-      @on-field-change="onFieldChange"
+      :level="level + 1"
     />
     <!-- <div>Group {{ level }} End</div> -->
   </div>

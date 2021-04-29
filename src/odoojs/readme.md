@@ -26,14 +26,9 @@
 2. char = false, value = "" ref
 3. company_id, m2o
 
-4. label, readonly ?
-5. partner, type, radio
-6. address_name label 没有 class
-7. phone, mobile, widget: "phone"
-8. is_blacklisted ?
-9. widget: "email"
-10. website widget: "url"
-11. m2o 特殊处理
-12. widget: "many2many_tags"
-13. child_ids, mode = kanban
-14. name: "property_payment_term_id" widget: "selection"
+4. address_name label 没有 class
+5. phone, mobile, widget: "phone"
+6. is_blacklisted ?
+
+// m2o, m2m 字段的 selection 获取, 应该判断 invisible, readonly
+// 如果不是 编辑状态, 可以 跳过

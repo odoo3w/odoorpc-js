@@ -1,22 +1,25 @@
 <template>
-  <div v-if="editable" :class="className" :name="node.attrs.name">
+  <div v-if="editable" :class="className" :name="node.attribute.attrs.name">
+    <!-- <div>currentValue: {{ value }},{{ label }}</div> -->
+
+    <!-- style="width:200px" -->
+
     <OM2oSelect
       v-model="value2"
       ref="select"
       :label.sync="label"
-      :element-id="input_id"
       :loading="loading"
       :remote-method="remoteMethod"
       :showSearchMore="showSearchMore"
       :searchMoreTitle="'搜索'"
-      :placeholder="node.attrs.placeholder"
-      style="width:200px"
+      placeholder="input here"
       @on-change="handleOnchange"
     >
       <span v-show="!loading">
         <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
           op[1]
         }}</Option>
+        <!-- <div v-show="options.length === 0">{{ '无...' }}</div> -->
       </span>
     </OM2oSelect>
 
@@ -34,34 +37,39 @@
   </div>
 
   <span
-    v-else-if="attrs_options && attrs_options.no_open"
+    v-else-if="
+      node.attribute.attrs.options && node.attribute.attrs.options.no_open
+    "
     :class="className"
-    :name="node.attrs.name"
-    :placeholder="node.attrs.placeholder"
+    :name="node.attribute.attrs.name"
+    :placeholder="node.attribute.attrs.placeholder"
   >
-    <!-- {{ node.attrs.name }}:  -->
-    {{ valueName }}
+    {{ node.meta.valueName }}
   </span>
 
   <a
     v-else
     :class="className"
     href="javascript:void(0)"
-    :name="node.attrs.name"
-    :id="input_id"
+    :name="node.attribute.attrs.name"
+    :id="node.meta.input_id"
   >
-    <span>{{ valueName }}</span>
+    <span>{{ node.meta.valueName }}</span>
   </a>
 </template>
 
 <script>
 import OFieldMixin from './OFieldMixin'
 
-import OM2oSelect from './OM2oSelect'
+// import OM2oSelect from '@/components/OWidgetField/OM2oSelect'
 // import { sleep } from '@/utils'
 export default {
   name: 'OFieldMany2one',
-  components: { OM2oSelect },
+  components: {
+    // OM2oSelect
+
+    OM2oSelect: () => import('./OM2oSelect')
+  },
   mixins: [OFieldMixin],
   props: {},
 
@@ -71,27 +79,25 @@ export default {
       label: '',
 
       showSearchMore: false,
-      options: [],
+      options: [[3, '33']],
 
-      loading: false,
-
-      attrs_options: {}
+      loading: false
     }
   },
 
   computed: {
     value2: {
       get() {
-        return this.dataDict[this.node.attrs.name] || 0
+        return this.dataDict[this.node.meta.name] || 0
+        // return this.node.meta.value || 0
       },
-      set(/*value*/) {}
-    },
-
-    valueName() {
-      return this.dataDict[`${this.node.attrs.name}__name`]
+      set(value) {
+        this.node.meta.value = value
+      }
     },
 
     className() {
+      const node = this.node
       const classList = []
 
       if (this.editable) {
@@ -103,27 +109,38 @@ export default {
         classList.push('o_field_widget')
       }
 
-      if (this.invisible_modifier) {
+      if (node.meta.invisible) {
         classList.push('o_invisible_modifier')
       }
-      if (this.readonly_modifier) {
+      if (node.meta.readonly) {
         classList.push('o_readonly_modifier')
       }
-      if (this.required_modifier) {
+      if (node.meta.required) {
         classList.push('o_required_modifier')
-      }
-
-      if (!this.editable && !this.value2) {
-        classList.push('o_field_empty')
       }
       return classList.join(' ')
     }
   },
 
   watch: {
-    value2(/*newValue, oldValue*/) {
-      // console.log('watch, value2,', this.node.attrs.name, newValue, oldValue)
-      this.init()
+    record(value) {
+      console.log('watch, record,', value)
+    },
+    value2(newValue, oldValue) {
+      console.log('watch, value2,', newValue, oldValue)
+    },
+
+    dataDict: {
+      handler: function(newValue, oldValue) {
+        console.log('watch, dataDict,', newValue, oldValue)
+      },
+      deep: true
+    },
+    options: {
+      handler: function(newValue, oldValue) {
+        console.log('watch, options,', newValue, oldValue)
+      },
+      deep: true
     }
   },
 
@@ -134,12 +151,11 @@ export default {
     // }
     // console.log(
     //   'm2o, create, xxxxxx:',
-    //   this.node.attrs.name,
+    //   this.node.meta.name,
     //   deep_copy(this.node),
     //   deep_copy(this.dataDict)
     // )
     // console.log('m2o, create, xxxxxx:', this.editable)
-    // this.attrs_options
   },
 
   async mounted() {
@@ -147,33 +163,26 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('m2o, xxxxxx:', this.node.attrs.name, deep_copy(this.node))
-    // console.log('m2o, xxxxxx:', this.node.attrs.name, deep_copy(this.dataDict))
-    // // console.log('m2o, xxxxxx:', this.node.attrs.name, this.record)
-    // console.log('m2o, xxxxxx:', this.node.attrs.name, this.input_id)
+    // console.log('m2o, xxxxxx:', this.node.meta.name, deep_copy(this.node))
+    // console.log('m2o, xxxxxx:', this.node.meta.name, deep_copy(this.dataDict))
   },
 
   methods: {
     async init() {
-      this.value = this.dataDict[this.node.attrs.name] || 0
-      this.label = this.dataDict[`${this.node.attrs.name}__name`] || ''
-      this.attrs_options = await this.get_attrs_options()
-    },
-
-    async get_attrs_options() {
-      const options = await this.record._view_node_attrs_options(this.node)
-      // console.log('options ', this.node, options)
-      return options
+      this.value = this.node.meta.value || 0
+      this.label = this.node.meta.valueName || ''
+      // await this._getSelectOptions()
     },
 
     async _getSelectOptions(query = '') {
-      const domain = this.node.attrs.domain
-      const context = this.node.attrs.context
+      const domain = this.node.attribute.attrs.domain
+      const context = this.node.attribute.attrs.context
       // console.log('getSelectOptions', query, domain, context)
+      // this.selectOptionLoading = true
       if (!this.editable || !this.record.get_selection) {
         return []
       }
-      const options = await this.record.get_selection(this.node.attrs.name, {
+      const options = await this.record.get_selection(this.node.meta.name, {
         name: query,
         domain,
         context
@@ -190,13 +199,36 @@ export default {
 
     async remoteMethod(query) {
       this.loading = true
+
+      // console.log('remoteMethod', JSON.stringify(query))
       const options = await this._getSelectOptions(query)
       this.options = [...options]
       this.loading = false
     },
 
+    // onChange(value) {
+    //   console.log('onChange,', value)
+    //   // this.$emit('on-change', value)
+    // },
+
+    async handleOnchange(value) {
+      console.log(
+        ' handleOnchange',
+        this.node.meta.name,
+        value,
+        typeof value,
+        this.record,
+        this.node,
+        this.dataDict
+      )
+      const field = `$${this.node.meta.name}`
+      this.record[field] = value
+      await this.record.awaiter
+      console.log(' change ok,', this.record)
+    },
+
     btnClick() {
-      console.log('btnClick', this.meta)
+      console.log('btnClick', this.node.meta)
     }
   }
 }

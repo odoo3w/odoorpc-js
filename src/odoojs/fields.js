@@ -1,8 +1,8 @@
 //
-// env.model(model, view_type, view_ref)
+// env.model1(model, view_type, view_ref)
 // 默认必须有 view_type
 // 这样  o2m 字段 已经嵌套带回来 fields
-// 所有的 o2m 字段 的 进一步 env.model()  只能从这个 view_info 中 生成, 不能再 发送请求
+// 所有的 o2m 字段 的 进一步 env.model1()  只能从这个 view_info 中 生成, 不能再 发送请求
 //
 
 // o2m 字段 的 的数据刷新 几种可能性:
@@ -121,48 +121,6 @@ const merge_tuples = (old_tuples, new_tuples) => {
   }, acc_init)
 }
 
-// 这是  odoo 中 仅有的 string domain 中需要的 变量
-// 如果 是扩展模块, 有额外的 需要, 则 该处代码需要改为可配置的
-// TBD 2021-3-10
-// const Globals_Dict = ['company_id', 'country_id', 'product_uom_category_id']
-
-const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
-  const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
-  to_replaced['function'] = 'function2'
-
-  let domain2 = domain
-  Object.keys(to_replaced).forEach(item => {
-    domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
-  })
-
-  const kwargs = { ...globals_dict, ...locals_dict }
-
-  const fn_str = []
-  fn_str.push('() => {')
-  Object.keys(kwargs).forEach(item => {
-    const vals = kwargs[item]
-    const is_str = typeof vals === 'string'
-    const is_arr = Array.isArray(vals)
-    const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
-    // console.log('fn eval 1:', item, vals, vals2)
-    const item2 = item === 'function' ? 'function2' : item
-    const str_to_push = `const ${item2} = ${vals2}`
-    // console.log('fn eval 1:', item, vals, vals2, str_to_push)
-    fn_str.push(str_to_push)
-  })
-  fn_str.push(`return ${domain2}`)
-  fn_str.push('}')
-
-  const fn_str2 = fn_str.join('\n')
-  // console.log('fn eval:', fn_str2)
-  const fn = eval(fn_str2)
-  // console.log('fn eval fn::', fn)
-  const ret = fn()
-  // console.log(ret)
-
-  return ret
-}
-
 class BaseField {
   constructor(name, data) {
     this.name = name
@@ -255,7 +213,7 @@ class BaseField {
     return { [this.name]: this.value(instance) }
   }
   value(instance) {
-    // 给 instance  fetch_one 使用
+    // 给 instance  fetch_one1 使用
     return this._getValue(instance)
   }
 
@@ -269,6 +227,7 @@ class BaseField {
     if (!input_id) {
       this._input_ids[input_id_key] = instance._odoo._get_input_id()
     }
+    // console.log(' getInputId  ', this._input_ids, input_id_key)
     return this._input_ids[input_id_key]
   }
 
@@ -278,7 +237,7 @@ class BaseField {
     return this._getValue(instance)
   }
 
-  _getValue(instance) {
+  raw_value(instance) {
     // 取数的实现
     let value = instance._values[this.name][instance.id]
     const value_in_writed = instance._values_to_write[this.name][instance.id]
@@ -286,6 +245,10 @@ class BaseField {
       value = value_in_writed
     }
     return value
+  }
+
+  _getValue(instance) {
+    return this.raw_value(instance)
   }
 
   _init_storage(instance) {
@@ -319,6 +282,7 @@ class BaseField {
   }
 
   async setValue(instance, value) {
+    console.log('to set, 1, ', this.name, value)
     // console.log('set:', instance._name, instance.id, this.name, value)
     // 给 instance  __defineSetter__ 使用
     // 这个是 触发 odoo set value
@@ -326,7 +290,6 @@ class BaseField {
     this._setValue(instance, value)
 
     if (instance.field_onchange) {
-      console.log('to set, 1 ', this.name, value)
       await instance.trigger_onchange(this.name)
       console.log('to set, 1999999 ', this.name, value)
     }
@@ -349,11 +312,11 @@ class Binary extends BaseField {
   }
 
   value(instance) {
-    // 给 instance  fetch_one 使用
+    // 给 instance  fetch_one1 使用
     return this.getValue(instance)
   }
   valueName(instance) {
-    // 给 instance  fetch_one 使用
+    // 给 instance  fetch_one1 使用
     return this.getValue(instance)
   }
 
@@ -500,15 +463,38 @@ class _Relational extends BaseField {
     // if (instance._values_to_write[this.name] === undefined) {
     //   instance._values_to_write[this.name] = {}
     // }
+
     if (instance._values_relation[this.name] === undefined) {
       instance._values_relation[this.name] = {}
       // so. sol, invoices
-      const relation_storage = instance._values_relation[this.name]
-      relation_storage._values = {}
-      // relation_storage._values.display_name = {}
-      relation_storage._values_to_write = {}
-      relation_storage._values_relation = {}
+      const storage = instance._values_relation[this.name]
+      storage._values = {}
+      storage._values_to_write = {}
+      storage._values_relation = {}
     }
+
+    if (instance._values_relation2[this.name] === undefined) {
+      instance._values_relation2[this.name] = {}
+      const storage = instance._values_relation2[this.name]
+      storage._values_relation2 = {}
+    }
+  }
+
+  _get_storage(instance) {
+    // const storage = instance._values_relation[this.name] || {}
+    const storage = instance._values_relation[this.name]
+    return storage
+  }
+
+  _get_storage2(instance) {
+    // const storage = instance._values_relation[this.name] || {}
+    const storage = instance._values_relation2[this.name]
+    return storage
+  }
+
+  _get_storage_records(instance) {
+    const storage = this._get_storage2(instance)
+    return storage.records
   }
 
   _get_env(instance) {
@@ -521,103 +507,12 @@ class _Relational extends BaseField {
 
   // for m2o and m2m.tag
 
-  // ok call by get_selection1
-  async _get_domain(instance, value_str) {
-    /*
-    // # 仅被 get_selection1 使用
-
-    // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
-    // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
-    // # 该选择 需要 存储在 本地 config 中
-
-    // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
-    // #  其余的只是需要 company_id
-    // #  --- res.partner
-    // #  <-str---> state_id [('country_id', '=?', country_id)]
-
-    // #  --- sale.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- purchase.order.line
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-
-    // #  --- stock.move
-    // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
-    */
-
-    const _get_company_id = () => {
-      const session_info = instance._odoo.session_info
-      // # company_id = session_info['company_id']
-      const user_companies = session_info.user_companies
-      const current_company = user_companies.current_company[0]
-      // # allowed_companies = user_companies['allowed_companies']
-      // # allowed_company_ids = [com[0] for com in allowed_companies]
-      return current_company
-    }
-
-    const _get_values_for_domain = () => {
-      // const globals_fields = Globals_Dict
-
-      // console.log('globals_fields', instance.fetch_one())
-      // // console.log('globals_fields', instance.field_onchange)
-      // const values2 = instance.fetch_one()
-
-      const globals_fields = Object.keys(instance._columns)
-
-      const values = globals_fields.reduce((acc, col) => {
-        const meta = instance._columns[col]
-        if (meta) {
-          meta.value(instance)
-          // console.log('vsls', col, meta)
-          acc[col] = meta.value(instance)
-        }
-        return acc
-      }, {})
-      if (!values.company_id) {
-        values.company_id = _get_company_id()
-      }
-      return values
-    }
-
-    const _get_res_model_id = async () => {
-      if (instance._model_id) {
-        return instance._model_id
-      }
-
-      const dm = [['model', '=', instance._name]]
-      const model_ids = await instance._odoo.execute('ir.model', 'search', dm)
-      const model_id = model_ids.length ? model_ids[0] : 0
-      this._model_id = model_id
-      return model_id
-    }
-
-    const domain = value_str || false
-
-    if (domain && typeof domain === 'string') {
-      // console.log('domain: ', this.name, domain)
-      const values = _get_values_for_domain()
-      // console.log('domain: ', values)
-
-      const globals_dict = {
-        res_model_id: await _get_res_model_id(),
-        allowed_company_ids: instance._odoo.allowed_company_ids,
-        ...values
-      }
-
-      const domain2 = eval_safe(domain, globals_dict)
-      // console.log('domain2: ', domain2)
-      return domain2
-    } else {
-      return domain
-    }
-  }
-
   // for m2o and m2m.tag
 
   get_selection(instance, kwargs = {}) {
     const { default: default2 } = kwargs
     if (default2) {
-      // console.log(instance._values_relation, this.getValue(instance))
+      // console.log(instance._values_relation1, this.getValue(instance))
       const id_ = instance._values[this.name][instance.id] || false
       if (id_) {
         const Relation = this._get_Relation(instance)
@@ -640,9 +535,9 @@ class _Relational extends BaseField {
     // console.log('get_selection2', this.domain)
     const { name = '', operator = 'ilike', limit = 8, domain, context } = kwargs
 
-    const domain1 = await this._get_domain(instance, this.domain)
-    const domain2 = await this._get_domain(instance, domain)
-    const context2 = await this._get_domain(instance, context)
+    const domain1 = await instance.eval_safe(this.domain)
+    const domain2 = await instance.eval_safe(domain)
+    const context2 = await instance.eval_safe(context)
 
     const args = [...(domain1 || []), ...(domain2 || [])]
 
@@ -658,10 +553,13 @@ class _Relational extends BaseField {
 
     //
     // console.log(' get selection,2 ', selection)
+
     selection.forEach(value => {
       instance._values_relation[this.name]._values.display_name[value[0]] =
         value[1]
     })
+
+    // console.log(' get selection,2 ', instance)
 
     return selection
   }
@@ -682,6 +580,30 @@ class Many2many extends _Relational {
   //   console.log('get_selection', this.name)
   //   console.log('get_selection', this)
   // }
+
+  fetch_one(instance) {
+    const values1 = super.fetch_one(instance)
+    const value_records = this.valueRecords(instance)
+    const values = { ...values1, [`${this.name}__record`]: value_records }
+
+    return values
+  }
+
+  // 返回 [records]
+  valueRecords(instance) {
+    const relation = this._get_storage_records(instance)
+
+    if (relation) {
+      const records = relation.fetch_all()
+      return records
+    } else {
+      const ids = this.value(instance)
+      const records = ids.map(id_ => {
+        return { id: id_ }
+      })
+      return records
+    }
+  }
 
   get_for_onchange(instance) {
     // in _values:  (6, 0, ids)
@@ -707,6 +629,7 @@ class Many2many extends _Relational {
   // }
 
   _getValue(instance) {
+    // console.log('m2m, _getValue ', instance._name, instance.id, this.name)
     let ids = instance._values[this.name][instance.id] || []
     const value_in_writed = instance._values_to_write[this.name][instance.id]
     if (value_in_writed !== undefined) {
@@ -718,44 +641,73 @@ class Many2many extends _Relational {
     return ids
   }
 
-  // 返回 同步对象
-  // TBD
-  getValue(instance) {
-    // console.log('m2m', this.name)
-    // const Relation = instance.env.model(this.relation)
-
+  _get_Relation(instance) {
     const Relation = instance.env.model(this.relation, 'many2many', {
+      parant_reg_name: instance._reg_name,
       isSync: true,
-      view_info: { fields: {} }
+      view_info: {
+        fields: {
+          display_name: { type: 'char', string: 'Name', readonly: true }
+        }
+      }
     })
+    return Relation
+  }
 
+  // 返回 异步对象
+  // m2m 字段, 初始化时, 只有 [ids],
+  // 定义 单$函数 异步返回 [{id, display_name}]
+  async getValue(instance) {
+    // console.log('m2m, getValue', this.name)
+    // Relation 为 同步获取, 无需 await Relation.awaiter 等待
+    const Relation = this._get_Relation(instance)
     const env = this._get_env(instance)
     const ids = this._getValue(instance)
+    // console.log('m2m, getValue', this.name, ids)
 
     const kwargs = { from_record: [instance, this] }
-    const relation = Relation._browse_relation_base(env, ids, kwargs)
+    const relation = await Relation._browse_relation_m2m_get(env, ids, kwargs)
+    const storage2 = this._get_storage2(instance)
+    storage2.records = relation
+
+    relation.event_onchange_all()
+
     return relation
   }
 
-  // 返回 异步 对象
-  async asyncGetValue(instance) {
-    // console.log('asyncGetValue')
+  // TBD 双 $$ 函数 暂时用不到, 未实现
+  async $$GetValue(instance) {
+    // console.log('m2m, $$GetValue', this.name)
     const Relation = instance.env.model(this.relation)
     const env = this._get_env(instance)
     const ids = this._getValue(instance)
     const kwargs = { from_record: [instance, this] }
-    const relation = await Relation._browse_relation_m2m_async(env, ids, kwargs)
+    const relation = await Relation._browse_relation_m2m_get2(env, ids, kwargs)
     return relation
   }
 
-  setValue(instance, value) {
-    // TBD
-    // m2m 如何 set value?
-    // m2m 只有一种编辑方式? 多选框?
-    // 6, 5, 4, 3
-    // 初始值 为 (6,0,[])
-    // 然后 (4,id), (3,id) 去增加和删除
-    return super.setValue(instance, value)
+  // setValue(instance, value) {
+  //   console.log('m2m set', this.name, value)
+  //   // TBD
+  //   // m2m 如何 set value?
+  //   // m2m 只有一种编辑方式? 多选框?
+  //   // 6, 5, 4, 3
+  //   // 初始值 为 (6,0,[])
+  //   // 然后 (4,id), (3,id) 去增加和删除
+  //   return super.setValue(instance, value)
+  // }
+
+  _setValue(instance, value) {
+    console.log('m2m set', this.name, value)
+    instance._values_to_write[this.name][instance.id] = [[6, 0, [...value]]]
+
+    const relation = this._get_storage_records(instance)
+
+    if (relation) {
+      relation._ids = [...value]
+    }
+
+    instance.event_onchange(this.name)
   }
 }
 
@@ -767,11 +719,14 @@ class Many2one extends _Relational {
   _init_storage(instance) {
     super._init_storage(instance)
     const relation_storage = instance._values_relation[this.name]
-    relation_storage._values.display_name = {}
+    if (relation_storage._values.display_name === undefined) {
+      relation_storage._values.display_name = {}
+    }
   }
 
   _get_Relation(instance) {
     const Relation = instance.env.model(this.relation, 'many2one', {
+      parant_reg_name: instance._reg_name,
       isSync: true,
       view_info: {
         fields: {
@@ -795,12 +750,14 @@ class Many2one extends _Relational {
     if (!id_) {
       return ''
     }
-    const value = instance._values_relation[this.name]._values.display_name[id_]
+
+    const storage = this._get_storage(instance)
+    const value = storage._values.display_name[id_]
     return value
   }
 
   // 返回 异步 对象
-  async asyncGetValue(instance) {
+  async $$GetValue(instance) {
     const ids = this._getValue(instance)
     const Relation = instance.env.model(this.relation)
     const env = this._get_env(instance)
@@ -823,37 +780,38 @@ class Many2one extends _Relational {
 
     instance._values[this.name][instance_id] = value ? value[0] : value
     if (value && value[1]) {
-      instance._values_relation[this.name]._values.display_name[value[0]] =
-        value[1]
+      const storage = this._get_storage(instance)
+      storage._values.display_name[value[0]] = value[1]
     }
-  }
-
-  setValueByOnchange(instance, value) {
-    instance._values_to_write[this.name][instance.id] = value ? value[0] : value
-    if (value && value[1]) {
-      instance._values_relation[this.name]._values.display_name[value[0]] =
-        value[1]
-    }
-    instance.event_onchange(this.name)
   }
 
   // async setValue(instance, value) {
-  //   // 首先 要 get selection, 那么 set之后, valueName 才会有值
+  //   // 首先 要 get selection, 那么 set之后, valueName2 才会有值
   //   // 当然, 没有 selection, 也无法 set value
   //   return super.setValue(instance, value)
   // }
+
+  // 参数是 id
+  // _setValue(instance, value) {
+  //   instance._values_to_write[this.name][instance.id] = value
+  //   instance.event_onchange(this.name)
+  // }
+
+  // _setValue 的一种, 参数 是 [id, name]
+  setValueByOnchange(instance, value) {
+    instance._values_to_write[this.name][instance.id] = value ? value[0] : value
+    if (value && value[1]) {
+      const storage = this._get_storage(instance)
+      storage._values.display_name[value[0]] = value[1]
+    }
+    instance.event_onchange(this.name)
+  }
 }
 
 class One2many extends _Relational {
   constructor(name, data) {
     super(name, data)
     this.relation_field = data.relation_field || false
-  }
-
-  _get_storage_records(instance) {
-    // const storage = instance._values_relation[this.name] || {}
-    const storage = instance._values_relation[this.name]
-    return storage.records
   }
 
   _get_for_CU(instance, value) {
@@ -965,8 +923,7 @@ class One2many extends _Relational {
 
   // 返回 [records]
   valueRecords(instance) {
-    const storage = instance._values_relation[this.name]
-
+    const storage = this._get_storage2(instance)
     const relation = storage.records
 
     if (relation) {
@@ -998,6 +955,18 @@ class One2many extends _Relational {
     return ids
   }
 
+  _get_Relation_view_type(instance) {
+    const view_info = instance._view_info
+    const my_views = view_info.fields[this.name].views
+    if (my_views.tree) {
+      return 'tree'
+    } else if (my_views.kanban) {
+      return 'kanban'
+    } else {
+      return 'one2many'
+    }
+  }
+
   _get_Relation(instance) {
     const view_info = instance._view_info
     const my_views = view_info.fields[this.name].views
@@ -1005,62 +974,78 @@ class One2many extends _Relational {
     // o2m 单行编辑时, 用 tree or form view,
     if (my_views.tree) {
       return instance.env.model(this.relation, 'tree', {
-        view_info: my_views.tree
+        parant_reg_name: instance._reg_name,
+        view_info: my_views.tree,
+        views: my_views
       })
     } else if (my_views.kanban) {
       return instance.env.model(this.relation, 'kanban', {
-        view_info: my_views.kanban
+        parant_reg_name: instance._reg_name,
+        view_info: my_views.kanban,
+        views: my_views
       })
     } else {
-      return instance.env.model(this.relation)
+      return instance.env.model(this.relation, 'one2many', {
+        parant_reg_name: instance._reg_name,
+        isSync: true,
+        view_info: {
+          fields: {
+            display_name: { type: 'char', string: 'Name', readonly: true }
+          }
+        }
+      })
     }
   }
 
-  // 返回 异步 对象
-  async asyncGetValue(instance) {
-    // console.log('asyncGetValue')
-    const Relation = this._get_Relation(instance)
-    const env = this._get_env(instance)
-    const ids = this._getValue(instance)
-    const kwargs = { from_record: [instance, this] }
+  // // 返回 异步 对象
+  // async $$GetValue(instance) {
+  //   // // console.log('$$GetValue')
+  //   // const Relation = this._get_Relation(instance)
+  //   // const env = this._get_env(instance)
+  //   // const ids = this._getValue(instance)
+  //   // const kwargs = { from_record: [instance, this] }
+  //   // // 需要处理, 初始化 / 编辑 / 新增 / 删除 等, 分支情况
+  //   // const relation = await Relation._browse_relation_o2m_async(env, ids, kwargs)
+  //   // const storage = instance._values_relation[this.name]
+  //   // storage.records = relation
+  //   // return relation
+  // }
 
-    const relation = await Relation._browse_relation_o2m_async(env, ids, kwargs)
+  // 返回 异步对象
+  // o2m 字段, 初始化时, 只有 [ids],
+  // 定义 单$函数 异步返回 [{id, ...}] 字段 由 _field_onchange
+  async getValue(instance, force) {
+    // console.log(' getValue1, ', this.name, this.value(instance))
 
-    return relation
+    // 明面上的 o2m 字段,
+    // 初始化时 为 [ids], 首次 getValue 需要请求服务器
+    // 然后暂存 storage.records
+    // 之后 新增 / 删除 直接 更新 storage.records.ids, 编辑, 直接 更新 storage.values
+    // 故, 之后 使用时只需要 直接取 storage.records
+    // 而初始化 发请求的 [ids] 都是真实的 ids
 
-    // const ids = this._getValue(instance)
-    // const Relation = instance.env.model(this.relation)
+    // 有潜在的 o2m 字段.  event.event 的  event_mail_ids
+    //  event.event 的 event_type_id 改变时触发 onchange 返回:
+    //  event_mail_ids = [(5,0,0),(0,0,{})]
+    //  经过 setValueByOnchange1 函数处理,
+    // 数据进入 event.event 的 value_relation
 
-    // const get_env = () => {
-    //   if (!this.context) {
-    //     return instance.env
-    //   }
-    //   const context = { ...instance.env.context, ...this.context }
-    //   return instance.env.copy(context)
-    // }
-    // return Relation._browse_native(get_env(), ids)
-  }
+    // 当 event_mail_ids getValue 时, 此时应该根据  event.event 的 value_relation 的 数据
+    // 同步方法, 生成 event_mail_ids 的 storage.records
+    // TBD 待处理
 
-  // 返回 同步对象
-  getValue(instance, force) {
-    // console.log(
-    //   ' getValue, ',
-    //   instance._name,
-    //   instance.id,
-    //   this.name,
-    //   this.value(instance)
-    // )
-
-    const storage = instance._values_relation[this.name]
+    const storage = this._get_storage2(instance)
 
     if (storage.records && !force) {
       return storage.records
     } else {
       const Relation = this._get_Relation(instance)
+      // console.log('getValue1 ', [Relation])
       const env = this._get_env(instance)
       const ids = this._getValue(instance)
       const kwargs = { from_record: [instance, this] }
-      const relation = Relation._browse_relation_o2m(env, ids || false, kwargs)
+      //
+      const relation = await Relation._browse_relation_o2m(env, ids, kwargs)
 
       storage.records = relation
 
@@ -1069,39 +1054,79 @@ class One2many extends _Relational {
     }
   }
 
-  // async setValue(instance, value) {
-  //   // TBD
-  //   return super.setValue(instance, value)
-  // }
+  //
+  // _setValue 是同步函数,
+  //
 
-  // set value ? [0,id, {}], [1, id, {}]
-  setValueFromRelation(instance, o2m_id, values) {
-    const op = !is_virtual_id(o2m_id) ? 1 : 0
-    const new_value = [[op, o2m_id, values]]
+  _setValue(instance, tuples) {
+    //
+    // o2m 字段的值, 是通过 子模型 进行 CRUD,  因此 没有 setValue 函数
+    // 但是 _setValue 是 需要的
+    // 1. 其他字段 onchange 的返回值, 有本字段 o2m 需要设置
+    // 2. 子模型 处理完之后, 更新父模型的 o2m 字段, 就是本 o2m 字段
+
+    // call by setValueByOnchange1
+    // call by remove
+    // 这是同步函数
+    // 参数是  tuples
+    //
+    console.log('o2m set', this.name, tuples)
+
+    const new_value = tuples
     const old_value = instance._values_to_write[this.name][instance.id] || []
     const values_to_write = merge_tuples(old_value, new_value)
     instance._values_to_write[this.name][instance.id] = values_to_write
-    const relation = this._get_storage_records(instance)
 
-    if (relation && !relation._ids.includes(o2m_id)) {
-      relation._ids.push(o2m_id)
+    // const storage = instance._values_relation[this.name]
+    // if (storage.records) {
+    //   const ids = this._getValue(instance)
+    //   storage.records._ids = ids
+    // }
+
+    const relation = this._get_storage_records(instance)
+    if (relation) {
+      const ids = this._getValue(instance)
+      relation._ids = ids
     }
+
+    instance.event_onchange(this.name)
   }
 
-  // TBD
   setValueByOnchange(instance, tuples) {
-    // console.log('xxxx,', this.name, instance._name, instance.id, tuples)
+    // _setValue 的一种
+    // 参数是 tuples
 
-    // console.log('xxxx,', relation, relation_records)
+    // 1 其他字段 编辑, 触发 onchange之后,
+    // 2 返回 我o2m字段的值, [[5,],[6,],[1,id,{}],[0,id,{}]]
+    // 3 这个函数, 处理o2m字段的值 更新到自己的模型
+
+    // 一个案例:
+    // event.evnt, event_type_id 改变时触发 onchange 返回 event_mail_ids 的值
+    // [5,],[6,] 可以直接 call _setValue
+    // [0, 0, {}]
+    // [1, id, {}]
+    // 编辑情况: [1, id, {}]
+    // 根据 id , 更新 value_relation
+    // 之后 call _setValue
+    //
+    // 新增情况: [0, 0, {}]
+    // 创建 id , 更新 value_relation
+    // 如果 value_relation 中 有 新增的, 需要先删除?
+    //
+    // 之后 call _setValue
+    // 目前只有一个例子
+    // event.evnt, event_type_id onchange 返回 event_mail_ids
+    //
 
     tuples.forEach(tup => {
       // TBD event.event change event.type 时, 返回的是 全 [0,0,{}]
       // 如果其他情况, TBD
       if (tup[0] === 5) {
         //remove all
-        this._update_relation_by_remove(instance, [tup])
+        this._setValue(instance, [tup])
       } else if (tup[0] === 0) {
         // console.log(tup)
+        //
         this.new_sync(instance, tup[2])
       }
     })
@@ -1109,53 +1134,63 @@ class One2many extends _Relational {
     instance.event_onchange(this.name)
   }
 
-  _update_relation_by_remove(instance, tuples) {
-    const new_value = tuples
-    const old_value = instance._values_to_write[this.name][instance.id] || []
-    const values_to_write = merge_tuples(old_value, new_value)
-    instance._values_to_write[this.name][instance.id] = values_to_write
-    const relation = this.getValue(instance, true)
-    return relation
-
-    // Object.keys(records._values).forEach(field => {
-    //   const values = records._values[field]
-    //   delete values[o2m_id]
-    // })
-
-    // Object.keys(records._values_to_write).forEach(field => {
-    //   const values = records._values_to_write[field]
-    //   delete values[o2m_id]
-    // })
-  }
-
+  // call by setValueByOnchange1
   new_sync(instance, values) {
-    const relation = this.getValue(instance)
-    const Relation = this._get_Relation(instance)
-    const env = this._get_env(instance)
-    const iterated = relation
-    const kwargs = { from_record: [instance, this], iterated, values }
-    const ids = instance._odoo._get_virtual_id()
-    Relation._browse_relation_o2m_new(env, ids, kwargs)
+    // 这里 不能 创建 relation, 应该直接 更新 value_relation里的 值
+    // 另外 this.getValue(instance) 已经是异步函数了
+    // 此处代码有问题
+
+    console.log('new_sync,TBD,20210425 ', instance._name, this.name, values)
+    throw 'error  new_sync '
+    // const relation = this.getValue(instance)
+    // const Relation = this._get_Relation(instance)
+    // const env = this._get_env(instance)
+    // const iterated = relation
+    // const kwargs = { from_record: [instance, this], iterated, values }
+    // const ids = instance._odoo._get_virtual_id()
+    // Relation._browse_relation_o2m_new(env, ids, kwargs)
   }
 
-  // set value, new a model, onchange, then call setValueFromRelation
-  // TBD
-  async new(instance) {
-    // console.log('new', instance._name, instance.ids, this.name)
+  // 什么时候 调用这个函数?
+  remove_one_sync(instance, relation_to_remove) {
+    const o2m_id =
+      relation_to_remove instanceof Model
+        ? relation_to_remove.id
+        : relation_to_remove
 
-    // const Relation = instance.env.model(this.relation)
-    // const get_env = () => {
-    //   if (!this.context) {
-    //     return instance.env
+    const new_value = [[2, o2m_id, 0]]
+    this._setValue(instance, new_value)
+  }
+
+  //
+  // setValue 是异步函数,
+  // o2m 字段, 分解为 romove / new
+  // o2m 字段 子模型的编辑, 由子模型处理后, 直接 call _setValue
+
+  async setValue(instance, value) {
+    //   this._setValue(instance, value)
+    //   if (instance.field_onchange) {
+    //     await instance.trigger_onchange(this.name)
     //   }
-    //   const context = { ...instance.env.context, ...this.context }
-    //   return instance.env.copy(context)
-    // }
-    // console.log('new1,', instance._name, instance.ids, this.name)
-    // const new_relation = await Relation._browse(get_env(), null, kwargs)
+    //   return new Promise(resolve => resolve(this.name))
+    return super.setValue(instance, value)
+  }
 
-    const storage = instance._values_relation[this.name]
-    const iterated = storage.records
+  async new(instance) {
+    // new is set value, new a model, onchange, then call _setValue
+    console.log('new', instance._name, instance.ids, this.name)
+    // new 是一种 setValue.
+    // 1 call default_get, onchange,
+    // 2 then call 同步 _setValue
+
+    // call new 之前, 必定已经  storage.records 是初始化过的
+    // call new 之后, 经过 onchange, 最后 call _setValue
+
+    // const storage = instance._values_relation[this.name]
+    // const iterated = storage.records
+
+    const iterated = this._get_storage_records(instance)
+
     const Relation = this._get_Relation(instance)
     const env = this._get_env(instance)
     const ids = instance._odoo._get_virtual_id()
@@ -1176,42 +1211,26 @@ class One2many extends _Relational {
     return new_relation
   }
 
-  remove_one_sync(instance, relation_to_remove) {
-    const o2m_id =
-      relation_to_remove instanceof Model
-        ? relation_to_remove.id
-        : relation_to_remove
-
-    const new_value = [[2, o2m_id, 0]]
-    this._update_relation_by_remove(instance, new_value)
-  }
-
-  // set value ? del one,  [2, id, 0]
   async remove(instance, relation_to_remove) {
+    // remove is setValue 的一种
     // console.log('remove1:', instance._name, instance.ids, this.name)
-
     const o2m_id =
       relation_to_remove instanceof Model
         ? relation_to_remove.id
         : relation_to_remove
 
     const new_value = [[2, o2m_id, 0]]
-
-    const relation = this._update_relation_by_remove(instance, new_value)
-
-    if (instance.field_onchange) {
-      await instance.trigger_onchange(this.name)
-    }
-
-    // remove 时, 相当于 列表变更, 故 全部刷新下
-    // console.log('remove:', relation.ids)
-    relation.event_onchange_all()
+    const set_ok = this.setValue(instance, new_value)
+    instance._instance_awaiters.push(set_ok)
+    return set_ok
   }
 
   async after_commit(instance) {
     // create and write commit 之后, then read from odoo
     //  因此数据已经变更, 重新读取 o2m 的数据
-    const storage = instance._values_relation[this.name]
+
+    const storage = this._get_storage2(instance)
+
     if (storage && storage.records) {
       storage.records = null
       await this.getValue(instance)
@@ -1219,13 +1238,11 @@ class One2many extends _Relational {
   }
 
   commit(instance) {
-    const storage = instance._values_relation[this.name]
-
-    if (!(storage && storage.records)) {
+    const records = this._get_storage_records(instance)
+    if (!records) {
       return
     }
 
-    const records = storage.records
     Object.keys(records._values).forEach(field => {
       const values = records._values[field]
       Object.keys(values).forEach(o2m_id => delete values[o2m_id])

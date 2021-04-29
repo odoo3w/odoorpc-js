@@ -4,94 +4,33 @@
       <div>&nbsp;</div>
 
       <div>currentValue: {{ value }}</div>
-      <!-- <div>options: {{ options }}</div> -->
-      <!-- style="width:200px" -->
+      <!-- {{ options }}
+      {{ showSearchMore }} -->
+      <Divider />
 
-      <!-- filterable
-        auto-complete -->
+      <button @click="onSet">set</button>
+
+      <Divider />
+      <!-- auto-complete -->
+
+      <div v-if="options.length > 6">more</div>
 
       <Select
+        v-else
         v-model="value2"
         filterable
         multiple
-        auto-complete
         placeholder="input here"
         style="width:200px"
       >
-        <slot name="input">
-          <!-- v-model="query2" -->
-          <input
-            type="hidden"
-            ref="input"
-            slot="input"
-            icon="ios-arrow-down"
-            :placeholder="placeholder"
-          />
-          <SelectHead
-            ref="SelectHead"
-            :values="values"
-            filterable
-            multiple
-            :placeholder="placeholder"
-          >
-            2313</SelectHead
-          >
-        </slot>
-
         <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
           op[1]
         }}</Option>
 
-        <a
-          v-if="showSearchMore"
-          href="javascript:void(0)"
-          name=""
-          @click="searchMore"
-        >
-          {{ '搜索更多...' }}
-        </a>
+        <Option :value="0" @click.native="searchMore">
+          <div>{{ '搜索更多' }}</div>
+        </Option>
       </Select>
-
-      <Divider />
-
-      1231313---00000
-
-      <Divider />
-
-      <OSelect
-        v-model="value2"
-        :showSearchMore="showSearchMore"
-        placeholder="input here"
-      >
-        <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
-          op[1]
-        }}</Option>
-      </OSelect>
-
-      <!-- 
-      <SelectM2o
-        v-model="value2"
-        :label.sync="label"
-        :loading="loading"
-        :remote-method="remoteMethod"
-        placeholder="input here"
-        style="width:200px"
-      >
-        <span v-show="!loading">
-          <Option v-for="op in options" :key="op[0]" :value="op[0]">{{
-            op[1]
-          }}</Option>
-          <div v-show="options.length === 0">{{ '无...' }}</div>
-
-          <a
-            v-if="showSearchMore"
-            href="javascript:void(0)"
-            name=""
-            @click="searchMore"
-            >{{ '搜索更多...' }}</a
-          >
-        </span>
-      </SelectM2o> -->
 
       <div>&nbsp;</div>
     </div>
@@ -99,19 +38,19 @@
 </template>
 
 <script>
-import OSelect from '@/components/iview/OSelect'
-import SelectHead from '../../../node_modules/view-design/src/components/select/select-head'
-import { sleep } from '@/utils'
+// import OSelect from '@/components/iview/OSelect'
+
+// import { sleep } from '@/utils'
 
 export default {
   name: 'Home',
-  components: { OSelect, SelectHead },
+  // components: { OSelect },
   mixins: [],
 
   data() {
     return {
       value: 0,
-      values: [1, 2],
+
       label: '',
       placeholder: 'pls input',
 
@@ -160,6 +99,15 @@ export default {
   },
 
   methods: {
+    async onSet() {
+      if (this.showSearchMore) {
+        this.options = this.list2
+      } else {
+        this.options = await this._getSelectOptions()
+      }
+      this.showSearchMore = !this.showSearchMore
+    },
+
     async init() {
       this.value = 12
       this.label = '12上海'
@@ -179,8 +127,8 @@ export default {
       // await sleep(1000)
 
       const options1 = options.slice(0, 3)
-      const show_search_more = options.length > options1.length
-      this.showSearchMore = show_search_more
+      // const show_search_more = options.length > options1.length
+      // this.showSearchMore = show_search_more
 
       return options1
     },

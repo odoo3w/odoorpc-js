@@ -1,20 +1,24 @@
 <template>
-  <div :name="node.attribute.attrs.name" :class="className">
-    <span class="o_stat_value"> {{ node.meta.value }} </span>
-    <span class="o_stat_text"> {{ node.meta.string }} </span>
+  <div :name="node.attrs.name" :class="className">
+    <span class="o_stat_value"> {{ valueName }} </span>
+    <span class="o_stat_text"> {{ node.attrs.string }} </span>
   </div>
 </template>
 
 <script>
+import OFieldMixin from './OFieldMixin'
+
 export default {
   name: 'OWidgetStatinfo',
+
+  mixins: [OFieldMixin],
   props: {
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      },
-    },
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return { children: [] }
+    //   }
+    // }
   },
 
   computed: {
@@ -23,25 +27,25 @@ export default {
       const classList = [
         'o_field_widget',
         'o_stat_info',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : []),
+        ...(node.class ? node.class.split(' ') : [])
       ]
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      if (node.meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
       return classList.join(' ')
-    },
+    }
   },
 
   methods: {
     //
-  },
+  }
 }
 </script>
 

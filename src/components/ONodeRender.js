@@ -1,5 +1,8 @@
 import ONodeMixin from '@/components/ONodeMixin'
 
+// let count_me = 1
+// let last_time = 0
+
 export default {
   name: 'ONode',
   components: {
@@ -26,18 +29,14 @@ export default {
 
   methods: {
     className(node) {
-      // console.log(node)
-      const classList = [
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
-      ]
-      const meta = node.meta || {}
-      if (meta.invisible) {
+      const classList = [...(node.class ? node.class.split(' ') : [])]
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      if (meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
       return classList.join(' ')
@@ -47,12 +46,43 @@ export default {
       const parent = this.parent
       const record = this.record
       const node = this.node
+      const dataDict = this.dataDict
       const editable = this.editable
+
+      // count_me = count_me + 1
+      // const this_time = new Date().getTime()
 
       // const deep_copy = node => {
       //   return JSON.parse(JSON.stringify(node))
       // }
-      // console.log('ONode, xxxxxx:', node.tagName, deep_copy(node))
+
+      // if (this_time - last_time > 30) {
+      //   console.log(
+      //     'date 300,',
+      //     count_me,
+      //     this_time - last_time,
+      //     this_time,
+      //     last_time,
+      //     deep_copy(node)
+      //   )
+      // } else {
+      //   console.log(
+      //     'date 300,',
+      //     count_me,
+      //     this_time - last_time,
+      //     this_time,
+      //     last_time
+      //     // deep_copy(node)
+      //   )
+      // }
+
+      // last_time = this_time
+
+      // if (node.tagName === 'label') {
+      //   console.log('ONode, node, xxxxxx:', node.tagName, deep_copy(node))
+      // }
+      // console.log('ONode, data, xxxxxx:', dataDict)
+
       // console.log('ONode, xxxxxx:', this.editable)
       // console.log('ONode, xxxxxx:', this.record)
 
@@ -86,27 +116,25 @@ export default {
 
       if (node.tagName === 'group') {
         return createElement('OGroup', {
-          props: { record, parent, node, editable },
-          on: { 'on-field-change': this.onFieldChange }
+          props: { record, parent, node, dataDict, editable }
         })
       }
 
       if (node.tagName === 'field') {
         return createElement('OWidgetField', {
-          props: { record, parent, node, editable },
-          on: { 'on-field-change': this.onFieldChange }
+          props: { record, parent, node, dataDict, editable }
         })
       }
 
       if (node.tagName === 'button') {
         return createElement('OButton', {
-          props: { record, parent, node, editable }
+          props: { record, parent, node, dataDict, editable }
         })
       }
 
       if (node.tagName === 'img') {
         return createElement('OImg', {
-          props: { record, parent, node, editable }
+          props: { record, parent, node, dataDict, editable }
         })
       }
 
@@ -124,18 +152,16 @@ export default {
 
       const children = (node.children || []).map(sub_node => {
         return createElement('ONode', {
-          props: { record, parent: node, node: sub_node, editable },
-          on: { 'on-field-change': this.onFieldChange }
+          props: { record, parent: node, node: sub_node, dataDict, editable }
         })
       })
 
       return createElement(
         tagName,
         {
-          ...node.attribute,
+          attrs: { ...node.attrs },
           class: this.className(node),
-          props: { record, node, editable },
-          on: { 'on-field-change': this.onFieldChange }
+          props: { record, node, dataDict, editable }
         },
         children
       )

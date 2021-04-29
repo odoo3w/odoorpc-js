@@ -1,9 +1,16 @@
 <template>
   <div>
     <div>
+      <div>
+        {{ dataDict }}
+      </div>
       <OViewForm :record="record" :node="node" :editable="false" />
 
       <div>&nbsp;</div>
+      <div>
+        asdadsa
+        {{ dataDict }}
+      </div>
     </div>
   </div>
 </template>
@@ -23,7 +30,8 @@ export default {
       api,
 
       record: {},
-      node: {}
+      node: {},
+      dataDict: {}
     }
   },
   computed: {},
@@ -37,7 +45,17 @@ export default {
     const rid = Number(query.id)
     console.log('view 1', model, view_type, view_ref, rid)
     const Model = api.env.model(model, view_type, view_ref)
-    const record = await Model.browse(rid)
+
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+
+    const callback = res => {
+      console.log('call back,', deep_copy(res))
+      this.dataDict = { ...res }
+    }
+
+    const record = await Model.browse(rid, { fetch_one: callback })
 
     console.log('view 2', model, view_type, view_ref)
     const node = record.view_node()

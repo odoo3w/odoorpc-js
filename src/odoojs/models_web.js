@@ -1,22 +1,46 @@
 import { Model as BaseModel } from './models_base.js'
 
-import xml2json from './xml2json.js'
+// import xml2json from './xml2json.js'
 
 // import QWEB from './qweb'
 
 const PAGE_SIZE = 10
 
-const get_attrs = node_attr => {
-  return Object.keys(node_attr).reduce((acc, cur) => {
-    if (!['class', 'attrs', 'modifiers', 'invisible'].includes(cur)) {
-      acc[cur] = node_attr[cur]
-    }
-    return acc
-  }, {})
-}
+const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
+  const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
+  to_replaced['function'] = 'function2'
 
-const deep_copy = node => {
-  return JSON.parse(JSON.stringify(node))
+  let domain2 = domain
+  Object.keys(to_replaced).forEach(item => {
+    domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
+  })
+
+  const kwargs = { ...globals_dict, ...locals_dict }
+
+  const fn_str = []
+  fn_str.push('() => {')
+  Object.keys(kwargs).forEach(item => {
+    const vals = kwargs[item]
+    const is_str = typeof vals === 'string'
+    const is_arr = Array.isArray(vals)
+    const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
+    // console.log('fn eval 1:', item, vals, vals2)
+    const item2 = item === 'function' ? 'function2' : item
+    const str_to_push = `const ${item2} = ${vals2}`
+    // console.log('fn eval 1:', item, vals, vals2, str_to_push)
+    fn_str.push(str_to_push)
+  })
+  fn_str.push(`return ${domain2}`)
+  fn_str.push('}')
+
+  const fn_str2 = fn_str.join('\n')
+  // console.log('fn eval:', fn_str2)
+  const fn = eval(fn_str2)
+  // console.log('fn eval fn::', fn)
+  const ret = fn()
+  // console.log(ret)
+
+  return ret
 }
 
 export class Model extends BaseModel {
@@ -117,28 +141,36 @@ export class Model extends BaseModel {
     return all
   }
 
-  _view_required(node) {
-    if (!node.attr.modifiers) {
+  //
+
+  view_node() {
+    return this.constructor._view_node
+  }
+
+  //
+
+  _view_required(node, dataDict) {
+    if (!node.attrs.modifiers) {
       return null
     }
-    const modifiers = JSON.parse(node.attr.modifiers)
+    const modifiers = JSON.parse(node.attrs.modifiers)
     if (modifiers.required !== undefined) {
-      const required = this.compute_domain(modifiers.required)
+      const required = this.compute_domain(modifiers.required, dataDict)
       return required
     } else {
       return null
     }
   }
 
-  _view_readonly(node) {
-    if (!node.attr.modifiers) {
+  _view_readonly(node, dataDict) {
+    if (!node.attrs.modifiers) {
       return null
     }
 
-    const modifiers = JSON.parse(node.attr.modifiers)
+    const modifiers = JSON.parse(node.attrs.modifiers)
 
     if (modifiers.readonly !== undefined) {
-      const readonly = this.compute_domain(modifiers.readonly)
+      const readonly = this.compute_domain(modifiers.readonly, dataDict)
 
       return readonly
     } else {
@@ -146,200 +178,60 @@ export class Model extends BaseModel {
     }
   }
 
-  _view_invisible(node) {
-    if (node.attr.invisible) {
-      return node.attr.invisible ? true : false
+  _view_invisible(node, dataDict) {
+    if (node.attrs.invisible) {
+      return node.attrs.invisible ? true : false
     }
-    if (!node.attr.modifiers) {
+    if (!node.attrs.modifiers) {
       return null
     }
 
-    const modifiers = JSON.parse(node.attr.modifiers)
+    const modifiers = JSON.parse(node.attrs.modifiers)
 
     if (modifiers.invisible !== undefined) {
-      const invisible = this.compute_domain(modifiers.invisible)
+      const invisible = this.compute_domain(modifiers.invisible, dataDict)
       return invisible
     } else {
       return null
     }
   }
 
-  _get_templates(node) {
-    // console.log('get_templates', this._from_record)
-    // return node
-    const get_tmpl = () => {
-      if (this._from_record) {
-        const [parent, Field] = this._from_record
-        return parent.get_templates(node, Field.name)
-      }
-      return this.get_templates(node)
-    }
-
-    const tmpl = get_tmpl()
-    if (tmpl) {
-      return xml2json.toJSON(tmpl)
-    } else {
-      return node
-    }
+  _view_node_attrs_options(node) {
+    const res = this._view_node_attrs_base(node.attrs, ['options'])
+    return res.options
   }
 
-  // eslint-disable-next-line no-unused-vars
-  get_templates(node, field) {
-    // console.log('get_templates', this._from_record)
-    return null
+  _view_node_attrs_context(node) {
+    const res = this._view_node_attrs_base(node.attrs, ['context'])
+    return res.context
   }
 
-  _view_node_default_html(node) {
-    // console.log(' _view_node_default_html', node)
-    if (typeof node !== 'object') {
-      return node
-    }
-
-    if (Array.isArray(node)) {
-      return node
-    }
-
-    if (!node) {
-      return node
-    }
-
-    if (node.tagName === 'field') {
-      return this._view_node_field(node)
-    }
-    if (node.tagName === 'label') {
-      return this._view_node_label(node)
-    }
-
-    if (node.tagName === 'templates') {
-      // console.log('is templates:', node)
-      // const qweb = new QWEB(this)
-      // const node2 = qweb.toNode(node)
-      const node3 = this._get_templates(node)
-
-      // console.log('temp, return:', node3)
-
-      // const node2 = node
-
-      return {
-        ...node3,
-        children: node3.children.map(item => this._view_node_default_html(item))
-      }
-    }
-
-    return {
-      name: node.tagName,
-      meta: {
-        readonly: this._view_readonly(node),
-        invisible: this._view_invisible(node),
-        required: this._view_required(node),
-        string: node.attr.string
-      },
-      tagName: node.tagName,
-
-      attribute: {
-        attrs: { ...get_attrs(node.attr) },
-        class: node.attr.class
-      },
-
-      children:
-        !node.isParent && node.content
-          ? [node.content]
-          : (node.children || []).map(item =>
-              this._view_node_default_html(item)
-            )
-    }
-  }
-
-  _view_node_label(node) {
-    let string = ''
-    let value = ''
-    let valueName = ''
-    let input_id = undefined
-
-    if (node.attr.for) {
-      const meta = this._columns[node.attr.for]
-      string = node.attr.string || meta.string
-      value = meta.value(this)
-      valueName = meta.valueName(this)
-      input_id = meta.getInputId(this)
-    } else {
-      //
-    }
-
-    return {
-      name: node.tagName,
-      meta: {
-        readonly: 1,
-        // readonly: this._view_readonly(node),
-        // invisible: this._view_invisible(node),
-        // required: this._view_required(node),
-        value,
-        valueName,
-        string,
-        input_id
-      },
-      tagName: node.tagName,
-      attribute: {
-        attrs: {
-          ...get_attrs(node.attr),
-          string
-        },
-        class: node.attr.class
-      },
-      children:
-        !node.isParent && node.content
-          ? [node.content]
-          : (node.children || []).map(item =>
-              this._view_node_default_html(item)
-            )
-    }
-  }
-
-  eval_safe_python(attr, items) {
-    // console.log('eval_safe_python', attr)
+  _view_node_attrs_base(attrs, items) {
+    // console.log('eval_safe_python1', attrs)
     // options: "{'no_open':True,'no_create': True}"
     // context: "{'default_is_company': True, 'show_vat': True}"
     // domain: "[('is_company', '=', True)]"
-    const _eval_safe_python_one = value_str => {
-      // const to_replaced = { False: 'false', True: 'true' }
-      const to_replaced = {
-        '\\(': '[',
-        '\\)': ']',
-        False: 'false',
-        True: 'true'
-      }
 
-      let value_str2 = value_str
-      Object.keys(to_replaced).forEach(item => {
-        value_str2 = value_str2.replace(
-          new RegExp(item, 'g'),
-          to_replaced[item]
-        )
-      })
-
-      const fn_str = []
-      fn_str.push('() => {')
-      fn_str.push(`return ${value_str2}`)
-      fn_str.push('}')
-
-      const fn_str2 = fn_str.join('\n')
-      // console.log(fn_str2)
-      const fn = eval(fn_str2)
-      const ret = fn()
-      // console.log(ret)
-
-      return ret
-    }
-
-    // const items = ['options']
+    // const ss = {
+    //   default_parent_id: active_id,
+    //   default_street: street,
+    //   default_street2: street2,
+    //   default_city: city,
+    //   default_state_id: state_id,
+    //   default_zip: zip,
+    //   default_country_id: country_id,
+    //   default_lang: lang,
+    //   default_user_id: user_id,
+    //   default_type: 'other'
+    // }
 
     const result = items.reduce((acc, cur) => {
-      const value = attr[cur]
+      const value = attrs[cur]
       if (value) {
         acc = {
           ...acc,
           [`${cur}_old`]: value,
-          [cur]: _eval_safe_python_one(value)
+          [cur]: this.eval_safe(value)
         }
       }
       return acc
@@ -347,135 +239,91 @@ export class Model extends BaseModel {
 
     return result
   }
-  // ok
-  _view_node_field(node) {
-    const meta = this._columns[node.attr.name]
 
-    const get_meta_data = () => {
-      if (meta) {
-        return {
-          type: meta.type,
-          string: meta.string,
-          selection: meta.selection,
-          value: meta.value(this),
-          valueName: meta.valueName(this),
-          input_id: meta.getInputId(this)
-        }
-      } else {
-        return {
-          type: '',
-          string: '',
-          selection: [],
-          value: '',
-          valueName: '',
-          input_id: undefined
-        }
-      }
+  async eval_safe(value_str) {
+    /*
+  // # 仅被 get_selection1 使用
+
+  // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
+  // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
+  // # 该选择 需要 存储在 本地 config 中
+
+  // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
+  // #  其余的只是需要 company_id
+  // #  --- res.partner
+  // #  <-str---> state_id [('country_id', '=?', country_id)]
+
+  // #  --- sale.order.line
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+  // #  --- purchase.order.line
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+  // #  --- stock.move
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+  */
+
+    const _get_company_id = () => {
+      const session_info = this._odoo.session_info
+      // # company_id = session_info['company_id']
+      const user_companies = session_info.user_companies
+      const current_company = user_companies.current_company[0]
+      // # allowed_companies = user_companies['allowed_companies']
+      // # allowed_company_ids = [com[0] for com in allowed_companies]
+      return current_company
     }
 
-    const meta_data = get_meta_data()
+    const _get_values_for_domain = () => {
+      // const globals_fields = Globals_Dict
 
-    return {
-      name: 'field',
-      meta: {
-        readonly: this._view_readonly(node),
-        invisible: this._view_invisible(node),
-        required: this._view_required(node),
-        ...meta_data,
-        name: node.attr.name,
-        string: node.attr.string || meta_data.string
-      },
-      tagName: node.tagName,
-      attribute: {
-        attrs: {
-          // name
-          // widget
-          // options
-          ...get_attrs(node.attr),
-          // options_old: node.attr.options,
-          ...this.eval_safe_python(node.attr, ['options']),
+      // console.log('globals_fields', instance.fetch_one1())
+      // // console.log('globals_fields', instance.field_onchange)
+      // const values2 = instance.fetch_one1()
 
-          // options: eval_safe_python(node.attr.options),
+      const globals_fields = Object.keys(this._columns)
 
-          can_create: node.attr.can_create
-            ? JSON.parse(node.attr.can_create)
-            : null,
-          can_write: node.attr.can_write
-            ? JSON.parse(node.attr.can_write)
-            : null
-        },
-        class: node.attr.class
+      const values = globals_fields.reduce((acc, col) => {
+        const meta = this._columns[col]
+        if (meta) {
+          // console.log('vsls', col, meta)
+          acc[col] = meta.raw_value(this)
+        }
+        return acc
+      }, {})
+      if (!values.company_id) {
+        values.company_id = _get_company_id()
       }
+      return values
+    }
+
+    const _get_res_model_id = async () => {
+      return this.get_model_id()
+    }
+
+    const domain = value_str || false
+
+    if (domain && typeof domain === 'string') {
+      const values = _get_values_for_domain()
+
+      const globals_dict = {
+        res_model_id: await _get_res_model_id(),
+        allowed_company_ids: this._odoo.allowed_company_ids,
+        ...values,
+        active_id: this.id
+      }
+
+      const domain2 = eval_safe(domain, globals_dict)
+      // console.log('domain2: ', domain2)
+      return domain2
+    } else {
+      return domain
     }
   }
 
-  view_node() {
-    const arch1 = this._view_info.arch
-    // console.log('this._view_info 1', deep_copy(this._view_info))
-    if (!arch1) {
-      return {}
-    }
-    const node = xml2json.toJSON(arch1)
-    // console.log('this._view_info arch11', arch1)
-    // console.log('view_node 1', deep_copy(node))
-    const node_form = this._view_node_default_html(node)
+  compute_domain(domain_in, dataDict) {
+    // const record = this.fetch_one()
+    const record = dataDict || this.fetch_one()
 
-    // const node_form2 = deep_copy(node_form)
-
-    // console.log('node_form', node_form2)
-
-    return { ...node_form }
-  }
-
-  node_with_data(node_in, data) {
-    const is_node = node => {
-      if (typeof node !== 'object') {
-        return false
-      }
-      if (Array.isArray(node)) {
-        return false
-      }
-      if (typeof node === 'boolean') {
-        return false
-      }
-
-      return true
-    }
-
-    const process = node => {
-      const children = (node.children || []).map(item => process(item))
-      if (!is_node) {
-        return node
-      }
-
-      const node2 = {
-        ...node,
-        ...(children.length ? { children: children } : {})
-      }
-
-      if (node.tagName !== 'field') {
-        return node2
-      }
-
-      const rec = this.getById(data.id)
-      return {
-        ...node2,
-        meta: {
-          ...node.meta,
-          value: rec._columns[node.meta.name].value(rec),
-          valueName: rec._columns[node.meta.name].valueName(rec)
-        }
-      }
-    }
-
-    const node2 = process(node_in)
-
-    return node2
-  }
-
-  compute_domain(domain_in) {
-    // console.log(domain_in, record)
-    const record = this.fetch_one()
     return this.constructor.compute_domain(domain_in, record)
   }
 

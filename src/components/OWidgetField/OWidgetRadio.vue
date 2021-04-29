@@ -1,5 +1,5 @@
 <template>
-  <div v-if="editable" :class="className" :name="node.attribute.attrs.name">
+  <div v-if="editable" :class="className" :name="node.attrs.name">
     <RadioGroup v-model="value2" @on-change="handleOnchange">
       <Radio v-for="one in options2" :key="one[0]" :label="one[0]">
         <span>{{ one[1] }}</span>
@@ -7,8 +7,8 @@
     </RadioGroup>
   </div>
 
-  <span v-else :class="className" :name="node.attribute.attrs.name">
-    {{ node.meta.valueName }}
+  <span v-else :class="className" :name="node.attrs.name">
+    {{ valueName }}
   </span>
 </template>
 
@@ -32,23 +32,22 @@ export default {
   computed: {
     options2() {
       //
-      if (this.node.meta.type === 'selection') {
-        return this.node.meta.selection
+      if (this.meta.type === 'selection') {
+        return this.meta.selection
       } else {
         return this.options
       }
     },
-    value2: {
-      get() {
-        return this.node.meta.value || ''
-      },
-      set(value) {
-        this.node.meta.value = value
-      }
-    },
+    // value2: {
+    //   get() {
+    //     return this.node.meta.value || ''
+    //   },
+    //   set(value) {
+    //     this.node.meta.value = value
+    //   }
+    // },
 
     className() {
-      const node = this.node
       const classList = []
 
       if (this.editable) {
@@ -60,15 +59,16 @@ export default {
         classList.push('o_field_widget')
       }
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      if (node.meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
+
       return classList.join(' ')
     }
   },
@@ -92,7 +92,7 @@ export default {
   methods: {
     async getSelectOptions(query = '') {
       this.selectOptionLoading = true
-      const res = await this.record.get_selection(this.node.meta.name, {
+      const res = await this.record.get_selection(this.node.attrs.name, {
         name: query
       })
       this.selectOptionLoading = false
@@ -101,7 +101,7 @@ export default {
     },
 
     btnClick() {
-      console.log('btnClick', this.node.meta)
+      console.log('btnClick', this.node.attrs)
     }
   }
 }

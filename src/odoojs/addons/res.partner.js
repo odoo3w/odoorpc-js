@@ -16,7 +16,7 @@ export class ResPartner extends Model {
     super()
   }
 
-  get_templates(node, field) {
+  static get_templates(node, field) {
     // console.log('get_templates', node, field)
     if (field === 'child_ids') {
       return kanban

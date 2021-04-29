@@ -82,7 +82,7 @@ function _getChildInfo(children) {
     var eachChildInfo = {
       tagName: _getTagName(child),
       content: _getContent(child),
-      attr: _getAllAttr(child),
+      attrs: _getAllAttr(child),
       isParent: false,
       hasAttr: child.hasAttributes()
     }

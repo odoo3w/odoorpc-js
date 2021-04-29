@@ -6,8 +6,10 @@
     <Select
       v-model="value2"
       ref="select"
+      :element-id="elementId"
       filterable
       auto-complete
+      transfer
       :placeholder="placeholder"
       :loading="loading"
       @on-open-change="onOpenChange"
@@ -17,6 +19,7 @@
       <slot name="input">
         <Input
           v-model="query2"
+          :element-id="elementId"
           ref="input"
           slot="input"
           icon="ios-arrow-dropdown"
@@ -113,10 +116,13 @@ const extractOptions = options =>
   }, [])
 
 export default {
-  name: 'SelectM2o',
+  name: 'OM2oSelect',
   props: {
     value: { type: [String, Number], default: undefined },
     label: { type: String, default: undefined },
+
+    elementId: { type: String, default: undefined },
+
     placeholder: { type: String, default: undefined },
     loading: { type: [Boolean], default: false },
 
@@ -172,6 +178,9 @@ export default {
   },
 
   watch: {
+    // value2(newValue, oldValue) {
+    //   console.log('watch, value2,', newValue, oldValue)
+    // },
     query(newValue /* oldValue */) {
       if (this.loading) {
         return
@@ -198,8 +207,10 @@ export default {
     }
   },
 
+  created() {},
+
   mounted() {
-    // this.query = this.label
+    // console.log('m2o, xxxxxx:', this.elementId)
   },
 
   methods: {

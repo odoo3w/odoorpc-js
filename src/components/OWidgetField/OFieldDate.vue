@@ -1,6 +1,6 @@
 <template>
   <span v-if="editable">
-    <Input
+    <!-- <Input
       v-model="value2"
       :class="className"
       style="width:200px"
@@ -9,10 +9,18 @@
       :placeholder="node.attrs.placeholder"
       @on-enter="handleOnchange(value2)"
       @on-blur="handleOnchange(value2)"
-    />
+    /> -->
 
-    <!-- <span> 多语言 </span> -->
+    <DatePicker
+      type="date"
+      v-model="value2"
+      :class="className"
+      :element-id="input_id"
+      :placeholder="node.attrs.placeholder"
+      style="width: 200px"
+    ></DatePicker>
   </span>
+
   <span
     v-else
     :class="className"
@@ -25,11 +33,25 @@
 
 <script>
 import OFieldMixin from './OFieldMixin'
+
+import { parseTime } from '@/utils'
 export default {
-  name: 'OFieldChar',
+  name: 'OFieldDatetime',
   mixins: [OFieldMixin],
   props: {},
-  computed: {},
+  computed: {
+    value2: {
+      get() {
+        return this.dataDict[this.node.attrs.name] || null
+      },
+      set(value) {
+        this.value = value
+      }
+    },
+    valueName() {
+      return this.value2 ? parseTime(this.value2, '{y}-{m}-{d}') : ''
+    }
+  },
   async mounted() {
     // console.log(' char,', [
     //   this.node.attrs.name,

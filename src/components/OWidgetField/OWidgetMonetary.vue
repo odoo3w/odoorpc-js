@@ -1,19 +1,24 @@
 <template>
-  <span :name="node.attribute.attrs.name" :class="className">
-    ¥&nbsp;{{ node.meta.value }}
+  <span :name="node.attrs.name" :class="className">
+    ¥&nbsp;{{ valueName }}
   </span>
 </template>
 
 <script>
+import OFieldMixin from './OFieldMixin'
+
 export default {
   name: 'OWidgetMonetary',
+
+  mixins: [OFieldMixin],
+
   props: {
-    node: {
-      type: Object,
-      default: () => {
-        return { children: [] }
-      }
-    }
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return { children: [] }
+    //   }
+    // }
   },
 
   computed: {
@@ -23,16 +28,16 @@ export default {
         'o_field_monetary',
         'o_field_number',
         'o_field_widget',
-        ...(node.attribute.class ? node.attribute.class.split(' ') : [])
+        ...(node.class ? node.class.split(' ') : [])
       ]
 
-      if (node.meta.invisible) {
+      if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
       }
-      if (node.meta.readonly) {
+      if (this.readonly_modifier) {
         classList.push('o_readonly_modifier')
       }
-      if (node.meta.required) {
+      if (this.required_modifier) {
         classList.push('o_required_modifier')
       }
       return classList.join(' ')
