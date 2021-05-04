@@ -4,6 +4,9 @@
       <!-- <OViewForm :record="record" :node="node" editable /> -->
 
       <div>&nbsp;-----version-----</div>
+      <div>
+        <Button type="info" @click="clickTest">test</Button>
+      </div>
       <div>{{ api.version }}</div>
 
       <div>&nbsp;</div>
@@ -27,6 +30,8 @@ import api from '@/api'
 
 // const Timeout = 500
 
+import { _get_all_fields, _get_all_fields2 } from '@/odoojs/env'
+
 export default {
   name: 'FormPage',
   // components: { OViewForm },
@@ -41,14 +46,11 @@ export default {
   },
   computed: {},
   async created() {
-    await this.init_data_so()
-
     // await this.test_so()
     // await this.init_data_ptn_title()
     // await this.init_data_ptn()
     // await this.init_data_user()
     // await this.renderMe()
-
     // this.record.$login = 'u1234567'
     // this.record.$name = 'u1234567'
     // await this.record.awaiter
@@ -56,13 +58,71 @@ export default {
   },
 
   methods: {
-    async test_so() {
-      const so = this.record
-      const sol = await so.$order_line
-      console.log('record:', so, sol)
+    async clickTest() {
+      // await this.init_data_event()
+      // await this.test_event()
+      // await this.init_data_so()
+      // await this.test_so()
 
-      const soln = await sol.new()
-      console.log('record2:', so, sol, soln)
+      await this.init_data_ptn()
+      // await this.test_ptn()
+      this.test_node()
+      // const category_ids = await this.record.$$category_id
+      // console.log(category_ids)
+      // const child_ids = await this.record.$$child_ids
+      // console.log(child_ids)
+      // console.log('form, child_ids 2', child_ids._view_info)
+    },
+
+    async test_node() {
+      const rec = this.record
+      const fields = _get_all_fields(rec._view_info)
+      console.log(fields)
+      const fields2 = _get_all_fields2(rec._view_info)
+      console.log(JSON.stringify(fields2))
+    },
+
+    async test_event() {
+      const ptn = this.record
+      // await ptn.$$category_id
+      // const ptn2 = ptn.copy()
+      ptn.$event_type_id = 3
+      await ptn.awaiter
+      console.log(ptn)
+    },
+
+    async test_ptn() {
+      const ptn = this.record
+      await ptn.$$category_id
+      const ptn2 = ptn.copy()
+      console.log(ptn, ptn2)
+    },
+
+    async test_so() {
+      // const sol = await so.$$order_line
+      // const sol1 = sol.getByIndex(0)
+      // const sol11 = sol1.copy({ from_record: [so, so._columns.order_line] })
+      // console.log('sol11:', sol11)
+      // sol11.$product_uom_qty = 100
+      // await sol11.awaiter
+      // sol1.update(sol11)
+      // const soln = await sol.new()
+    },
+
+    async init_data_event() {
+      const model_name = 'event.event'
+      const view_ref = null
+      const domain = [['id', '=', 244]]
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
+    },
+
+    async init_data_ptn() {
+      const model_name = 'res.partner'
+      const view_ref = null
+      const domain = [['id', '=', 9]]
+      // const domain = []
+      await this.init_data({ model_name, view_ref, domain })
     },
 
     async init_data_so() {
@@ -83,7 +143,11 @@ export default {
         ids2 = null
       }
 
-      const so = await SO.browse(ids2)
+      const callback = res => {
+        console.log('callback, fetch_one,', res)
+      }
+
+      const so = await SO.browse(ids2, { fetch_one: callback })
 
       // console.log(so)
       this.record = so
@@ -91,6 +155,7 @@ export default {
       // const dd = so.fetch_all()
 
       console.log('form, record', this.record)
+      // console.log('form, record 2', this.record._view_info.fields)
     },
 
     async init_data_user() {
@@ -99,14 +164,6 @@ export default {
       // const view_ref = 'base.view_users_form'
       const view_ref = null
       const domain = []
-      // const domain = []
-      await this.init_data({ model_name, view_ref, domain })
-    },
-
-    async init_data_ptn() {
-      const model_name = 'res.partner'
-      const view_ref = null
-      const domain = [['id', '=', '3']]
       // const domain = []
       await this.init_data({ model_name, view_ref, domain })
     },
@@ -162,12 +219,6 @@ export default {
       // await this.delLine()
       // // await sleep(Timeout)
       // // this.init_readonly()
-    },
-
-    async clicktest() {
-      // this.newLine()
-      // await this.delLine(1)
-      this.submit()
     },
 
     async init_new() {

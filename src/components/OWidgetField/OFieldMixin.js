@@ -72,7 +72,7 @@ export default {
       console.log('minxin, handleOnchange', value, this.record, this.node)
       const field = `$${this.node.attrs.name}`
       this.record[field] = value
-      await this.record.awaiter
+      // await this.record.awaiter
       console.log(' change ok,', this.dataDict)
       // const vals = this.record._get_values_for_write()
       // console.log(' change ok,', vals)

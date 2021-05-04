@@ -20,8 +20,8 @@ export default class QWEB {
       } else {
         acc[cur] = {
           raw_value:
-            meta.type === 'binary' ? meta._getValue(record) : record2[cur],
-          value: meta.valueName(record)
+            meta.type === 'binary' ? meta.raw_value(record) : record2[cur],
+          value: meta.getValue(record)
         }
       }
 

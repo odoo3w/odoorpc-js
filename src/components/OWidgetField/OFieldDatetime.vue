@@ -1,6 +1,6 @@
 <template>
   <span v-if="editable">
-    <Input
+    <!-- <Input
       v-model="value2"
       :class="className"
       style="width:200px"
@@ -9,9 +9,16 @@
       :placeholder="node.attrs.placeholder"
       @on-enter="handleOnchange(value2)"
       @on-blur="handleOnchange(value2)"
-    />
+    /> -->
 
-    <!-- <span> 多语言 </span> -->
+    <DatePicker
+      type="datetime"
+      v-model="value2"
+      :class="className"
+      :element-id="input_id"
+      :placeholder="node.attrs.placeholder"
+      style="width: 200px"
+    ></DatePicker>
   </span>
   <span
     v-else

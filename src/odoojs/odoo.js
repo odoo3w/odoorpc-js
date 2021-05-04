@@ -161,8 +161,8 @@ export class ODOO {
 
   get_cookie(c_name) {
     var cookies = document.cookie ? document.cookie.split('; ') : []
-    console.log('document.cookie ', document.cookie)
-    console.log('cookies ', cookies)
+    // console.log('document.cookie ', document.cookie)
+    // console.log('cookies ', cookies)
     for (var i = 0, l = cookies.length; i < l; i++) {
       var parts = cookies[i].split('=')
       var name = parts.shift()
@@ -193,7 +193,7 @@ export class ODOO {
 
     try {
       const data = await this.json_call('/web/session/get_session_info', {})
-      console.log(' get_session_info ok ')
+      // console.log(' get_session_info ok ')
       // console.log(' get_session_info ok ', data.result)
 
       return data

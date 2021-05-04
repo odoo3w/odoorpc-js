@@ -38,14 +38,9 @@ export default {
   },
 
   computed: {
-    // value2: {
-    //   get() {
-    //     return this.node.meta.value || ''
-    //   },
-    //   set(value) {
-    //     this.node.meta.value = value
-    //   }
-    // },
+    valueName() {
+      return this.dataDict[`${this.node.attrs.name}__name`] || ''
+    },
 
     className() {
       const classList = []
@@ -79,7 +74,7 @@ export default {
 
     // console.log('selection create', this.node)
 
-    // console.log('selection create', this.record._name, this.record)
+    // console.log('selection create', this.dataDict, this.record)
     // console.log('selection create', this.record._name, [
     //   this.record.get_selection
     // ])

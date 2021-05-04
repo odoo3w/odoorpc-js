@@ -49,6 +49,7 @@
     href="javascript:void(0)"
     :name="node.attrs.name"
     :id="input_id"
+    @click="m2oClick"
   >
     <span>{{ valueName }}</span>
   </a>
@@ -195,8 +196,12 @@ export default {
       this.loading = false
     },
 
+    m2oClick() {
+      console.log('m2oClick', this.node.attrs)
+    },
+
     btnClick() {
-      console.log('btnClick', this.meta)
+      console.log('btnClick', this.node)
     }
   }
 }

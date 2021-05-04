@@ -17,6 +17,9 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
 
   const kwargs = { ...globals_dict, ...locals_dict }
 
+  const parent_vals = kwargs.parent
+  delete kwargs.parent
+
   const fn_str = []
   fn_str.push('() => {')
   Object.keys(kwargs).forEach(item => {
@@ -30,11 +33,32 @@ const eval_safe = (domain, globals_dict = {}, locals_dict = {}) => {
     // console.log('fn eval 1:', item, vals, vals2, str_to_push)
     fn_str.push(str_to_push)
   })
+
+  if (parent_vals) {
+    fn_str.push('const parent = {')
+    const p_str = []
+    Object.keys(parent_vals).forEach(item => {
+      const vals = parent_vals[item]
+      const is_str = typeof vals === 'string'
+      const is_arr = Array.isArray(vals)
+      const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
+      // console.log('fn eval 1:', item, vals, vals2)
+      const item2 = item === 'function' ? 'function2' : item
+      const str_to_push = `${item2}: ${vals2}`
+      // console.log('fn eval 1:', item, vals, vals2, str_to_push)
+      p_str.push(str_to_push)
+    })
+    fn_str.push(p_str.join(',\n'))
+    fn_str.push('} ')
+  }
+
   fn_str.push(`return ${domain2}`)
   fn_str.push('}')
 
   const fn_str2 = fn_str.join('\n')
   // console.log('fn eval:', fn_str2)
+  // console.log('fn eval 222:', parent)
+
   const fn = eval(fn_str2)
   // console.log('fn eval fn::', fn)
   const ret = fn()
@@ -150,10 +174,14 @@ export class Model extends BaseModel {
   //
 
   _view_required(node, dataDict) {
+    if (!node.attrs) {
+      return null
+    }
     if (!node.attrs.modifiers) {
       return null
     }
     const modifiers = JSON.parse(node.attrs.modifiers)
+    // console.log(node.attrs.name, modifiers)
     if (modifiers.required !== undefined) {
       const required = this.compute_domain(modifiers.required, dataDict)
       return required
@@ -163,6 +191,10 @@ export class Model extends BaseModel {
   }
 
   _view_readonly(node, dataDict) {
+    if (!node.attrs) {
+      return null
+    }
+
     if (!node.attrs.modifiers) {
       return null
     }
@@ -179,6 +211,10 @@ export class Model extends BaseModel {
   }
 
   _view_invisible(node, dataDict) {
+    // console.log('_view_invisible ', node, dataDict)
+    if (!node.attrs) {
+      return false
+    }
     if (node.attrs.invisible) {
       return node.attrs.invisible ? true : false
     }
@@ -276,7 +312,7 @@ export class Model extends BaseModel {
     const _get_values_for_domain = () => {
       // const globals_fields = Globals_Dict
 
-      // console.log('globals_fields', instance.fetch_one1())
+      // console.log('globals_fields,xxxxxx', this._name, this)
       // // console.log('globals_fields', instance.field_onchange)
       // const values2 = instance.fetch_one1()
 
@@ -290,9 +326,24 @@ export class Model extends BaseModel {
         }
         return acc
       }, {})
+
       if (!values.company_id) {
         values.company_id = _get_company_id()
       }
+      if (this._from_record) {
+        const parent = this._from_record[0]
+        const p_vals = Object.keys(parent._columns).reduce((acc, col) => {
+          const meta = parent._columns[col]
+          if (meta) {
+            // console.log('vsls', col, meta)
+            acc[col] = meta.raw_value(parent)
+          }
+          return acc
+        }, {})
+
+        values.parent = p_vals
+      }
+
       return values
     }
 

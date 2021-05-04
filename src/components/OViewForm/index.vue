@@ -23,7 +23,12 @@ export default {
 
   props: {
     editable: { type: Boolean, default: undefined },
-
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return {}
+    //   }
+    // },
     record: {
       type: Object,
       default: () => {
@@ -40,15 +45,16 @@ export default {
 
   data() {
     return {
-      keyIndex: 0,
-      node2: this.record.view_node ? this.record.view_node() : {}
+      keyIndex: 0
+      // node2: this.record.view_node ? this.record.view_node() : {}
     }
   },
 
   computed: {
     node() {
       // console.log(' OView Form, get node,')
-      return this.node2
+      // return this.node2
+      return this.record.view_node ? this.record.view_node() : {}
     },
 
     className() {
@@ -65,6 +71,7 @@ export default {
       const children = (this.node.children || []).filter(
         item => !(item.class === 'oe_chatter')
       )
+      // .filter(item => item.tagName === 'sheet')
 
       // console.log(' OView Form, node_children,', children)
       return children
@@ -88,14 +95,14 @@ export default {
   },
 
   mounted() {
-    // const deep_copy = node => {
-    //   return JSON.parse(JSON.stringify(node))
-    // }
-    // console.log('OViewForm, node, xxxxxx:', deep_copy(this.node))
-    // console.log('OViewForm, clss, xxxxxx:', this.record)
-    // console.log('OViewForm, data, xxxxxx:', this.dataDict)
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
 
-    console.log('date 99,', new Date().getTime())
+    console.log('OViewForm, node, xxxxxx:', deep_copy(this.node))
+    // console.log('OViewForm, clss, xxxxxx:', this.record._name, this.record)
+    // console.log('OViewForm, data, xxxxxx:', this.dataDict)
+    // console.log('date 99,', new Date().getTime())
   },
 
   methods: {}

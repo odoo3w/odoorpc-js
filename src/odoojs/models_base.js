@@ -105,7 +105,7 @@ BaseModel._name = undefined
 BaseModel._columns = {}
 // BaseModel._model_id = undefined // 用于 处理 fields 中的 domain str2list
 
-export class Model extends BaseModel {
+class BaseModel2 extends BaseModel {
   constructor() {
     super()
     this._env_local = null
@@ -172,7 +172,11 @@ export class Model extends BaseModel {
   }
 
   event_onchange(field_name) {
-    // console.log('xxx, event_onchange :', [this._name, field_name, this._callback_onchange ])
+    // console.log('xxx, event_onchange :', [
+    //   this._name,
+    //   field_name,
+    //   this._callback_onchange
+    // ])
 
     if (this._callback_onchange) {
       const values = this.fetch_one()
@@ -200,861 +204,6 @@ export class Model extends BaseModel {
       acc = { ...acc, ...meta.fetch_one(this) }
       return acc
     }, acc_init)
-  }
-
-  //
-  //  主页页面 调用, tree view / form view (read / edit / new)
-  //
-
-  static async browse(ids, payload) {
-    // console.log('xxx, browse:', this._name, ids, payload)
-    if (ids === undefined) {
-      throw 'call browse without ids'
-    }
-
-    // form_view or tree_view
-    // new
-    return await this._browse_native(this.env, ids, payload)
-  }
-
-  copy(payload) {
-    const records = this._copy_root(payload)
-    records._copy_children(this)
-    return records
-  }
-
-  _copy_root(payload) {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-
-    const { fetch_one, fetch_all, form_record } = payload
-
-    const records = new this.constructor()
-    records._env_local = this.constructor.env
-    records._ids = this.ids
-
-    records._from_record = form_record
-
-    records._values = deep_copy(this._values)
-    records._values_to_write = deep_copy(this._values_to_write)
-    records._values_relation = deep_copy(this._values_relation)
-    records._values_relation2 = {}
-
-    Object.keys(this._values_relation2).forEach(fld => {
-      records._values_relation2[fld] = {}
-    })
-
-    records._callback_onchange = fetch_one
-    records._callback_onchange_all = fetch_all
-
-    return records
-  }
-
-  _copy_children(src) {
-    Object.keys(src._values_relation2).forEach(fld => {
-      const child = src._values_relation2[fld]
-      if (child.records) {
-        const from_record = [this, this._columns[fld]]
-        const child_copy = child.records._copy_from_record({ from_record })
-        this._values_relation2[fld].records = child_copy
-        child_copy._copy_children(child)
-      }
-    })
-  }
-
-  _copy_from_record(payload = {}) {
-    const { from_record } = payload
-    const [parent, field] = from_record
-    const records = new this.constructor()
-    records._env_local = this.constructor.env
-    records._ids = this.ids
-    records._from_record = from_record
-
-    const storage = parent._values_relation[field.name]
-    records._values = storage._values
-    records._values_to_write = storage._values_to_write
-    records._values_relation = storage._values_relation
-
-    const storage2 = parent._values_relation2[field.name]
-    records._values_relation2 = storage2._values_relation2
-
-    Object.keys(this._values_relation2).forEach(fld => {
-      records._values_relation2[fld] = {}
-    })
-
-    if (parent._callback_onchange) {
-      const callback = () => parent.event_onchange(field.name)
-      records._callback_onchange_all = callback
-    }
-
-    return records
-  }
-
-  static async _browse_native(env, ids, payload = {}) {
-    const { fetch_one, fetch_all } = payload
-    await this.awaiter
-    const records = new this()
-    await records.awaiter
-    records._env_local = env
-
-    records._ids = _normalize_ids(ids)
-
-    records._values = {} // {field: {ID: value}}
-    records._values_to_write = {} // {field: {ID: value}}
-    records._values_relation = {}
-    records._values_relation2 = {}
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-    // main read, set callback
-    records._callback_onchange = fetch_one
-    records._callback_onchange_all = fetch_all
-    // console.log('xxx, _browse_native 21:', this._name, ids, payload)
-
-    if (ids) {
-      await records._init_values()
-    } else {
-      await records._init_values_for_new_call_onchange()
-    }
-    // console.log('xxx, _browse_native 22:', this._name, ids, payload)
-
-    // 按照约定, browse后, 要触发 callback, 返回数据
-    records.event_onchange()
-    records.event_onchange_all()
-    // console.log('xxx, _browse_native 23:', this._name, ids, payload)
-
-    return records
-  }
-
-  static _browse_iterated(env, ids, payload = {}) {
-    const { iterated, fetch_one } = payload
-    // 切片后, 单条记录通常是用来 显示 form 的
-
-    let MyCls = this
-
-    if (!Array.isArray(ids) && this._views.form) {
-      MyCls = env.model(this._name, 'form', {
-        parant_reg_name: iterated._from_record[0]._reg_name,
-        isSync: true,
-        view_info: this._views.form,
-        views: this._views
-      })
-    }
-
-    const records = new MyCls()
-
-    records._env_local = env
-    records._ids = _normalize_ids(ids)
-
-    records._values = iterated._values
-    records._values_to_write = iterated._values_to_write
-    records._values_relation = iterated._values_relation
-    records._values_relation2 = iterated._values_relation2
-
-    records._from_record = iterated._from_record
-
-    if (fetch_one) {
-      // main call,
-      records._callback_onchange = fetch_one
-    } else if (iterated) {
-      // o2m 切片   需要处理 _callback_onchange_all
-      // 切片 后, 原本 有 callback_all, so define callbak for each record
-      if (iterated._callback_onchange_all) {
-        records._callback_onchange_all = iterated._callback_onchange_all
-        if (records._ids.length === 1) {
-          const callback = () => iterated.event_onchange_all()
-          records._callback_onchange = callback
-        } else {
-          // 如果是切片 1个以上? 目前 only call by getById1, getByIndex, 只有一个 切片
-        }
-      }
-    }
-
-    return records
-  }
-
-  //  TBD relation async call
-  //
-  //  o2m new, to be check
-  async new() {
-    if (!this._from_record) {
-      return null
-    }
-
-    const [parent, field] = this._from_record
-    return field.new(parent)
-  }
-
-  //  o2m del, to be check
-  async remove(record) {
-    if (!this._from_record) {
-      return null
-    }
-    const [parent, field] = this._from_record
-    field.remove(parent, record)
-  }
-
-  static async _browse_relation_base_async(env, ids, payload = {}) {
-    await this.awaiter
-    const { from_record } = payload
-    const [parent, field] = from_record
-    const records = new this()
-    await records.awaiter
-    records._env_local = env
-
-    records._ids = _normalize_ids(ids)
-
-    const storage = parent._values_relation[field.name]
-    records._values = storage._values
-    records._values_to_write = storage._values_to_write
-    records._values_relation = storage._values_relation
-
-    const storage2 = parent._values_relation2[field.name]
-    records._values_relation2 = storage2._values_relation2
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    records._from_record = from_record
-    return records
-  }
-
-  static async _browse_relation_m2m_get(env, ids, payload = {}) {
-    const records = this._browse_relation_base(env, ids, payload)
-    const { from_record } = payload
-
-    const [parent, field] = from_record
-    if (parent._callback_onchange) {
-      const callback = () => parent.event_onchange(field.name)
-      records._callback_onchange_all = callback
-    }
-
-    await records._init_values()
-    records.event_onchange_all()
-    return records
-  }
-
-  // static async _browse_relation_o2m_async(env, ids, payload = {}) {
-  //   const records = this._browse_relation_base(env, ids, payload)
-  //   await records._init_values()
-  //   return records
-  // }
-
-  static async _browse_relation_o2m(env, ids, payload = {}) {
-    const records = this._browse_relation_base(env, ids, payload)
-
-    const { from_record } = payload
-    const [parent, field] = from_record
-
-    if (parent._callback_onchange) {
-      const callback = () => parent.event_onchange(field.name)
-      records._callback_onchange_all = callback
-    }
-    await records._init_values()
-    records.event_onchange_all()
-
-    return records
-  }
-
-  static async _browse_relation_o2m_new_async(env, ids, payload = {}) {
-    const records = this._browse_relation_base(env, ids, payload)
-    const { iterated } = payload
-
-    // console.log('_browse_relation_o2m_new_async1, ', iterated)
-
-    //  o2m new, 需要处理 _callback_onchange_all
-    if (iterated._callback_onchange_all) {
-      const callback = () => iterated.event_onchange_all()
-      records._callback_onchange = callback
-    }
-    await records._init_values_for_new_call_onchange()
-    return records
-  }
-
-  //
-  // relation sync call, all  need not init values
-  //
-
-  //
-  static _browse_relation_base(env, ids, payload = {}) {
-    const { from_record } = payload
-    const [parent, field] = from_record
-    const records = new this()
-    records._env_local = env
-
-    records._ids = _normalize_ids(ids)
-
-    const storage = parent._values_relation[field.name]
-    records._values = storage._values
-    records._values_to_write = storage._values_to_write
-    records._values_relation = storage._values_relation
-    const storage2 = parent._values_relation2[field.name]
-    records._values_relation2 = storage2._values_relation2
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    records._from_record = from_record
-    return records
-  }
-
-  // 这个返回一个 空 壳子 record
-  static _browse_relation_m2o(env, ids, payload = {}) {
-    return this._browse_relation_base(env, ids, payload)
-  }
-
-  // static _browse_relation_o2m_new(env, ids, payload = {}) {
-  //   const records = this._browse_relation_base(env, ids, payload)
-
-  //   const { iterated, values } = payload
-
-  //   //  o2m new, 需要处理 _callback_onchange_all
-  //   if (iterated._callback_onchange_all) {
-  //     const callback = () => iterated.event_onchange_all()
-  //     records._callback_onchange = callback
-  //   }
-
-  //   if (values) {
-  //     // 使用 已有的 values 进行初始化数据
-  //     records._init_values_for_new_by_values(values)
-  //   } else {
-  //     //
-  //   }
-
-  //   return records
-  // }
-
-  //
-  // TBD remove it
-  //
-
-  _init_callback(payload) {
-    const { iterated, from_record, fetch_one } = payload
-    // if o2m new : iterated, from_record all is true
-    const records = this
-
-    if (fetch_one) {
-      // main call,
-      records._callback_onchange = fetch_one
-    } else if (iterated) {
-      // o2m 切片 or o2m new, 需要处理 _callback_onchange_all
-      records._callback_onchange_all = iterated._callback_onchange_all
-
-      // 切片 后, 原本 有 callback_all, so define callbak for each record
-      if (iterated._callback_onchange_all) {
-        if (records._ids.length === 1) {
-          const callback = () => iterated.event_onchange_all()
-          records._callback_onchange = callback
-        } else {
-          // 如果是切片 1个以上? 目前 only call by getById1, getByIndex1, 只有一个 切片
-        }
-      }
-    } else if (from_record) {
-      // from_record && !iterated.  o2m edit, from parent
-      const [parent, field] = from_record
-      if (parent._callback_onchange) {
-        const callback = () => parent.event_onchange(field.name)
-        records._callback_onchange_all = callback
-      }
-    }
-  }
-
-  static async _browse(env, ids, payload = {}) {
-    // view_ref = module_name.view_from_xml_name
-    // view_ref = my_xml_id_name_not_point
-    const { from_record, iterated, view_ref } = payload
-    const { fetch_one } = payload
-
-    // if o2m new, from_record is true, iterated is true
-    // fetch_one:  main call, dict callback
-    // fetch_all:  main call, list callback
-
-    const check_is_o2m_edit = () => {
-      if (from_record) {
-        const [parent, field] = from_record
-        if (parent.field_onchange && field.type == 'one2many') {
-          return true
-        }
-      }
-      return false
-    }
-
-    const is_o2m_edit = check_is_o2m_edit()
-
-    await this.awaiter
-    const records = new this()
-    await records.awaiter
-    records._env_local = env
-
-    // 1 o2m new, need a virtual id
-    // 2 main new, need not virtual id
-    const ids2 = is_o2m_edit && !ids ? this._odoo._get_virtual_id() : ids
-
-    records._ids = _normalize_ids(ids2)
-
-    if (from_record) {
-      // o2m, m2m, m2o
-      const [parent, field] = from_record
-      // console.log('init storage,', this._name, this.ids)
-      // console.log('init storage 2,', parent._values_relation, field.name)
-      // parent 已经定义了 _values_relation , 不可能为 null
-      const storage = parent._values_relation[field.name]
-      records._values = storage._values
-      records._values_to_write = storage._values_to_write
-      records._values_relation = storage._values_relation
-      const storage2 = parent._values_relation2[field.name]
-      records._values_relation2 = storage2._values_relation2
-    } else {
-      // main call.  1 new. 2 read
-      records._values = {} // {field: {ID: value}}
-      records._values_to_write = {} // {field: {ID: value}}
-      records._values_relation = {}
-      records._values_relation2 = {}
-    }
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    records._from_record = from_record
-
-    if (from_record) {
-      // o2m edit: from_record=true, iterated=false
-      // o2m new:  from_record=true, iterated=true
-      records._init_callback({ from_record, iterated })
-    } else {
-      // main read, set callback
-      records._callback_onchange = fetch_one
-    }
-
-    console.log('xxxxx,', this._name, is_o2m_edit)
-
-    if (view_ref && records.ids.length) {
-      // edit from page
-      await records._init_values_for_edit()
-    } else if (view_ref) {
-      // new from page
-      await records._init_values_for_new()
-    } else if (!is_o2m_edit) {
-      // read
-      await records._init_values()
-    } else if (is_o2m_edit && !ids) {
-      // o2m new
-      await records._init_values_for_new()
-    } else if (is_o2m_edit) {
-      // o2m edit
-      const virtual_ids = records.ids.filter(item => is_virtual_id(item))
-      const real_ids = records.ids.filter(item => !is_virtual_id(item))
-
-      if (real_ids.length) {
-        await records._init_values_for_edit({ partial_ids: real_ids })
-      }
-
-      records._init_values_for_virtual(virtual_ids)
-      records._init_values_to_write_for_edit()
-    } else {
-      // never goto here
-      throw 'some errer'
-    }
-
-    return records
-  }
-
-  //
-  // init values
-  //
-
-  // ok
-  async _init_values(paylaod = {}) {
-    // console.log('xx in _init_values :', this._name, this.ids)
-    const { partial_ids = [], context = this.env.context } = paylaod
-
-    const columns = this.constructor._columns
-    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
-      // 应该特殊处理 二进制字段
-      const Field = columns[field_name]
-      if (Field.type !== 'binary') {
-        acc = [...acc, field_name]
-      }
-      return acc
-    }, [])
-
-    const ids = partial_ids.length ? partial_ids : this.ids
-
-    if (ids.length) {
-      const result = await this.read(basic_fields, {
-        context
-        // load: '_classic_read'
-        // load: '_classic_write'
-      })
-      // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
-
-      const ids_fetched = new Set()
-      result.forEach(row => {
-        ids_fetched.add(row.id)
-      })
-
-      result.forEach(row => {
-        ids_fetched.add(row.id)
-
-        Object.keys(row).forEach(field_name => {
-          if (field_name !== 'id') {
-            const meta = columns[field_name]
-            meta._init_values(this, row.id, row[field_name])
-          }
-        })
-      })
-
-      const ids_all = new Set(this.ids)
-
-      const ids_in_error = [
-        ...new Set([...ids_all].filter(n => !ids_fetched.has(n)))
-      ]
-
-      if (ids_in_error.length) {
-        const str = `There is no '${this._name}' record with IDs ${ids_in_error}.`
-        throw str
-      }
-    } else {
-      //
-    }
-  }
-
-  //
-  // init values for new
-  //
-
-  static _get_default(col) {
-    const meta = this._columns[col]
-    if (['many2many', 'one2many'].includes(meta.type)) {
-      return []
-    } else if (['float', 'integer', 'monetary'].includes(meta.type)) {
-      return 0
-    } else if (['text', 'html'].includes(meta.type)) {
-      return ''
-    }
-    return false
-  }
-
-  _init_values_for_new_default() {
-    const id_ = this.id || null
-    Object.keys(this._values).forEach(field_name => {
-      const val = this.constructor._get_default(field_name)
-      this._columns[field_name]._init_values(this, id_, val)
-    })
-  }
-
-  // _init_values_for_new_by_values(values) {
-  //   this._init_values_for_new_default()
-
-  //   Object.keys(values).forEach(field => {
-  //     const meta = this._columns[field]
-  //     const val = values[field]
-  //     meta.setValueByOnchange(this, val)
-  //   })
-
-  //   this._update_parent()
-  // }
-
-  async _init_values_for_new_call_onchange(/* paylaod = {} */) {
-    // console.log('xxx, _init_values_for_new_call_onchange1 1:', this._name)
-    // const { context = this.env.context } = paylaod
-    this._init_values_for_new_default()
-    const onchange = await this._onchange2({}, [], this.field_onchange)
-    await this._after_onchange(onchange)
-  }
-
-  //
-  // TBD category
-  //
-
-  // ok
-  async _init_values_for_edit(paylaod = {}) {
-    await this._init_values(paylaod)
-  }
-
-  // ok
-  _init_values_to_write_for_edit() {
-    const [parent, field] = this._from_record
-    const tuples = parent._values_to_write[field.name][parent.id] || []
-    const values_dict = tuples.reduce((acc, cur) => {
-      if (cur[0] === 0 || cur[0] === 1) {
-        acc[cur[1]] = cur[2]
-      }
-      return acc
-    }, {})
-
-    this.ids.forEach(vid => {
-      const vals = values_dict[vid] || {}
-      Object.keys(this._values).forEach(field_name => {
-        if (vals[field_name] !== undefined) {
-          const meta = this._columns[field_name]
-          meta._init_values_to_write(this, vid, vals[field_name])
-        }
-      })
-    })
-  }
-
-  // ok
-  _init_values_for_virtual(virtual_ids) {
-    virtual_ids.forEach(vid => {
-      Object.keys(this._values).forEach(field_name => {
-        const val = this.constructor._get_default(field_name)
-        const meta = this._columns[field_name]
-        meta._init_values(this, vid, val)
-      })
-    })
-  }
-
-  // ok
-  _get_values_for_onchange(payload = {}) {
-    const { for_parent, for_relation } = payload
-    const columns = Object.keys(this.field_onchange).filter(
-      fld => fld.split('.').length === 1
-    )
-
-    // const vals_init = this.id && !for_relation ? { id: this.id } : {}
-
-    const check_is_to_append = () => {
-      if (!this.id || is_virtual_id(this.id)) {
-        return false
-      }
-      if (for_relation) {
-        return false
-      }
-      return true
-    }
-
-    let vals_init = {}
-    if (check_is_to_append()) {
-      vals_init.id = this.id
-    }
-
-    const vals = columns.reduce(
-      (acc, field) => {
-        acc[field] = this._columns[field].get_for_onchange(this, for_parent)
-        return acc
-      },
-      { ...vals_init }
-    )
-
-    return vals
-  }
-
-  //
-  // onchange
-  //
-
-  // ok
-  async trigger_onchange(field_name) {
-    // console.log('trigger_onchange,11 ', this._name, this.id, field_name)
-
-    if (!this.field_onchange) {
-      return
-    }
-
-    // 分步 处理, 不需要 先 更新 parent
-    // if (this._from_record) {
-    //   // 1st, o2m update parent. so, value for onchange with parent
-    //   // console.log('trigger_onchange,22 ', this._name, this.id, field_name)
-    //   this._update_parent()
-    // }
-
-    if (field_name && !this.field_onchange[field_name]) {
-      return
-    }
-
-    const values = this._get_values_for_onchange()
-
-    if (this._from_record) {
-      // 2nd, parent value in values_for_onchange, with o2m value. this is why 1st _update_parent1
-      const [parent, field] = this._from_record
-      const parent_vals = parent._get_values_for_onchange({ for_parent: true })
-      values[field.relation_field] = parent_vals
-    }
-
-    // console.log(values)
-
-    // 3rd, onchange
-    const args = [values, field_name, this.field_onchange]
-    // console.log('trigger_onchange,12 ', this._name, this.id, field_name)
-    const onchange = await this._onchange2(...args)
-    // console.log('trigger_onchange,13 ', this._name, this.id, field_name)
-
-    // 4th, update values_to_write
-    // console.log('trigger_onchange,14 ', this._name, this.id, field_name)
-    await this._after_onchange(onchange)
-    // console.log('trigger_onchange,15 ', this._name, this.id, field_name)
-
-    // 分步 处理, 处理过 子模型后, 手工 触发 _update_parent
-    // 5th parent trigger onchange
-    // if (this._from_record) {
-    //   const [parent, field] = this._from_record
-    //   const name2 = `${field.name}.${field_name}`
-    //   if (parent.field_onchange[name2]) {
-    //     await parent.trigger_onchange(field.name)
-    //   }
-    // }
-
-    return field_name
-  }
-
-  //  TBD domain
-  async _after_onchange(onchange) {
-    //
-    // const onchange_domain = onchange.domain || {}
-    // TBD domain
-    //
-
-    console.log(' after onchange,', onchange)
-    // console.log('xxxx,', onchange)
-    const onchange_value = onchange.value
-
-    Object.keys(onchange_value).forEach(field => {
-      // console.log('after onchange,', field)
-      const meta = this._columns[field]
-      const val = onchange_value[field]
-      meta.setValueByOnchange(this, val)
-    })
-
-    // 分步 处理, 处理过 子模型后, 手工 触发 _update_parent
-    // // 5th, update _update_parent1
-    // if (this._from_record) {
-    //   this._update_parent()
-    // }
-  }
-
-  async trigger_parent_onchange() {
-    if (!this._from_record) {
-      return
-    }
-
-    this._update_parent()
-    const [parent, field] = this._from_record
-    await parent.trigger_onchange(field.name)
-  }
-
-  // ok
-  _update_parent() {
-    // call before onchange and after onchange
-    console.log('_update_parent, 1')
-    if (!this._from_record) {
-      return
-    }
-    console.log('_update_parent, 2')
-    const [parent, field] = this._from_record
-
-    const values = Object.keys(this._values_to_write).reduce((acc, fld) => {
-      if (this._values_to_write[fld][this.id] !== undefined) {
-        acc[fld] = this._values_to_write[fld][this.id]
-      }
-      return acc
-    }, {})
-    console.log('_update_parent, 3')
-
-    // 根据 id 判断 是新增或编辑 [0,id, {}] 或 [1, id, {}]
-    const op = !is_virtual_id(this.id) ? 1 : 0
-    const tuples = [[op, this.id, values]]
-    // 更新 parent的 o2m 字段
-    field._setValue(parent, tuples)
-  }
-
-  //
-  // commit
-  //
-
-  _get_values_for_create() {
-    // console.log(this._name, this._values)
-    return Object.keys(this._values).reduce((acc, fld) => {
-      const value = this._columns[fld].get_for_create(this)
-      if (value !== null) {
-        acc[fld] = value
-      }
-      return acc
-    }, {})
-  }
-
-  _get_values_for_write() {
-    return Object.keys(this._values_to_write).reduce((acc, fld) => {
-      const value = this._columns[fld].get_for_write(this)
-      if (value !== null) {
-        acc[fld] = value
-      }
-      return acc
-    }, {})
-  }
-
-  // call by commit
-  async _commit_create() {
-    await this.awaiter
-    const vals = this._get_values_for_create()
-    if (!vals) {
-      return true
-    }
-
-    const id_ = await this.constructor.create(vals)
-    if (!id_) {
-      return id_
-    }
-
-    Object.keys(this._values).forEach(fld => {
-      delete this._values[fld][this.id]
-      if (this._values_to_write[fld][this.id] !== undefined) {
-        delete this._values_to_write[fld][this.id]
-      }
-      this._columns[fld].commit(this)
-    })
-
-    this._ids = [id_]
-    await this._after_commit()
-    return id_
-  }
-
-  // call by commit
-  async _commit_write() {
-    await this.awaiter
-
-    const vals = this._get_values_for_write()
-    console.log(' _commit_write,', vals)
-
-    if (!vals) {
-      return true
-    }
-
-    const res = await this.write(vals)
-    if (!res) {
-      return res
-    }
-
-    Object.keys(this._values_to_write).forEach(fld => {
-      if (this._values_to_write[fld][this.id] !== undefined) {
-        delete this._values_to_write[fld][this.id]
-      }
-      this._columns[fld].commit(this)
-    })
-
-    await this._after_commit()
-    return res
-  }
-
-  async _after_commit() {
-    await this._init_values_for_edit()
-    for (const col of Object.keys(this._columns)) {
-      await this._columns[col].after_commit(this)
-    }
-    this.event_onchange()
-  }
-
-  async commit() {
-    if (this.id) {
-      return this._commit_write()
-    } else {
-      return this._commit_create()
-    }
   }
 
   // magic method for odoo
@@ -1221,11 +370,8 @@ export class Model extends BaseModel {
     return this.execute('name_get', ids)
   }
 
-  //
-  // onchange
-  //
+  /* onchange  */
 
-  // ok
   async _onchange2(values, field_name, field_onchange) {
     // console.log('_onchange2, ', this._name, this.id, field_name)
 
@@ -1255,7 +401,7 @@ export class Model extends BaseModel {
     }
   }
 
-  // ok , call by _onchange2
+  // call by _onchange2
   // TBD: default_get 里面 可能有 m2o o2m 需要处理
   async _default_get_onchange(values = {}, field_onchange = {}) {
     const fields = Object.keys(field_onchange).filter(
@@ -1335,5 +481,591 @@ export class Model extends BaseModel {
     // console.log('default get 3', onchange2)
 
     return onchange2
+  }
+
+  _get_values_for_onchange(payload = {}) {
+    const { for_parent, for_relation } = payload
+    const columns = Object.keys(this.field_onchange).filter(
+      fld => fld.split('.').length === 1
+    )
+
+    // const vals_init = this.id && !for_relation ? { id: this.id } : {}
+
+    const check_is_to_append = () => {
+      if (!this.id || is_virtual_id(this.id)) {
+        return false
+      }
+      if (for_relation) {
+        return false
+      }
+      return true
+    }
+
+    let vals_init = {}
+    if (check_is_to_append()) {
+      vals_init.id = this.id
+    }
+
+    const vals = columns.reduce(
+      (acc, field) => {
+        acc[field] = this._columns[field].get_for_onchange(this, for_parent)
+        return acc
+      },
+      { ...vals_init }
+    )
+
+    return vals
+  }
+
+  async trigger_onchange(field_name) {
+    // console.log('trigger_onchange,11 ', this._name, this.id, field_name)
+
+    if (!this.field_onchange) {
+      return
+    }
+
+    // 分步 处理, 不需要 先 更新 parent
+    // if (this._from_record) {
+    //   // 1st, o2m update parent. so, value for onchange with parent
+    //   // console.log('trigger_onchange,22 ', this._name, this.id, field_name)
+    //   this._update_parent1()
+    // }
+
+    if (field_name && !this.field_onchange[field_name]) {
+      return
+    }
+
+    const values = this._get_values_for_onchange()
+
+    if (this._from_record) {
+      // 2nd, parent value in values_for_onchange, with o2m value. this is why 1st _update_parent1
+      const [parent, field] = this._from_record
+      const parent_vals = parent._get_values_for_onchange({ for_parent: true })
+      values[field.relation_field] = parent_vals
+    }
+
+    // console.log(values)
+
+    // 3rd, onchange
+    const args = [values, field_name, this.field_onchange]
+    // console.log('trigger_onchange,12 ', this._name, this.id, field_name)
+    const onchange = await this._onchange2(...args)
+    // console.log('trigger_onchange,13 ', this._name, this.id, field_name)
+
+    // 4th, update values_to_write
+    // console.log('trigger_onchange,14 ', this._name, this.id, field_name)
+    await this._after_onchange(onchange)
+    // console.log('trigger_onchange,15 ', this._name, this.id, field_name)
+
+    // 分步 处理, 处理过 子模型后, 手工 触发 _update_parent1
+    // 5th parent trigger onchange
+    // if (this._from_record) {
+    //   const [parent, field] = this._from_record
+    //   const name2 = `${field.name}.${field_name}`
+    //   if (parent.field_onchange[name2]) {
+    //     await parent.trigger_onchange(field.name)
+    //   }
+    // }
+
+    return field_name
+  }
+
+  //  TBD domain
+  async _after_onchange(onchange) {
+    //
+    // const onchange_domain = onchange.domain || {}
+    // TBD domain
+    //
+
+    console.log(' after onchange,', onchange)
+    // console.log('xxxx,', onchange)
+    const onchange_value = onchange.value
+
+    Object.keys(onchange_value).forEach(field => {
+      // console.log('after onchange,', field)
+      const meta = this._columns[field]
+      const val = onchange_value[field]
+      meta._set_by_onchnge(this, val)
+    })
+  }
+
+  async trigger_parent_onchange() {
+    if (!this._from_record) {
+      return
+    }
+
+    this._update_parent()
+    const [parent, field] = this._from_record
+    await parent.trigger_onchange(field.name)
+  }
+
+  _update_parent() {
+    // call before onchange and after onchange
+    console.log('_update_parent1, 1')
+    if (!this._from_record) {
+      return
+    }
+    console.log('_update_parent1, 2')
+    const [parent, field] = this._from_record
+
+    const values = Object.keys(this._values_to_write).reduce((acc, fld) => {
+      if (this._values_to_write[fld][this.id] !== undefined) {
+        acc[fld] = this._values_to_write[fld][this.id]
+      }
+      return acc
+    }, {})
+    console.log('_update_parent1, 3')
+
+    // 根据 id 判断 是新增或编辑 [0,id, {}] 或 [1, id, {}]
+    const op = !is_virtual_id(this.id) ? 1 : 0
+    const tuples = [[op, this.id, values]]
+    // 更新 parent的 o2m 字段
+    // 需要组织  values 的值 TBD
+    field._set_by_tuples(parent, tuples)
+  }
+
+  /* commit  */
+
+  _get_values_for_create() {
+    // console.log(this._name, this._values)
+    return Object.keys(this._values).reduce((acc, fld) => {
+      const value = this._columns[fld].get_for_create(this)
+      if (value !== null) {
+        acc[fld] = value
+      }
+      return acc
+    }, {})
+  }
+
+  _get_values_for_write() {
+    return Object.keys(this._values_to_write).reduce((acc, fld) => {
+      const value = this._columns[fld].get_for_write(this)
+      if (value !== null) {
+        acc[fld] = value
+      }
+      return acc
+    }, {})
+  }
+
+  // call by commit
+  async _commit_create() {
+    await this.awaiter
+    const vals = this._get_values_for_create()
+    if (!vals) {
+      return true
+    }
+
+    const id_ = await this.constructor.create(vals)
+    if (!id_) {
+      return id_
+    }
+
+    Object.keys(this._values).forEach(fld => {
+      delete this._values[fld][this.id]
+      if (this._values_to_write[fld][this.id] !== undefined) {
+        delete this._values_to_write[fld][this.id]
+      }
+      this._columns[fld].commit(this)
+    })
+
+    this._ids = [id_]
+    await this._after_commit()
+    return id_
+  }
+
+  // call by commit
+  async _commit_write() {
+    await this.awaiter
+
+    const vals = this._get_values_for_write()
+    console.log(' _commit_write,', vals)
+
+    if (!vals) {
+      return true
+    }
+
+    const res = await this.write(vals)
+    if (!res) {
+      return res
+    }
+
+    Object.keys(this._values_to_write).forEach(fld => {
+      if (this._values_to_write[fld][this.id] !== undefined) {
+        delete this._values_to_write[fld][this.id]
+      }
+      this._columns[fld].commit(this)
+    })
+
+    await this._after_commit()
+    return res
+  }
+
+  async _after_commit() {
+    await this._init_values()
+    for (const col of Object.keys(this._columns)) {
+      await this._columns[col].after_commit(this)
+    }
+    this.event_onchange()
+  }
+
+  async commit() {
+    if (this.id) {
+      return this._commit_write()
+    } else {
+      return this._commit_create()
+    }
+  }
+}
+
+export class Model extends BaseModel2 {
+  constructor() {
+    super()
+  }
+
+  /* o2m CRUD */
+  async new() {
+    //  o2m new, to be check
+    if (!this._from_record) {
+      return null
+    }
+
+    const [parent, field] = this._from_record
+    return field.new(parent)
+  }
+
+  async remove(record) {
+    //  o2m del, to be check
+    if (!this._from_record) {
+      return null
+    }
+    const [parent, field] = this._from_record
+    return field.remove(parent, record)
+  }
+
+  async update(record) {
+    if (!this._from_record) {
+      return
+    }
+    const [parent, field] = this._from_record
+    return field.update(parent, record)
+  }
+
+  _update_from_record(record) {
+    console.log('update_from_record, 1')
+    this._ids = Array.from(new Set([...this.ids, ...record.ids]))
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._set_by_object(this, record)
+    )
+
+    return
+  }
+
+  copy(payload) {
+    const records = this._copy_init(payload)
+    records._update_from_record(this)
+    return records
+  }
+
+  async new_copy(payload) {
+    const records = this._copy_init({ ...payload, isNew: 1 })
+    const ids = this._odoo._get_virtual_id()
+    records._ids = _normalize_ids(ids)
+    await records._init_values_by_new()
+    return records
+  }
+
+  _copy_init(payload = {}) {
+    const { fetch_one, fetch_all, isNew } = payload
+
+    const this_class = this.constructor
+
+    let MyCls = this.constructor
+
+    const env = this_class.env
+
+    if (isNew && this_class._views.form) {
+      const [parent, parent_field] = this._from_record
+        ? [this._from_record[0].constructor, this._from_record[1].name]
+        : [null, null]
+
+      MyCls = env.model(this_class._name, 'form', {
+        parant_reg_name: this_class._reg_name,
+        parent,
+        parent_field,
+        isSync: true,
+        view_info: this_class._views.form,
+        views: this_class._views
+      })
+    }
+
+    const records = new MyCls()
+    records._env_local = MyCls.env
+    records._ids = []
+    records._from_record = this._from_record
+
+    records._values = {}
+    records._values_to_write = {}
+    records._values_relation = {}
+    records._values_relation2 = {}
+
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._init_storage(records)
+    )
+
+    records._callback_onchange = fetch_one
+    records._callback_onchange_all = fetch_all
+    return records
+  }
+
+  static _browse_iterated(env, ids, payload = {}) {
+    const { iterated, fetch_one } = payload
+    // 切片后, 单条记录通常是用来 显示 form 的
+
+    let MyCls = this
+
+    if (!Array.isArray(ids) && this._views.form) {
+      const [parent, parent_field] = this._from_record
+        ? [this._from_record[0].constructor, this._from_record[1].name]
+        : [null, null]
+
+      MyCls = env.model(this._name, 'form', {
+        parant_reg_name: iterated._from_record[0]._reg_name,
+        parent,
+        parent_field,
+        isSync: true,
+        view_info: this._views.form,
+        views: this._views
+      })
+    }
+
+    const records = new MyCls()
+
+    records._env_local = env
+    records._ids = _normalize_ids(ids)
+
+    records._values = iterated._values
+    records._values_to_write = iterated._values_to_write
+    records._values_relation = iterated._values_relation
+    records._values_relation2 = iterated._values_relation2
+
+    records._from_record = iterated._from_record
+
+    if (fetch_one) {
+      // main call,
+      records._callback_onchange = fetch_one
+    } else if (iterated) {
+      // o2m 切片   需要处理 _callback_onchange_all
+      // 切片 后, 原本 有 callback_all, so define callbak for each record
+      if (iterated._callback_onchange_all) {
+        records._callback_onchange_all = iterated._callback_onchange_all
+        if (records._ids.length === 1) {
+          const callback = () => iterated.event_onchange_all()
+          records._callback_onchange = callback
+        } else {
+          // 如果是切片 1个以上? 目前 only call by getById1, getByIndex, 只有一个 切片
+        }
+      }
+    }
+
+    return records
+  }
+
+  static async browse(ids, payload) {
+    // 主页页面 调用, tree view / form view (read / edit / new)
+    // form_view or tree_view
+    // new
+    // console.log('xxx, browse:', this._name, ids, payload)
+
+    if (ids === undefined) {
+      throw 'call browse without ids'
+    }
+
+    return await this._browse(this.env, ids, payload)
+  }
+
+  static async _browse(env, ids, payload = {}) {
+    const { fetch_one, fetch_all } = payload
+    await this.awaiter
+    const records = new this()
+    await records.awaiter
+    records._env_local = env
+
+    records._ids = _normalize_ids(ids)
+
+    records._values = {}
+    records._values_to_write = {}
+    records._values_relation = {}
+    records._values_relation2 = {}
+
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._init_storage(records)
+    )
+
+    // main read, set callback
+    records._callback_onchange = fetch_one
+    records._callback_onchange_all = fetch_all
+
+    if (ids) {
+      await records._init_values()
+    } else {
+      //
+      await records._init_values_by_new()
+    }
+
+    // 按照约定, browse后, 要触发 callback, 返回数据
+    records.event_onchange()
+    records.event_onchange_all()
+
+    return records
+  }
+
+  static _browse_relation(env, ids, payload = {}) {
+    // 这个返回一个 空 壳子 record
+    const { from_record } = payload
+    const [parent, field] = from_record
+    const records = new this()
+    records._env_local = env
+
+    records._ids = _normalize_ids(ids)
+
+    const storage = parent._values_relation[field.name]
+    records._values = storage._values
+    records._values_to_write = storage._values_to_write
+    records._values_relation = storage._values_relation
+    const storage2 = parent._values_relation2[field.name]
+    records._values_relation2 = storage2._values_relation2
+
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._init_storage(records)
+    )
+
+    records._from_record = from_record
+    return records
+  }
+
+  // m2m, o2m, async read
+  static async _browse_relation_async(env, ids, payload = {}) {
+    const records = this._browse_relation(env, ids, payload)
+
+    const { from_record } = payload
+    const [parent, field] = from_record
+    // console.log('_browse_relation_async, ', this._name, parent)
+
+    if (parent._callback_onchange) {
+      const callback = () => parent.event_onchange(field.name)
+      records._callback_onchange_all = callback
+    }
+
+    await records._init_values()
+    records.event_onchange_all()
+
+    return records
+  }
+
+  // o2m new
+  static _browse_relation_o2m_new(env, ids, payload = {}) {
+    const records = this._browse_relation(env, ids, payload)
+    const { iterated } = payload
+
+    if (iterated._callback_onchange_all) {
+      const callback = () => iterated.event_onchange_all()
+      records._callback_onchange = callback
+    }
+
+    const { values } = payload
+    if (values) {
+      // 使用 已有的 values 进行初始化数据
+      records._init_values_by_values(values)
+      return records
+    } else {
+      const call_async = async () => {
+        await records._init_values_by_new()
+        return records
+      }
+      return call_async()
+    }
+  }
+
+  /*  init values  */
+
+  _init_values_by_values(values) {
+    Object.keys(this._values).forEach(field_name => {
+      this._columns[field_name]._set_default(this)
+    })
+
+    Object.keys(values).forEach(field => {
+      const meta = this._columns[field]
+      const val = values[field]
+      meta._set_by_onchnge(this, val)
+    })
+  }
+
+  async _init_values(paylaod = {}) {
+    // console.log('xx in _init_values1 :', this._name, this.ids)
+    const { partial_ids = [], context = this.env.context } = paylaod
+
+    const columns = this.constructor._columns
+    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
+      // 应该特殊处理 二进制字段
+      const Field = columns[field_name]
+      if (Field.type !== 'binary') {
+        acc = [...acc, field_name]
+      }
+      return acc
+    }, [])
+
+    const ids = partial_ids.length ? partial_ids : this.ids
+
+    if (ids.length) {
+      const result = await this.read(basic_fields, {
+        context
+        // load: '_classic_read'
+        // load: '_classic_write'
+      })
+      // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
+      // 缺省 使用 _classic_read,  x2m 字段 返回 [ids]
+
+      // console.log(deep_copy(result))
+
+      const ids_fetched = new Set()
+      result.forEach(row => {
+        ids_fetched.add(row.id)
+      })
+
+      result.forEach(row => {
+        ids_fetched.add(row.id)
+
+        Object.keys(row).forEach(field_name => {
+          if (field_name !== 'id') {
+            const meta = columns[field_name]
+            meta._set_by_init(this, row)
+          }
+        })
+      })
+
+      const ids_all = new Set(this.ids)
+
+      const ids_in_error = [
+        ...new Set([...ids_all].filter(n => !ids_fetched.has(n)))
+      ]
+
+      if (ids_in_error.length) {
+        const str = `There is no '${this._name}' record with IDs ${ids_in_error}.`
+        throw str
+      }
+    } else {
+      //
+    }
+  }
+
+  async _init_values_by_new(/* paylaod = {} */) {
+    // console.log('xxx, _init_values_for_new_call_onchange1 1:', this._name)
+    // const { context = this.env.context } = paylaod
+    Object.keys(this._values).forEach(field_name => {
+      this._columns[field_name]._set_default(this)
+    })
+
+    const onchange = await this._onchange2({}, [], this.field_onchange)
+    await this._after_onchange(onchange)
   }
 }

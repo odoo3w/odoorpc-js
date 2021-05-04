@@ -1,5 +1,6 @@
 <template>
   <span>
+    <!-- <a href="javascript:void(0)"> -->
     <Table
       :columns="columns"
       :data="dataList2"
@@ -7,6 +8,7 @@
       @on-row-click="handleOnRowClick"
     >
     </Table>
+    <!-- </a> -->
 
     <Modal v-model="showModal" :title="modalTitle">
       <div slot="footer">
@@ -32,10 +34,6 @@
       />
 
       <!-- {{ currentRow }} -->
-
-      <p>Content of dialog</p>
-      <p>Content of dialog</p>
-      <p>Content of dialog</p>
     </Modal>
   </span>
 </template>
@@ -46,9 +44,9 @@ import { parseTime } from '@/utils'
 import OViewForm from '@/components/OViewForm'
 // import OWidgetField from '@/components/OWidgetField'
 
-const deep_copy = node => {
-  return JSON.parse(JSON.stringify(node))
-}
+// const deep_copy = node => {
+//   return JSON.parse(JSON.stringify(node))
+// }
 
 export default {
   name: 'OTreeView',
@@ -172,8 +170,8 @@ export default {
 
         const render_action = (h, { row }) => {
           return h('span', [
-            render_edit_button(h, { row }),
-            render_del_button(h, { row })
+            render_edit_button(h, { row })
+            // render_del_button(h, { row })
           ])
         }
 
@@ -267,8 +265,26 @@ export default {
       console.log('click row new', this)
       // this.parentNode
       // 从 this.parentNode 取  default
-      const new_rec = await this.record.new()
-      console.log(new_rec)
+
+      this.currentRow = {}
+
+      const callback = res => {
+        console.log('handleOnRowCreate, callback,  ', res)
+        this.currentRow = { ...res }
+      }
+      const records2 = await this.record.new_copy({
+        fetch_one: callback,
+        form_record: [
+          this.parentRecord,
+          this.parentRecord._columns[this.parentNode.attrs.name]
+        ]
+      })
+
+      console.log('click row new', records2)
+      this.currentRecord = records2
+      // this.currentRowId = row.id
+      this.showModal = true
+      this.keyIndexOfModal = this.keyIndexOfModal + 1
     },
 
     async handleOnRowEdit(row) {
@@ -284,8 +300,8 @@ export default {
 
     async handleOnCreate() {
       console.log('click new', this)
-      const new_rec = await this.record.new()
-      console.log(new_rec)
+      // const new_rec = await this.record.new()
+      // console.log(new_rec)
     },
 
     handleOnRowClick(row) {
@@ -306,18 +322,26 @@ export default {
       // console.log('date 10,', this.parentNode.attrs.name)
 
       const record = this.record.getById(row.id)
-      const callback = res => {
-        console.log('handleOnRowClick, callback,  ', res)
-        this.currentRow = { ...res }
+
+      if (this.editable) {
+        const callback = res => {
+          console.log('handleOnRowClick, callback,  ', res)
+          this.currentRow = { ...res }
+        }
+        const records2 = record.copy({
+          fetch_one: callback,
+          form_record: [
+            this.parentRecord,
+            this.parentRecord._columns[this.parentNode.attrs.name]
+          ]
+        })
+
+        this.currentRecord = records2
+      } else {
+        this.currentRecord = record
+        this.currentRow = { ...row }
       }
-      const records2 = record.copy({
-        fetch_one: callback,
-        form_record: [
-          this.parentRecord,
-          this.parentRecord._columns[this.parentNode.attrs.name]
-        ]
-      })
-      this.currentRecord = records2
+
       // this.currentRowId = row.id
       this.showModal = true
       this.keyIndexOfModal = this.keyIndexOfModal + 1
@@ -326,9 +350,7 @@ export default {
 
       // console.log('handleOnRowClick1,', record)
       // console.log('handleOnRowClick2,', records2)
-
       // console.log('date 10,', new Date().getTime(), records2)
-
       // console.log('date 99,', new Date().getTime())
     },
 
@@ -338,11 +360,12 @@ export default {
     },
 
     async modalOk() {
+      await this.currentRecord.awaiter
       console.log('modalOk', this.currentRecord)
+      await this.record.update(this.currentRecord)
 
       this.showModal = false
-
-      await this.currentRecord.trigger_parent_onchange()
+      // await this.currentRecord.trigger_parent_onchange()
     },
 
     modalOkNew() {
@@ -350,15 +373,14 @@ export default {
       // this.showModal = true
     },
 
-    modalDel() {
+    async modalDel() {
       console.log('modalDel')
+      await this.record.remove(this.currentRecord.id)
       this.showModal = false
     },
 
     renderCell(h, { row, column }) {
       if (row.id === '_action_row') {
-        // console.log('renderCell', row, column)
-
         return h(
           'Button',
           {
@@ -396,6 +418,8 @@ export default {
 
       if (column.attrs.widget === 'monetary') {
         fn = 'renderWidgetMonetary'
+      } else if (meta.type === 'many2many') {
+        fn = 'renderMany2many'
       } else if (meta.type === 'many2one') {
         fn = 'renderMany2one'
       } else if (meta.type === 'selection') {
@@ -430,16 +454,30 @@ export default {
     },
 
     renderMany2one(h, { row, column }) {
-      // if (column.key === 'product_id') {
-      //   console.log(
-      //     ' renderMany2one, ',
-      //     [column.key, row.product_id, row.product_id__name],
-      //     row
-      //   )
-      // }
-
       const val = row[`${column.key}__name`]
       return h('span', val)
+    },
+
+    renderMany2many(h, { row, column }) {
+      const val = row[column.key]
+      const m2m_record = row[`${column.key}__record`]
+      if (val.length) {
+        const tocall = m2m_record.reduce((acc, cur) => {
+          return acc || cur.display_name === undefined
+        }, false)
+
+        if (tocall) {
+          const record = this.record.getById(row.id)
+          record[`$$${column.key}`]
+          // .then(res => {
+          //   // console.log(res)
+          //   // console.log(this.dataList2)
+          // })
+        }
+      }
+
+      const val2 = m2m_record.map(item => item.display_name)
+      return h('span', val2)
     },
 
     renderDatetime(h, { row, column }) {

@@ -75,7 +75,7 @@ export default {
   },
   async created() {},
   async mounted() {
-    const o2m_record = await this.record[`$${this.node.attrs.name}`]
+    const o2m_record = await this.record[`$$${this.node.attrs.name}`]
     this.o2m_record = o2m_record
     this.o2m_view_type = o2m_record._view_type
 

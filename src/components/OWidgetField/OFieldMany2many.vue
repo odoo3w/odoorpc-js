@@ -16,6 +16,19 @@ export default {
   props: {},
   computed: {},
 
+  async mounted() {
+    // await this.init()
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log(
+    //   'OWidget M2M xxxxxx:',
+    //   this.node.attrs.name,
+    //   deep_copy(this.node),
+    //   this.dataDict
+    // )
+  },
+
   methods: {}
 }
 </script>

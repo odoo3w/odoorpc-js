@@ -67,15 +67,13 @@
     :node="node"
   />
 
-  <!-- 
-
   <OFieldDatetime
     v-else-if="meta.type === 'datetime'"
     :editable="editable"
     :record="record"
     :dataDict="dataDict"
     :node="node"
-  /> -->
+  />
 
   <OFieldMany2one
     v-else-if="meta.type === 'many2one'"
@@ -100,13 +98,13 @@
     :node="node"
   />
 
-  <OFieldOne2many
+  <!-- <OFieldOne2many
     v-else-if="meta.type === 'one2many'"
     :editable="editable"
     :record="record"
     :dataDict="dataDict"
     :node="node"
-  />
+  /> -->
 
   <OFieldChar
     v-else-if="meta.type === 'char'"
@@ -183,7 +181,7 @@ import OFieldBoolean from './OFieldBoolean'
 
 import OFieldSelection from './OFieldSelection'
 import OFieldDate from './OFieldDate'
-// import OFieldDatetime from './OFieldDatetime'
+import OFieldDatetime from './OFieldDatetime'
 
 import OFieldMany2many from './OFieldMany2many'
 
@@ -206,7 +204,7 @@ export default {
     OWidgetRadio,
     OFieldBoolean,
     OFieldSelection,
-    // OFieldDatetime,
+    OFieldDatetime,
     OFieldDate,
     OFieldMany2many,
     OWidgetMany2manyTags,

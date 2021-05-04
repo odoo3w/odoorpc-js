@@ -1,14 +1,27 @@
 <template>
-  <Form label-position="left" :class="className" :label-width="120">
+  <Form
+    label-position="left"
+    :class="className"
+    :rules="rulesValidate"
+    :label-width="120"
+  >
     <span v-for="(row, index) in group_items" :key="index">
       <div v-if="row.tagName === 'separator'" class="o_horizontal_separator">
         {{ row.attrs.string }}
       </div>
 
+      <!-- class="oe_subtotal_footer_separator" -->
+      <!-- 销售订单 订单明细 的合计项 -->
+      <!-- 包括 三行: 未含税金额+税=合计 -->
+      <!-- 第三行合计前加一条线 -->
+      <!-- 改为 FormItem 方式后, 原有的 在 label 上的 线 -->
+      <!-- 通过 class="oe_subtotal_footer_separator" 无法实现 -->
+
       <FormItem
         v-else-if="row.tagName === 'form-item'"
         :class="classNameItem(row)"
         :label="row.attrs.string"
+        :prop="row.attrs.name"
         :label-for="input_id(row)"
       >
         <OFormLabel
@@ -85,13 +98,43 @@ export default {
   },
 
   computed: {
+    rulesValidate() {
+      if (!this.editable) {
+        return {}
+      }
+
+      return this.group_items.reduce((acc, node) => {
+        if (node.tagName === 'form-item') {
+          if (node.attrs.name) {
+            const required_modifier = this.get_required_modifier(node)
+            if (required_modifier) {
+              const msg = `${node.attrs.string} 不能为空`
+              const rules = [{ required: true, message: msg, trigger: 'blur' }]
+              acc[node.attrs.name] = rules
+            }
+          }
+        }
+        return acc
+      }, {})
+    },
+
     className() {
+      const node = this.node
       const classList = ['o_group', 'o_inner_group']
+
+      // const col_num = (12 / this.parentCol) * (this.node.attrs.colspan || 1)
+      // classList.push(`o_group_col_${col_num}`)
+
       if (this.level) {
         classList.push(`o_group_col_${this.level * 6}`)
       } else {
         classList.push('o_group_col_6')
       }
+
+      const class_from_node = node.class ? node.class.split(' ') : []
+      class_from_node.forEach(item => {
+        classList.push(item)
+      })
 
       if (this.invisible_modifier) {
         classList.push('o_invisible_modifier')
@@ -133,7 +176,10 @@ export default {
             row.push(child)
             // ch_value.meta.string = child.meta.string
             row.push(ch_value)
-          } else if (child.class === 'o_td_label') {
+          } else if (
+            child.class &&
+            child.class.split(' ').includes('o_td_label')
+          ) {
             const ch_value = children.shift()
             row.push(child.children[0])
             row.push(ch_value)
@@ -179,10 +225,10 @@ export default {
       }
 
       const node_table = get_matrix()
-      // const deep_copy = node => {
-      //   return JSON.parse(JSON.stringify(node))
-      // }
-      // console.log('node_table', deep_copy(node_table))
+      const deep_copy = node => {
+        return JSON.parse(JSON.stringify(node))
+      }
+      console.log('node_table', deep_copy(node_table))
 
       // const node_table2 = node_table.filter(item =>
       //   ['title', 'category_id'].includes(item.children[1].meta.name)
@@ -204,6 +250,21 @@ export default {
   },
 
   methods: {
+    get_required_modifier(node) {
+      // 额外 多传一个参数 this.dataDict
+      // 这样 当 this.dataDict 变化时, 会重新计算
+
+      if (this.record._view_required) {
+        const required_modifier = this.record._view_required(
+          node,
+          this.dataDict
+        )
+        return required_modifier
+      } else {
+        return false
+      }
+    },
+
     input_id(row) {
       // console.log('Label: input_id  ', row.attrs.for)
       if (row.attrs.for) {

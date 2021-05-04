@@ -8,6 +8,7 @@
         :key="index"
         :label="page.attrs.string"
       >
+        <!-- {{ page }} -->
         <ONode
           :record="record"
           :node="page"
@@ -40,6 +41,8 @@ export default {
         )
         return !invisible_modifier
       })
+      // .filter(item => item.attrs.name === 'order_lines')
+
       // .filter(item => item.attrs.name === 'internal_notes')
       // .filter(item => item.attrs.name === 'accounting_disabled')
       // .filter(item => item.attrs.name === 'accounting')
@@ -48,18 +51,18 @@ export default {
   },
 
   async created() {
-    // const deep_copy = node => {
-    //   return JSON.parse(JSON.stringify(node))
-    // }
-    // console.log(
-    //   'Notebook, xxxxxx:',
-    //   deep_copy(
-    //     this.node
-    //     // .children.filter(
-    //     //   item => item.attrs.name === 'sales_purchases'
-    //     // )
-    //   )
-    // )
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+    console.log(
+      'Notebook, xxxxxx:',
+      deep_copy(
+        this.node
+        // .children.filter(
+        //   item => item.attrs.name === 'sales_purchases'
+        // )
+      )
+    )
   },
 
   methods: {}

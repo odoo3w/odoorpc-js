@@ -31,15 +31,12 @@ const AddonsModels = AddonsFiles.keys().reduce((models, modulePath) => {
 }, {})
 
 const AllModels = { ...AddonsModels }
-// console.log('xxxx,', AddonsModels)
+console.log('xxxx AllModels,', AddonsModels)
 
 const FIELDS_RESERVED = ['id', 'ids', '__odoo__', '__osv__', '__data__', 'env']
 
-//
-// call by env _init_columns fields_view_get
-//
-
 const _onchange_spec = view_info => {
+  // call by env _init_columns fields_view_get
   const result = {}
 
   const process = (node, info, prefix) => {
@@ -149,23 +146,13 @@ export class Environment {
   _model_from_parent(model, view_type, payload) {
     // console.log('_model_by_view_info', view_info, field.name)
 
-    const {
-      parant_reg_name = '(parent)',
-      isSync,
-      view_info,
-      views = {}
-    } = payload
+    const { parant_reg_name = '(parent)' } = payload
 
     const reg_name_list = [model, view_type]
     const reg_name = reg_name_list.join(',')
     const reg_name2 = `(${reg_name});${parant_reg_name}`
 
-    return this._model_get(model, reg_name2, {
-      view_type,
-      isSync,
-      view_info,
-      views
-    })
+    return this._model_get(model, reg_name2, { view_type, ...payload })
   }
 
   _model_get(model, reg_name, payload) {
@@ -218,32 +205,25 @@ export class Environment {
   }
 
   _create_model_class(model, payload = {}) {
-    const {
-      reg_name,
-      view_type,
-      view_ref,
-      isSync,
-      view_info,
-      views = {}
-    } = payload
+    // const { parent, parent_field, view_ref, reg_name,view_type, isSync, view_info, views = {} } = payload
+
     const Model2 = this._addons[model] || AllModels[model] || Model
+
+    // console.log('env,', [model, this._addons, AllModels, Model2])
 
     if (!test_count[model]) {
       test_count[model] = 1
     }
     test_count[model] = test_count[model] + 1
 
-    // console.log('env,', test_count, model, view_type, view_ref)
-
-    // console.log(
-    //   'xxxxxxx, _create_model_class',
-    //   model,
-    //   view_type,
-    //   isSync,
-    //   view_info
-    // )
-
-    // console.log('xxxxxxx, _create_model_class', [Model2])
+    if (!Model2.get_templates) {
+      // 一个骨架函数, 供扩展用
+      // eslint-disable-next-line no-unused-vars
+      Model2.get_templates = (node, field) => {
+        console.log('get_templates', this._from_record)
+        return null
+      }
+    }
 
     class Cls extends Model2 {
       constructor() {
@@ -286,7 +266,7 @@ export class Environment {
             // 双 $$ 函数
             if (Field.relation) {
               const $$getter = function() {
-                return Field.$$GetValue(this)
+                return Field.$$getValue(this)
               }
               my_prototype.__defineGetter__(`$$${item}`, $$getter)
               my_prototype.__defineSetter__(`$$${item}`, setter)
@@ -294,6 +274,7 @@ export class Environment {
           })
         }
 
+        const { isSync } = payload
         if (isSync) {
           _defineGetter()
         } else {
@@ -330,6 +311,10 @@ export class Environment {
         return this.constructor._view_info
       }
 
+      get _view_node() {
+        return this.constructor._view_node
+      }
+
       get _reg_name() {
         return this.constructor._reg_name
       }
@@ -339,12 +324,12 @@ export class Environment {
       }
 
       static _get_templates(node) {
-        // console.log('get_templates', this._from_record)
+        // console.log('get_templates', parent, parent_field)
         // return node
         const get_tmpl = () => {
-          if (this._from_record) {
-            const [parent, Field] = this._from_record
-            return parent.get_templates(node, Field.name)
+          const { parent, parent_field } = payload
+          if (parent && parent_field) {
+            return parent.get_templates(node, parent_field)
           }
           return this.get_templates(node)
         }
@@ -355,12 +340,6 @@ export class Environment {
         } else {
           return node
         }
-      }
-
-      // eslint-disable-next-line no-unused-vars
-      static get_templates(node, field) {
-        // console.log('get_templates', this._from_record)
-        return null
       }
 
       static _view_node_default_html(node) {
@@ -530,6 +509,9 @@ export class Environment {
 
     // step 1: define a new model class, to set _env, _odoo, _name
     Object.defineProperty(Cls, 'name', { value: cls_name })
+
+    const { reg_name, view_type, view_ref, view_info, views = {} } = payload
+
     Cls._reg_name = reg_name
     Cls._env = this
     Cls._odoo = this._odoo
@@ -598,4 +580,72 @@ export class Environment {
 
     return Cls
   }
+}
+
+export const _get_all_fields2 = view_info => {
+  const list2 = ['domain', 'modifiers', 'context', 'options']
+  const result = list2.reduce((acc, cur) => {
+    acc[cur] = []
+    return acc
+  }, {})
+
+  const fields = _get_all_fields(view_info)
+  list2.forEach(item => {
+    Object.keys(fields).forEach(fld => {
+      const attrs = fields[fld]
+      if (attrs[item]) {
+        result[item].push([fld, attrs[item]])
+        // result[`${fld},${item}`] = attrs[item]
+        // result[`${fld},${item}: `] = [typeof attrs[item], attrs[item]]
+        // console.log(fld, ',', item, ': ', attrs[item])
+      }
+    })
+  })
+
+  // Object.keys(fields).forEach(fld => {
+  //   const attrs = fields[fld]
+  //   list2.forEach(item => {
+  //     if (attrs[item]) {
+  //       result[`${fld},${item}`] = attrs[item]
+  //       // result[`${fld},${item}: `] = [typeof attrs[item], attrs[item]]
+  //       // console.log(fld, ',', item, ': ', attrs[item])
+  //     }
+  //   })
+  // })
+
+  return result
+}
+
+export const _get_all_fields = view_info => {
+  const result = {}
+
+  const process = (node, info, prefix) => {
+    if (node.tagName === 'field') {
+      const name = node.attrs.name
+      const names_list = prefix ? [prefix, name] : [name]
+      const names = names_list.join('.')
+      if (!Object.keys(result).includes(names)) {
+        result[names] = node.attrs
+      }
+      Object.values(info.fields[name].views || {}).forEach(subinfo => {
+        process(xml2json.toJSON(subinfo.arch), subinfo, names)
+      })
+    } else {
+      const children = node.children || []
+      children.forEach(child => {
+        process(child, info, prefix)
+      })
+    }
+  }
+
+  if (view_info.arch) {
+    const root = xml2json.toJSON(view_info.arch)
+    process(root, view_info, '')
+  }
+
+  const res2 = { ...result }
+  delete res2.id
+  // console.log('res,', res2)
+
+  return res2
 }

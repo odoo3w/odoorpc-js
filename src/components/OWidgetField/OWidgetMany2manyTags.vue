@@ -88,21 +88,22 @@ export default {
 
   async mounted() {
     await this.init()
-    // const deep_copy = node => {
-    //   return JSON.parse(JSON.stringify(node))
-    // }
-    // console.log(
-    //   'OWidget M2M xxxxxx:',
-    //   this.node.meta.name,
-    //   deep_copy(this.node)
-    // )
+    const deep_copy = node => {
+      return JSON.parse(JSON.stringify(node))
+    }
+    console.log(
+      'OWidget M2M xxxxxx:',
+      this.node.attrs.name,
+      deep_copy(this.node),
+      this.dataDict
+    )
   },
 
   methods: {
     async init() {
       // const m2m_record = await this.record[`$$${this.node.attrs.name}`]
       // const m2m_record =
-      await this.record[`$${this.node.attrs.name}`]
+      await this.record[`$$${this.node.attrs.name}`]
       // console.log('m2m, ', this.node.attrs.name, m2m_record)
       // console.log('m2m, ', this.node.attrs.name, this.dataDict)
 

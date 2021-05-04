@@ -3,15 +3,22 @@
     <h1>{{ node.attrs.string }}</h1>
 
     <Divider />
-    <span v-if="['tree', 'kanban'].includes(view_type)">
-      <Button type="primary" @click="handleOnCreate">创建</Button>
-      <Button @click="handleOnImport">导入</Button>
+
+    <span v-if="editable">
+      <Button type="primary" @click="handleOnCommit">保存</Button>
+      <Button @click="editable = false">放弃</Button>
     </span>
-    <span v-if="['form'].includes(view_type)">
-      <Button type="primary" @click="handleOnEdit">编辑</Button>
-      <Button @click="handleOnCreate">创建</Button>
+
+    <span v-else>
+      <span v-if="['tree', 'kanban'].includes(view_type)">
+        <Button type="primary" @click="handleOnCreate">创建</Button>
+        <Button @click="handleOnImport">导入</Button>
+      </span>
+      <span v-if="['form'].includes(view_type)">
+        <Button type="primary" @click="handleOnEdit">编辑</Button>
+        <Button @click="handleOnCreate">创建</Button>
+      </span>
     </span>
-    <Button type="primary" @click="handleOnCommit">保存</Button>
 
     <Divider />
     <OView
@@ -111,7 +118,10 @@ export default {
         //   return JSON.parse(JSON.stringify(node))
         // }
 
-        const callback = (res /*field*/) => {
+        const callback = (
+          res //
+          // field
+        ) => {
           // console.log('web callback,', field, deep_copy(res))
           // console.log('web callback,', field, this.record)
           this.dataDict = { ...res }

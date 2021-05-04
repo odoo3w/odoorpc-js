@@ -1,8 +1,9 @@
 <template>
-  <span v-if="editable">
+  <span v-if="editable && !readonly_modifier">
     <Input
       v-model="value2"
       :class="className"
+      :readonly="readonly_modifier"
       style="width:200px"
       :element-id="input_id"
       :name="node.attrs.name"
