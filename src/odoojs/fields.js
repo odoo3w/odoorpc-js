@@ -242,6 +242,18 @@ class BaseField1 {
 
     return new Promise(resolve => resolve(this.name))
   }
+
+  validator(instance, rule, value) {
+    if (rule.required) {
+      if (!value) {
+        return new Error(rule.message)
+      }
+    }
+  }
+
+  async browse_flash(/*instance*/) {
+    // only a skeleton, to be overrid for o2m
+  }
 }
 
 class BaseField extends BaseField1 {
@@ -318,6 +330,7 @@ class _Relational extends BaseField {
   constructor(name, data) {
     super(name, data)
     this.relation = data.relation || false
+    this.relation_model_id = data.relation_model_id
     this.context = data.context || {}
     this.domain = data.domain || false
   }
@@ -372,12 +385,29 @@ class _Relational extends BaseField {
     return instance.env.copy(context)
   }
 
+  _get_action(instance) {
+    const action = instance.env.action_get({
+      view: instance._view,
+      field: this.name
+    })
+    return action
+  }
+
+  _get_view(instance, view_type = 'tree') {
+    const action = this._get_action(instance)
+    return action.get_view(view_type)
+  }
+
   getValue(instance) {
+    // console.log(this.name, instance.ids, instance._name)
     const id_ = this.raw_value(instance)
-    const Relation = this._get_Relation(instance)
+    const view = this._get_view(instance)
+    const Relation = view._Model
     const env = this._get_env(instance)
-    const kwargs = { from_record: [instance, this] }
-    return Relation._browse_relation(env, id_ || false, kwargs)
+    const fields = Object.keys(view.fields)
+    const kwargs = { from_record: [instance, this], view, fields }
+    const ss = Relation._browse_relation(env, id_ || false, kwargs)
+    return ss
   }
 
   get_selection(instance, kwargs = {}) {
@@ -386,9 +416,11 @@ class _Relational extends BaseField {
     if (default2) {
       const id_ = instance._values[this.name][instance.id] || false
       if (id_) {
-        const Relation = this._get_Relation(instance)
+        const view = this._get_view(instance)
+        const Relation = view._Model
         const env = this._get_env(instance)
-        const kwargs = { from_record: [instance, this] }
+        const fields = Object.keys(view.fields)
+        const kwargs = { from_record: [instance, this], view, fields }
         const relation = Relation._browse_relation(env, id_, kwargs)
         if (relation.id) {
           return [[relation.id, relation.$display_name]]
@@ -476,23 +508,7 @@ class Many2one extends _Relational {
     return value
   }
 
-  _get_Relation(instance) {
-    const view_info = {
-      fields: { display_name: { type: 'char', string: 'Name', readonly: true } }
-    }
-
-    const kwargs = {
-      parant_reg_name: instance._reg_name,
-      parent: instance.constructor,
-      parent_field: this.name,
-      isSync: true,
-      view_info
-    }
-
-    return instance.env.model(this.relation, 'many2one', kwargs)
-  }
-
-  // 返回 异步 对象
+  //  TBD 有错误. env.model 改过了
   async $$getValue(instance) {
     const ids = this.raw_value(instance)
     const Relation = instance.env.model(this.relation)
@@ -591,6 +607,14 @@ class _RelationalMulti extends _Relational {
       storage2_dst.records = dst
     }
   }
+
+  async browse_flash(instance) {
+    const storage2 = this._get_storage2(instance)
+    if (storage2.records) {
+      await storage2.records.browse_flash()
+      instance.event_onchange(this.name)
+    }
+  }
 }
 
 class Many2many extends _RelationalMulti {
@@ -616,34 +640,23 @@ class Many2many extends _RelationalMulti {
     return tuples
   }
 
-  _get_Relation(instance) {
-    const Relation = instance.env.model(this.relation, 'many2many', {
-      parant_reg_name: instance._reg_name,
-      parent: instance.constructor,
-      parent_field: this.name,
-      isSync: true,
-      view_info: {
-        fields: {
-          display_name: { type: 'char', string: 'Name', readonly: true }
-        }
-      }
-    })
-    return Relation
-  }
-
   async $$getValue(instance) {
     // m2m 字段, 初始化时, 只有 [ids],
 
     // 定义 双 $$函数 异步返回 [{id, display_name}]
     // console.log('m2m, $$getValue1', this.name)
 
-    // Relation 为 同步获取, 无需 await Relation.awaiter 等待
-    const Relation = this._get_Relation(instance)
+    const view = this._get_view(instance)
+    const Relation = view._Model
     const env = this._get_env(instance)
     const ids = this.raw_value(instance)
     // console.log('m2m, getValue1', this.name, ids)
 
-    const kwargs = { from_record: [instance, this] }
+    const kwargs = {
+      from_record: [instance, this],
+      fields: Object.keys(view._fields),
+      view
+    }
     const relation = await Relation._browse_relation_async(env, ids, kwargs)
     const storage2 = this._get_storage2(instance)
     storage2.records = relation
@@ -765,52 +778,23 @@ class One2many extends _RelationalMulti {
     return value2
   }
 
-  _get_Relation(instance) {
-    const view_info = instance._view_info
-    const my_views = view_info.fields[this.name].views
-    // o2m 一定是使用  tree or kanban view, 不可能是 form view
-    // o2m 单行编辑时, 用 tree or form view,
-    if (my_views.tree) {
-      return instance.env.model(this.relation, 'tree', {
-        parant_reg_name: instance._reg_name,
-        parent: instance.constructor,
-        parent_field: this.name,
-        view_info: my_views.tree,
-        views: my_views
-      })
-    } else if (my_views.kanban) {
-      return instance.env.model(this.relation, 'kanban', {
-        parant_reg_name: instance._reg_name,
-        parent: instance.constructor,
-        parent_field: this.name,
-        view_info: my_views.kanban,
-        views: my_views
-      })
-    } else {
-      return instance.env.model(this.relation, 'one2many', {
-        parant_reg_name: instance._reg_name,
-        parent: instance.constructor,
-        parent_field: this.name,
-        isSync: true,
-        view_info: {
-          fields: {
-            display_name: { type: 'char', string: 'Name', readonly: true }
-          }
-        }
-      })
-    }
-  }
-
-  _get_Relation_view_type(instance) {
-    const view_info = instance._view_info
-    const my_views = view_info.fields[this.name].views
-    if (my_views.tree) {
+  _get_view(instance, view_type) {
+    // console.log('_get_view ', this.name, instance)
+    const get_view_type = () => {
+      const view_info = instance._view_info
+      const my_views = view_info.fields[this.name].views
+      if (my_views.tree) {
+        return 'tree'
+      }
+      if (my_views.kanban) {
+        return 'kanban'
+      }
       return 'tree'
-    } else if (my_views.kanban) {
-      return 'kanban'
-    } else {
-      return 'one2many'
     }
+
+    const view_type2 = view_type || get_view_type()
+    const action = this._get_action(instance)
+    return action.get_view(view_type2)
   }
 
   async $$getValue(instance, force) {
@@ -841,11 +825,19 @@ class One2many extends _RelationalMulti {
     if (storage.records && !force) {
       return storage.records
     } else {
-      const Relation = this._get_Relation(instance)
+      const view = this._get_view(instance)
+      const Relation = view._Model
+
+      // console.log(' $$getValue', this.name, instance._name)
       // console.log('getValue1 ', [Relation])
       const env = this._get_env(instance)
       const ids = this.raw_value(instance)
-      const kwargs = { from_record: [instance, this] }
+
+      const kwargs = {
+        from_record: [instance, this],
+        fields: Object.keys(view._fields),
+        view
+      }
       //
       const relation = await Relation._browse_relation_async(env, ids, kwargs)
 
@@ -947,7 +939,10 @@ class One2many extends _RelationalMulti {
     console.log('new_sync,TBD,20210425 ', instance._name, this.name, values)
     // throw 'error  new_sync '
     const relation = this.getValue(instance)
-    const Relation = this._get_Relation(instance)
+
+    const view = this._get_view(instance)
+    const Relation = view._Model
+
     const env = this._get_env(instance)
     const iterated = relation
     const kwargs = { from_record: [instance, this], iterated, values }
@@ -1028,7 +1023,9 @@ class One2many extends _RelationalMulti {
 
     const iterated = this._get_storage_records(instance)
 
-    const Relation = this._get_Relation(instance)
+    const view = this._get_view(instance)
+    const Relation = view._Model
+
     const env = this._get_env(instance)
     const ids = instance._odoo._get_virtual_id()
     const kwargs = { from_record: [instance, this], iterated }
@@ -1161,6 +1158,14 @@ class Boolean2 extends BaseField {
   constructor(name, data) {
     super(name, data)
   }
+
+  validator(instance, rule, value) {
+    if (rule.required) {
+      if (value !== true && value !== false) {
+        return new Error(rule.message)
+      }
+    }
+  }
 }
 
 class Char extends BaseField {
@@ -1174,6 +1179,10 @@ class Date2 extends BaseField {
     super(name, data)
   }
 
+  fetch_one(instance) {
+    return { [this.name]: this.getValue(instance) }
+  }
+
   getValue(instance) {
     const value = super.raw_value(instance)
     return value ? new Date(value) : value
@@ -1185,6 +1194,10 @@ class Date2 extends BaseField {
 class Datetime extends BaseField {
   constructor(name, data) {
     super(name, data)
+  }
+
+  fetch_one(instance) {
+    return { [this.name]: this.getValue(instance) }
   }
 
   getValue(instance) {
@@ -1212,11 +1225,27 @@ class Float extends BaseField {
   _set_default(instance) {
     instance._values[this.name][instance.id] = 0.0
   }
+
+  validator(instance, rule, value) {
+    if (rule.required) {
+      if (typeof value !== 'number' && !value) {
+        return new Error(rule.message)
+      }
+    }
+  }
 }
 
 class Monetary extends Float {
   constructor(name, data) {
     super(name, data)
+  }
+
+  validator(instance, rule, value) {
+    if (rule.required) {
+      if (typeof value !== 'number' && !value) {
+        return new Error(rule.message)
+      }
+    }
   }
 }
 
@@ -1233,6 +1262,14 @@ class Integer extends BaseField {
 
   _set_default(instance) {
     instance._values[this.name][instance.id] = 0
+  }
+
+  validator(instance, rule, value) {
+    if (rule.required) {
+      if (typeof value !== 'number' && !value) {
+        return new Error(rule.message)
+      }
+    }
   }
 }
 

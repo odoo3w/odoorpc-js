@@ -51,18 +51,18 @@ export default {
   },
 
   async created() {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-    console.log(
-      'Notebook, xxxxxx:',
-      deep_copy(
-        this.node
-        // .children.filter(
-        //   item => item.attrs.name === 'sales_purchases'
-        // )
-      )
-    )
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log(
+    //   'Notebook, xxxxxx:',
+    //   deep_copy(
+    //     this.node
+    //     // .children.filter(
+    //     //   item => item.attrs.name === 'sales_purchases'
+    //     // )
+    //   )
+    // )
   },
 
   methods: {}

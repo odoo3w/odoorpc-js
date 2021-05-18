@@ -15,19 +15,31 @@ class ConnectorJSONRPC extends Connector {
     const { baseURL, timeout, deserialize = true } = payload
     super({ baseURL, timeout })
     this.deserialize = deserialize
-    const [_proxy_json, _proxy_http] = this._get_proxies()
-    this._proxy_json = _proxy_json
-    this._proxy_http = _proxy_http
-    //
+
+    this._proxy_json = this._get_proxy_json()
+    this._proxy_http = undefined
+    this._proxy_file_export = this._get_proxy_file_export()
+    this._proxy_file_import = this._get_proxy_file_import()
   }
 
-  _get_proxies() {
-    const proxy_json = new jsonrpclib.ProxyJSON({
+  _get_proxy_file_import() {
+    return this._get_proxy(jsonrpclib.ProxyFileImport)
+  }
+
+  _get_proxy_file_export() {
+    return this._get_proxy(jsonrpclib.ProxyFileExport)
+  }
+
+  _get_proxy(ProxyClass) {
+    return new ProxyClass({
       baseURL: this.baseURL,
       timeout: this._timeout,
       deserialize: this.deserialize
     })
+  }
 
+  _get_proxy_json() {
+    const proxy_json = this._get_proxy(jsonrpclib.ProxyJSON)
     if (!this.version) {
       // console.log('_get_proxies, version')
       const version_info = proxy_json.call('/web/webclient/version_info')
@@ -48,11 +60,19 @@ class ConnectorJSONRPC extends Connector {
       })
     }
 
-    return [proxy_json, undefined]
+    return proxy_json
   }
 
   get proxy_json() {
     return this._proxy_json
+  }
+
+  get proxy_file_export() {
+    return this._proxy_file_export
+  }
+
+  get proxy_file_import() {
+    return this._proxy_file_import
   }
 }
 

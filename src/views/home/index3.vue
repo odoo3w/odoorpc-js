@@ -137,12 +137,6 @@ export default {
   },
   async created() {
     this.options = [...this.options_default]
-    // const Model = api.env.model('res.partner')
-    // const record = await Model.browse(9)
-    // const o2m = await record.$$child_ids
-    // const o2m1 = o2m.getByIndex(0)
-    // const nn = o2m1.view_node()
-    // console.log(nn)
   },
 
   methods: {

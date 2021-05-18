@@ -10,6 +10,10 @@
               <span>首页</span>
             </MenuItem>
 
+            <MenuItem name="action_orders">
+              <span>销售订单</span>
+            </MenuItem>
+
             <Submenu
               v-for="submenu in menus"
               :key="submenu.name"
@@ -45,7 +49,7 @@ const WEB_PATH = '/web'
 const HOME_PATH = '/'
 
 export default {
-  name: 'Space',
+  name: 'Base',
   components: {},
   mixins: [],
   data() {
@@ -59,12 +63,10 @@ export default {
     actions() {
       const actions_test = {
         saleOrder: {
-          model: 'sale.order',
-          tree_view_ref: 'sale.view_order_tree',
-          form_view_ref: 'sale.view_order_form'
+          action_ref: 'sale.action_quotations_with_onboarding'
         },
         resPartner: {
-          model: 'res.partner'
+          action_ref: 'contacts.action_contacts'
         }
       }
 

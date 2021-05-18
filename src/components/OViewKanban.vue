@@ -90,7 +90,7 @@ export default {
     },
 
     node() {
-      return this.record.view_node()
+      return this.record.view_node
     },
     template() {
       const templates = this.node.children.filter(

@@ -1,5 +1,5 @@
 <template>
-  <span v-if="editable">
+  <span v-if="editable && !readonly_modifier">
     <Input
       v-model="value2"
       type="number"

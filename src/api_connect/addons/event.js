@@ -94,7 +94,9 @@ export class EventEvent extends Model {
       return []
     } else {
       const rec = await this.browse(ids)
+      // console.log('in search_one_date1 ', rec)
       const data = rec.fetch_all()
+      // console.log('in search_one_date2 ', data)
       return data
     }
   }
@@ -186,7 +188,7 @@ export class EventEvent extends Model {
     }
 
     const values_list = await this.get_values_list(payload)
-    // console.log('in search_future_event 1', values_list)
+    console.log('in search_future_event 1', values_list)
 
     const values_list2 = values_list.filter(
       item => !hours.includes(item.date_begin)

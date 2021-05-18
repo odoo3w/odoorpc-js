@@ -98,13 +98,13 @@
     :node="node"
   />
 
-  <!-- <OFieldOne2many
+  <OFieldOne2many
     v-else-if="meta.type === 'one2many'"
     :editable="editable"
     :record="record"
     :dataDict="dataDict"
     :node="node"
-  /> -->
+  />
 
   <OFieldChar
     v-else-if="meta.type === 'char'"

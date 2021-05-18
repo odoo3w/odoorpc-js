@@ -1,16 +1,5 @@
 <template>
-  <span v-if="editable">
-    <!-- <Input
-      v-model="value2"
-      :class="className"
-      style="width:200px"
-      :element-id="input_id"
-      :name="node.attrs.name"
-      :placeholder="node.attrs.placeholder"
-      @on-enter="handleOnchange(value2)"
-      @on-blur="handleOnchange(value2)"
-    /> -->
-
+  <span v-if="editable && !readonly_modifier">
     <DatePicker
       type="date"
       v-model="value2"

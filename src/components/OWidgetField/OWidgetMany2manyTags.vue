@@ -1,5 +1,9 @@
 <template>
-  <span v-if="editable" :class="className" :name="node.attrs.name">
+  <span
+    v-if="editable && !readonly_modifier"
+    :class="className"
+    :name="node.attrs.name"
+  >
     <OM2mSelect
       v-model="value2"
       :showSearchMore="showSearchMore"
@@ -87,16 +91,16 @@ export default {
   },
 
   async mounted() {
-    await this.init()
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-    console.log(
-      'OWidget M2M xxxxxx:',
-      this.node.attrs.name,
-      deep_copy(this.node),
-      this.dataDict
-    )
+    // await this.init()
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log(
+    //   'OWidget M2M xxxxxx:',
+    //   this.node.attrs.name,
+    //   deep_copy(this.node),
+    //   this.dataDict
+    // )
   },
 
   methods: {

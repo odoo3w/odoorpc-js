@@ -1,4 +1,9 @@
 <template>
+  <!-- <span>
+    list
+    {{ editable }}
+  </span> -->
+
   <span>
     <!-- <a href="javascript:void(0)"> -->
     <Table
@@ -17,9 +22,9 @@
           <Button @click="modalCancel">放弃</Button>
           <Button @click="modalDel">移除</Button>
 
-          <!-- <Button @click="modalOk">保存并关闭</Button>
+          <Button @click="modalOk">保存并关闭</Button>
           <Button @click="modalOkNew">保存并新建</Button>
-          <Button @click="modalCancel">放弃</Button> -->
+          <Button @click="modalCancel">放弃</Button>
         </span>
         <span v-else>
           <Button @click="modalCancel">关闭</Button>
@@ -59,6 +64,13 @@ export default {
 
   props: {
     editable: { type: Boolean, default: undefined },
+
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return {}
+    //   }
+    // },
 
     record: {
       type: Object,
@@ -101,10 +113,11 @@ export default {
   },
   computed: {
     node() {
-      return this.record.view_node()
+      return this.record.view_node || { children: [] }
     },
     columns() {
-      const cols = this.node.children
+      // console.log('columns ', this.record)
+      const cols = (this.node.children || [])
         .filter(item => {
           // 这个为什么没有 this.dataDict
           const invisible_modifier = this.record._view_invisible(
@@ -246,10 +259,10 @@ export default {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
     // }
-    // console.log('OTreeView, xxxxxx:', deep_copy(this.node))
+    // console.log('OTreeView, node:', deep_copy(this.node))
     // console.log('OTreeView, columns:', this.columns)
-    // // console.log('OTreeView, xxxxxx:', this.dataList)
-    // // console.log('OTreeView, xxxxxx:', this.record)
+    // console.log('OTreeView, dataList:', this.dataList)
+    // console.log('OTreeView, record:', this.record)
   },
   methods: {
     // eslint-disable-next-line no-unused-vars
@@ -267,22 +280,7 @@ export default {
       // 从 this.parentNode 取  default
 
       this.currentRow = {}
-
-      const callback = res => {
-        console.log('handleOnRowCreate, callback,  ', res)
-        this.currentRow = { ...res }
-      }
-      const records2 = await this.record.new_copy({
-        fetch_one: callback,
-        form_record: [
-          this.parentRecord,
-          this.parentRecord._columns[this.parentNode.attrs.name]
-        ]
-      })
-
-      console.log('click row new', records2)
-      this.currentRecord = records2
-      // this.currentRowId = row.id
+      this.handleRowEdit(false)
       this.showModal = true
       this.keyIndexOfModal = this.keyIndexOfModal + 1
     },
@@ -304,54 +302,40 @@ export default {
       // console.log(new_rec)
     },
 
-    handleOnRowClick(row) {
+    async handleRowEdit(row_id) {
+      const callback = res => {
+        console.log('handleOnRowClick, callback,  ', res)
+        this.currentRow = { ...res }
+      }
+
+      const record = await this.record.browse_form_by_relation_tree(row_id, {
+        fetch_one: callback,
+        editable: this.editable
+      })
+
+      this.currentRecord = record
+    },
+
+    async handleOnRowClick(row) {
       if (!this.hasParent) {
         this.$emit('on-row-click', row)
         return
       }
 
-      // const record = this.record.getById(row.id)
-      // this.currentRecord = record
-      // this.currentRow = { ...row }
-      // // this.currentRowId = row.id
-      // this.showModal = true
-      // this.keyIndexOfModal = this.keyIndexOfModal + 1
-
-      //
-
-      // console.log('date 10,', this.parentNode.attrs.name)
-
-      const record = this.record.getById(row.id)
+      console.log('handleOnRowClick,', this.record, row)
 
       if (this.editable) {
-        const callback = res => {
-          console.log('handleOnRowClick, callback,  ', res)
-          this.currentRow = { ...res }
-        }
-        const records2 = record.copy({
-          fetch_one: callback,
-          form_record: [
-            this.parentRecord,
-            this.parentRecord._columns[this.parentNode.attrs.name]
-          ]
-        })
-
-        this.currentRecord = records2
+        this.currentRow = { ...row }
+        this.handleRowEdit(row.id)
       } else {
+        const record = await this.record.browse_form_by_relation_tree(row.id)
+        console.log('handleOnRowClick 2,', record)
         this.currentRecord = record
         this.currentRow = { ...row }
       }
 
-      // this.currentRowId = row.id
       this.showModal = true
       this.keyIndexOfModal = this.keyIndexOfModal + 1
-
-      // console.log('date 10,', new Date().getTime())
-
-      // console.log('handleOnRowClick1,', record)
-      // console.log('handleOnRowClick2,', records2)
-      // console.log('date 10,', new Date().getTime(), records2)
-      // console.log('date 99,', new Date().getTime())
     },
 
     modalCancel() {
@@ -461,6 +445,7 @@ export default {
     renderMany2many(h, { row, column }) {
       const val = row[column.key]
       const m2m_record = row[`${column.key}__record`]
+      // console.log('renderMany2many', row, column)
       if (val.length) {
         const tocall = m2m_record.reduce((acc, cur) => {
           return acc || cur.display_name === undefined

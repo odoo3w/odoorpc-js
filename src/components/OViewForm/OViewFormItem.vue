@@ -5,6 +5,7 @@
     :record="record"
     :dataDict="dataDict"
     :editable="editable"
+    @on-btn-click="handleBtnClick"
   />
 
   <OFormSheet
@@ -55,7 +56,12 @@ export default {
   },
   computed: {},
 
-  methods: {}
+  methods: {
+    handleBtnClick(type, name) {
+      // console.log(type, name)
+      this.$emit('on-btn-click', type, name)
+    }
+  }
 }
 </script>
 

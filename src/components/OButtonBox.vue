@@ -5,6 +5,7 @@
       :key="index"
       :record="record"
       :node="child"
+      :dataDict="dataDict"
       :editable="editable"
     />
   </div>

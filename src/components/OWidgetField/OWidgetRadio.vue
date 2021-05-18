@@ -8,7 +8,7 @@
   </div>
 
   <span v-else :class="className" :name="node.attrs.name">
-    {{ valueName }}
+    {{ node.attrs.name }}: {{ valueName }},
   </span>
 </template>
 

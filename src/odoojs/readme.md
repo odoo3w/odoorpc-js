@@ -3,7 +3,7 @@
 1. create users
 2. m2m 要处理
 
-3. o2m 编辑还没做
+3. o2m 新增 需要 读取 node 的 attrs.context 取默认值
 
 #### env
 

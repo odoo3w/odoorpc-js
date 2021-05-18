@@ -11,6 +11,14 @@
         goto home
       </button>
 
+      <button type="info" @click="toTest">
+        run
+      </button>
+
+      <Upload :before-upload="handleUpload" action="">
+        <Button>sssss</Button>
+      </Upload>
+
       <div>
         //
       </div>
@@ -34,20 +42,27 @@ export default {
     }
   },
   computed: {},
-  async created() {
-    await this.test()
-  },
+  async created() {},
 
   methods: {
-    async test() {
+    async toTest() {
       await test_api()
-      // await get_sportType()
     },
 
     toHome() {
       this.$router.replace({
         path: '/home'
       })
+    },
+
+    async handleUpload(file) {
+      // this.file = file
+
+      console.log('handleUpload', file)
+
+      // this.setBtn('open')
+      // await sleep(1000)
+      // this.$emit('onloadend', { file })
     }
   }
 }

@@ -9,6 +9,7 @@ export class ODOO {
     this._addons = addons
 
     this._env = undefined
+
     this._login = undefined
 
     // this._db = DB(this)
@@ -39,6 +40,8 @@ export class ODOO {
     }
 
     this._allowed_company_ids = []
+
+    this.debug_count = 0
   }
 
   get config() {
@@ -138,6 +141,112 @@ export class ODOO {
       //   data['error'])
     } else {
       return data
+    }
+  }
+
+  async file_export(url, payload) {
+    const data = await this._connector.proxy_file_export.call(url, payload)
+    if (data.error) {
+      // TBD
+      throw data.error
+      // raise error.RPCError(
+      //   data['error']['data']['message'],
+      //   data['error'])
+    } else {
+      return data
+    }
+  }
+
+  async file_import(url, payload) {
+    const data = await this._connector.proxy_file_import.call(url, payload)
+    if (data.error) {
+      // TBD
+      throw data.error
+      // raise error.RPCError(
+      //   data['error']['data']['message'],
+      //   data['error'])
+    } else {
+      return data
+    }
+  }
+
+  // 数据导出 流程
+  // 1. call: /web/export/formats,
+  //    return: [{tag: "csv", label: "CSV"}, {tag: "xlsx", label: "XLSX", error: null}]
+  // 2. call /web/export/get_fields,
+  //    param: model, import_compat
+  //    return: [{id, value, string, field_type }]
+  // 3. call /web/dataset/call_kw/ir.exports/search_read
+  // 4. call export_xlsx()
+  //    param:
+
+  async export_xlsx(data) {
+    // param:
+    // const data = {
+    //   model: 'sale.order',
+    //   fields: [
+    //     { name: 'name', label: '订单关联' },
+    //     { name: 'create_date', label: '创建日期' },
+    //     { name: 'commitment_date', label: '交货日期' },
+    //     { name: 'expected_date', label: '预计日期' },
+    //     { name: 'partner_id', label: '客户' },
+    //     { name: 'user_id', label: '销售员' },
+    //     { name: 'amount_total', label: '合计' },
+    //     { name: 'state', label: '状态' },
+    //     { name: 'activity_exception_decoration', label: '活动例外勋章' }
+    //   ],
+    //   ids: [13],
+    //   domain: [['user_id', '=', 2]],
+    //   groupby: [],
+    //   context: {
+    //     lang: 'zh_CN',
+    //     tz: false,
+    //     uid: 2,
+    //     allowed_company_ids: [1],
+    //     params: {
+    //       action: 318,
+    //       cids: 1,
+    //       menu_id: 189,
+    //       model: 'sale.order',
+    //       view_type: 'list'
+    //     }
+    //   },
+    //   import_compat: false
+    // }
+
+    this._check_logged_user()
+    const url = '/web2/export/xlsx'
+    const data2 = await this.file_export(url, data)
+
+    return data2
+  }
+
+  async export_csv(data) {
+    this._check_logged_user()
+    const url = '/web2/export/csv'
+    const data2 = await this.file_export(url, data)
+
+    return data2
+  }
+
+  download({ filename, filetype, data }) {
+    // //ArrayBuffer 转为 Blob
+    const blob = new Blob([data], { type: filetype })
+    const objectUrl = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.setAttribute('href', objectUrl)
+    a.setAttribute('download', filename)
+    a.click()
+  }
+
+  upload(callback) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.click()
+    input.onchange = () => {
+      const file = input.files[0]
+      callback(file)
     }
   }
 
@@ -250,6 +359,8 @@ export class ODOO {
     const result = data.result
 
     this.init_odoo(result)
+    await this.env._set_model_registry()
+
     console.log('login ok')
     // read cids , to set allowed company_ids
     // const cids = this.get_cookie('cids')
@@ -270,6 +381,7 @@ export class ODOO {
         const data = await this.get_session_info()
         // console.log('get_session_info:', data.result)
         this.init_odoo(data.result)
+        await this.env._set_model_registry()
       }
       return true
     } catch (erorr) {
@@ -307,6 +419,13 @@ export class ODOO {
     const url2 = '/web/dataset/call_kw'
     const url = `${url2}/${model}/${method}`
     const payload = { model, method, args, kwargs }
+    const data = await this.json_call(url, payload)
+    return data.result
+  }
+  async action_load(action_id, additional_context = {}) {
+    this._check_logged_user()
+    const url = '/web/action/load'
+    const payload = { action_id, additional_context }
     const data = await this.json_call(url, payload)
     return data.result
   }

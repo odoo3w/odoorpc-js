@@ -3,6 +3,7 @@
     label-position="left"
     :class="className"
     :rules="rulesValidate"
+    :model="formModel"
     :label-width="120"
   >
     <span v-for="(row, index) in group_items" :key="index">
@@ -32,6 +33,7 @@
               row.children[0].children.length
           "
           :record="record"
+          :dataDict="dataDict"
           :node="row.children[0]"
         />
 
@@ -90,7 +92,8 @@ export default {
 
   mixins: [ONodeMixin],
   props: {
-    level: { type: Number, default: 0 }
+    level: { type: Number, default: 0 },
+    parentCol: { type: [Number, String], default: 0 }
   },
 
   data() {
@@ -98,6 +101,14 @@ export default {
   },
 
   computed: {
+    formModel() {
+      if (!this.editable) {
+        return {}
+      }
+
+      return { ...this.dataDict }
+    },
+
     rulesValidate() {
       if (!this.editable) {
         return {}
@@ -109,7 +120,18 @@ export default {
             const required_modifier = this.get_required_modifier(node)
             if (required_modifier) {
               const msg = `${node.attrs.string} 不能为空`
-              const rules = [{ required: true, message: msg, trigger: 'blur' }]
+              const rules = [
+                {
+                  required: true,
+                  message: msg,
+                  validator: (...p) => {
+                    console.log('validator', node.attrs.name, p)
+                    this.handelValidate(node.attrs.name, ...p)
+                  },
+
+                  trigger: 'blur'
+                }
+              ]
               acc[node.attrs.name] = rules
             }
           }
@@ -122,14 +144,8 @@ export default {
       const node = this.node
       const classList = ['o_group', 'o_inner_group']
 
-      // const col_num = (12 / this.parentCol) * (this.node.attrs.colspan || 1)
-      // classList.push(`o_group_col_${col_num}`)
-
-      if (this.level) {
-        classList.push(`o_group_col_${this.level * 6}`)
-      } else {
-        classList.push('o_group_col_6')
-      }
+      const col_num = (12 / this.parentCol) * (this.node.attrs.colspan || 1)
+      classList.push(`o_group_col_${col_num}`)
 
       const class_from_node = node.class ? node.class.split(' ') : []
       class_from_node.forEach(item => {
@@ -225,10 +241,10 @@ export default {
       }
 
       const node_table = get_matrix()
-      const deep_copy = node => {
-        return JSON.parse(JSON.stringify(node))
-      }
-      console.log('node_table', deep_copy(node_table))
+      // const deep_copy = node => {
+      //   return JSON.parse(JSON.stringify(node))
+      // }
+      // console.log('node_table', deep_copy(node_table))
 
       // const node_table2 = node_table.filter(item =>
       //   ['title', 'category_id'].includes(item.children[1].meta.name)
@@ -237,6 +253,7 @@ export default {
       return node_table
     }
   },
+
   async created() {
     // const deep_copy = node => {
     //   return JSON.parse(JSON.stringify(node))
@@ -244,12 +261,20 @@ export default {
     // console.log(
     //   'OInnerGroup , xxxxxx:',
     //   deep_copy(this.group_items),
-    //   deep_copy(this.node)
+    //   deep_copy(this.node),
+    //   deep_copy(this.dataDict),
+    //   deep_copy(this.formModel)
     // )
-    // // console.log(this.record)
+    // console.log(this.record)
   },
 
   methods: {
+    handelValidate(fld, rule, value, cb) {
+      //
+      // console.log('handelValidate', [fld, rules, value, cb])
+      this.record.form_validator(fld, rule, value, cb)
+    },
+
     get_required_modifier(node) {
       // 额外 多传一个参数 this.dataDict
       // 这样 当 this.dataDict 变化时, 会重新计算

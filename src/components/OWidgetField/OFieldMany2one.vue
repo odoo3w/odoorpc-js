@@ -1,5 +1,9 @@
 <template>
-  <div v-if="editable" :class="className" :name="node.attrs.name">
+  <div
+    v-if="editable && !readonly_modifier"
+    :class="className"
+    :name="node.attrs.name"
+  >
     <OM2oSelect
       v-model="value2"
       ref="select"
@@ -34,7 +38,7 @@
   </div>
 
   <span
-    v-else-if="attrs_options && attrs_options.no_open"
+    v-else-if="editable || (attrs_options && attrs_options.no_open)"
     :class="className"
     :name="node.attrs.name"
     :placeholder="node.attrs.placeholder"
@@ -156,6 +160,12 @@ export default {
 
   methods: {
     async init() {
+      // console.log(
+      //   'm2o,  init,',
+      //   this.node.attrs.name,
+      //   this.dataDict,
+      //   this.dataDict[this.node.attrs.name]
+      // )
       this.value = this.dataDict[this.node.attrs.name] || 0
       this.label = this.dataDict[`${this.node.attrs.name}__name`] || ''
       this.attrs_options = await this.get_attrs_options()

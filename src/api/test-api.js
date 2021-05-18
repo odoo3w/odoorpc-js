@@ -4,14 +4,207 @@ import api from '@/api_connect'
 import { Database } from '@/api_connect/api_config'
 
 export const test_api = async () => {
+  // test_export()
+  test_import()
+  // test_view()
+  // test_env_model()
+  // test_action_country()
+  // test_action()
   // await login()
   // await test_get_sportType()
   // await test_get_bookvenue()
-  await test_get_presetData()
+  // await test_get_presetData()
   // await test_reg_event()
   // await test_search_event_me()
   // await test_reg_event_cancel()
   // test_register_mobile()
+}
+
+//
+
+const test_import = () => {
+  console.log('text import_file')
+  const import_obj = api.env.model('base_import.import')
+
+  const model = 'res.partner.category'
+
+  api.upload(file => {
+    console.log(' upload,', file)
+    import_obj.test_import_file({ model, file })
+  })
+  //
+}
+
+const test_export = async () => {
+  console.log('text export')
+
+  const data = {
+    model: 'sale.order',
+    fields: [
+      { name: 'name', label: '订单关联' },
+      { name: 'create_date', label: '创建日期' },
+      { name: 'commitment_date', label: '交货日期' },
+      { name: 'expected_date', label: '预计日期' },
+      { name: 'partner_id', label: '客户' },
+      { name: 'user_id', label: '销售员' },
+      { name: 'amount_total', label: '合计' },
+      { name: 'state', label: '状态' },
+      { name: 'activity_exception_decoration', label: '活动例外勋章' }
+    ],
+    ids: [13],
+    domain: [['user_id', '=', 2]],
+    groupby: [],
+    context: {
+      lang: 'zh_CN',
+      tz: false,
+      uid: 2,
+      allowed_company_ids: [1],
+      params: {
+        action: 318,
+        cids: 1,
+        menu_id: 189,
+        model: 'sale.order',
+        view_type: 'list'
+      }
+    },
+    import_compat: false
+  }
+
+  // const response = await api.export_xlsx(data)
+  // console.log('xls export', response)
+  const response = await api.export_csv(data)
+  console.log('text export csv', response)
+
+  api.download(response)
+}
+
+const test_view = async () => {
+  const Model = api.env.model('sale.order')
+  const res = await Model.browse(1)
+  console.log(res)
+}
+
+const test_env_model = async () => {
+  const Model = api.env.model('res.partner')
+  console.log([Model])
+
+  Model.browse(3)
+  // await Model.update([])
+  // Model.update(['name'])
+}
+
+const test_action_country = async () => {
+  const xml_id = 'base.action_country'
+  const action = await api.env.action(xml_id)
+  console.log(action)
+  const view = action.get_view('tree')
+  console.log(view)
+
+  const p0 = await view.pageFirst()
+  console.log(p0)
+  const p1 = await view.pageNext()
+  console.log(p1)
+  const p2 = await view.pageLast()
+  console.log(p2)
+  const p3 = await view.pageNext()
+  console.log(p3)
+}
+
+const test_action = async () => {
+  //
+  const xml_id = 'sale.action_orders'
+  // const xml_id = 'sale.action_quotations_with_onboarding'
+  // const xml_id = 'contacts.action_contacts'
+
+  const action = await api.env.action(xml_id)
+  console.log(action)
+
+  // const view = action.get_view('form')
+  // console.log(view)
+
+  // const records = await view.browse(1)
+  // console.log('1 records', records)
+
+  // // const view = action.get_view('tree')
+  // // console.log(view)
+
+  // // const records = await view.search_browse()
+  // // console.log('1 records', records)
+
+  // // const m2o = records.$country_id
+  // // console.log('1 m2o', m2o)
+
+  // const line = await records.$$order_line
+  // console.log('1 line', line)
+
+  // // const ss = line.fetch_all()
+  // // console.log('2 line', ss)
+
+  // const ss1 = records.fetch_one()
+  // console.log('2 records', ss1)
+
+  // const country_id = records.$country_id
+  // console.log('1 country_id', country_id)
+
+  // // const child_ids1 = records.$child_ids
+  // // console.log('1 child_ids sync', child_ids1)
+
+  // const child_ids = records.$$child_ids
+  // console.log('2 child_ids', child_ids)
+
+  // const categ = records.$category_id
+  // console.log('1 categ', categ)
+
+  // const categ2 = records.$$category_id
+  // console.log('2 categ', categ2)
+
+  // console.log('2 records', records)
+
+  // const ptn = records.$partner_id
+  // console.log(ptn)
+
+  // const Model = action.Model
+  // Model.browse()
+
+  // const Ptn = api.env.model('res.partner')
+  // console.log([Ptn])
+  // api._action.load_by_ref(null, xml_id)
+}
+
+const test_class = () => {
+  class Model {
+    constructor() {}
+  }
+
+  Model._columns = {
+    a: 1,
+    b: 2
+  }
+
+  Model._columns2 = {
+    a2: 1,
+    b2: 2
+  }
+
+  class View extends Model {
+    constructor() {
+      super()
+    }
+  }
+
+  View._columns = {
+    a: 11,
+    c: 33
+  }
+
+  // console.log([Model])
+  // console.log([View])
+  // console.log([View.__proto__])
+  // View._columns2.ccc = 333
+  // console.log('View.columns', View._columns)
+  // console.log('View.columns2', View._columns2)
+  // console.log('View.__proto__.columns', View.__proto__._columns)
+  // console.log('View.__proto__.columns2', View.__proto__._columns2)
 }
 
 const login = async () => {
@@ -138,8 +331,8 @@ const test_get_presetData = async () => {
   const address_id = venue.id
 
   const dates = [
-    '2021-04-21',
-    '2021-04-14',
+    '2021-05-21',
+    '2021-05-14',
     '2021-04-07',
     '2021-04-08',
     '2021-04-12',
@@ -228,7 +421,7 @@ const test_reg_event = async () => {
   const venue = venues[0]
   const address_id = venue.id
 
-  const dates = ['2021-04-12', '2021-04-13']
+  const dates = ['2021-05-21', '2021-05-21']
 
   // 选择日期
   const date = dates[1]
@@ -257,7 +450,8 @@ const test_search_event_me = async () => {
 
 const test_reg_event_cancel = async () => {
   const events = await search_event_me()
-  const event = events[1]
+  console.log(events)
+  const event = events[0]
   const event2 = await reg_event_cancel(event.id)
   console.log(event2)
   // 取消预定

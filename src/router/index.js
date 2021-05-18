@@ -4,16 +4,22 @@ import Router from 'vue-router'
 Vue.use(Router)
 
 import Layout from '@/layout'
+import Space from '@/layout/space'
 
 const userRoutes = [
   // user
   {
     path: '/user',
-    component: Layout,
+    component: Space,
     children: [
       {
         path: '/user/login',
         component: () => import('@/views/user'),
+        name: 'user-login'
+      },
+      {
+        path: '/test',
+        component: () => import('@/views/test/test'),
         name: 'user-login'
       }
     ]

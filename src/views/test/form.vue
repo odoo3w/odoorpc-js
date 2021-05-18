@@ -46,6 +46,11 @@ export default {
   },
   computed: {},
   async created() {
+    const a = {}
+    a['a,b'] = '12133'
+    const b = 'a,b'
+    console.log(a, a[b])
+
     // await this.test_so()
     // await this.init_data_ptn_title()
     // await this.init_data_ptn()

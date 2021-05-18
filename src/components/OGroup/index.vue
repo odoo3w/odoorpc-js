@@ -25,38 +25,39 @@
     />
   </div>
   <div
-    v-else
+    v-else-if="node.tagName === 'group'"
     :class="className"
     :name="node.attrs.name"
     :col="node.attrs.col"
     :colspan="node.attrs.colspan"
   >
     <!-- <div>Group {{ level }} Satrt</div> -->
-    <!-- v-if="node.tagName === 'group'" -->
-    <div v-for="(child, index) in node.children" :key="index">
-      <OGroup
-        v-if="child.tagName === 'group'"
-        :record="record"
-        :node="child"
-        :parentCol="node.attrs.col || 2"
-        :name="child.attrs.name"
-        :col="child.attrs.col"
-        :colspan="child.attrs.colspan"
-        :dataDict="dataDict"
-        :editable="editable"
-        :level="level + 1"
-      />
-      <ONode
-        v-else
-        :record="record"
-        :node="child"
-        :dataDict="dataDict"
-        :editable="editable"
-      />
-    </div>
+
+    <OGroup
+      v-for="(child, index) in node.children"
+      :key="index"
+      :record="record"
+      :node="child"
+      :parentCol="node.attrs.col || 2"
+      :name="child.attrs.name"
+      :col="child.attrs.col"
+      :colspan="child.attrs.colspan"
+      :dataDict="dataDict"
+      :editable="editable"
+      :level="level + 1"
+    />
 
     <!-- <div>Group {{ level }} End</div> -->
   </div>
+
+  <ONode
+    v-else
+    :class="`o_group_col_${(12 / parentCol) * (node.attrs.colspan || 1)}`"
+    :record="record"
+    :node="node"
+    :dataDict="dataDict"
+    :editable="editable"
+  />
 </template>
 
 <script>
@@ -93,25 +94,19 @@ export default {
 
     className() {
       const classList = ['o_group']
-      // if (this.level) {
-      //   const col_num = (12 / this.parentCol) * (this.node.attrs.colspan || 1)
-      //   classList.push(`o_group_col_${col_num}`)
-      // }
-
       if (this.level) {
-        classList.push(`o_group_col_${this.level * 6}`)
-      } else {
-        classList.push('o_group_col_6')
+        const col_num = (12 / this.parentCol) * (this.node.attrs.colspan || 1)
+        classList.push(`o_group_col_${col_num}`)
       }
 
       return classList.join(' ')
     }
   },
   async created() {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-    console.log('OGroup, xxxxxx:', deep_copy(this.node))
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OGroup, xxxxxx:', deep_copy(this.node))
   },
 
   methods: {}

@@ -8,8 +8,8 @@
       :element-id="input_id"
       :name="node.attrs.name"
       :placeholder="node.attrs.placeholder"
-      @on-enter="handleOnchange(value2)"
-      @on-blur="handleOnchange(value2)"
+      @on-enter="handleOnchange(value)"
+      @on-blur="handleOnchange(value)"
     />
 
     <!-- <span> 多语言 </span> -->
@@ -30,7 +30,16 @@ export default {
   name: 'OFieldChar',
   mixins: [OFieldMixin],
   props: {},
-  computed: {},
+  computed: {
+    value2: {
+      get() {
+        return this.dataDict[this.node.attrs.name] || ''
+      },
+      set(value) {
+        this.value = value
+      }
+    }
+  },
   async mounted() {
     // console.log(' char,', [
     //   this.node.attrs.name,

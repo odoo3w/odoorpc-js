@@ -79,23 +79,6 @@ class BaseModel {
   iterator_next(/*index*/) {
     // to be rewrite by child
   }
-
-  static async get_model_id() {
-    const model_id = this._view_info.model_id
-    if (model_id) {
-      return model_id
-    }
-
-    const dm = [['model', '=', this._name]]
-    const model_ids = await this._odoo.execute('ir.model', 'search', dm)
-    const model_id2 = model_ids.length ? model_ids[0] : 0
-    this._view_info.model_id = model_id2
-    return model_id2
-  }
-
-  async get_model_id() {
-    return this.constructor.get_model_id()
-  }
 }
 
 // to be set by child
@@ -103,13 +86,13 @@ BaseModel._env = undefined
 BaseModel._odoo = undefined
 BaseModel._name = undefined
 BaseModel._columns = {}
-// BaseModel._model_id = undefined // 用于 处理 fields 中的 domain str2list
 
 class BaseModel2 extends BaseModel {
   constructor() {
     super()
     this._env_local = null
     this._ids = []
+    this._view = {}
   }
 
   iterator_next(index) {
@@ -135,8 +118,13 @@ class BaseModel2 extends BaseModel {
     return this._ids
   }
 
+  // TBD. check if used
+  // get _field_onchange() {
+  //   return this._view._field_onchange
+  // }
+
   get field_onchange() {
-    return this.constructor._field_onchange
+    return this._view._field_onchange
   }
 
   static with_context(context, kwargs = {}) {
@@ -193,13 +181,13 @@ class BaseModel2 extends BaseModel {
   }
 
   fetch_all() {
-    // console.log('fetch_all', this._name, this.ids, this._columns, this)
+    // console.log('fetch_all', this._name, this.ids, this._fields, this)
     return this.ids.map(id_ => this._getById(id_).fetch_one())
   }
 
   fetch_one() {
     const acc_init = { id: this.id }
-    return Object.keys(this._columns).reduce((acc, col) => {
+    return this._fields.reduce((acc, col) => {
       const meta = this._columns[col]
       acc = { ...acc, ...meta.fetch_one(this) }
       return acc
@@ -290,9 +278,8 @@ class BaseModel2 extends BaseModel {
   //
 
   static async execute_kw(method, args = [], kwargs = {}) {
-    await this.awaiter
-
     const kwargs2 = { ...kwargs }
+
     if (!Object.keys(kwargs).includes('context')) {
       kwargs2.context = this.env.context
     }
@@ -351,6 +338,43 @@ class BaseModel2 extends BaseModel {
 
   static async search(domain, kwargs = {}) {
     return this.execute_kw('search', [domain], kwargs)
+  }
+
+  static async web_search_read(kwargs = {}) {
+    return this.execute_kw('web_search_read', [], kwargs)
+  }
+
+  static async fields_view_get(kwargs = {}) {
+    const { view_id, view_type = 'form', view_ref } = kwargs
+    const context = {
+      ...this.env.context,
+      ...(view_ref ? { [`${view_type}_view_ref`]: view_ref } : {})
+    }
+
+    const kwargs2 = { view_id, view_type, context }
+    return this.execute_kw('fields_view_get', [], kwargs2)
+  }
+
+  async action_load(action_id) {
+    // const Action = this.env.model('ir.ac')
+    console.log('call_action ', action_id)
+
+    const additional_context = {
+      ...this.env.context,
+      allowed_company_ids: [...this._odoo.allowed_company_ids],
+      active_id: this.id,
+      active_ids: [...this.ids],
+      active_model: this._name
+    }
+
+    const action = await this.env.action(action_id, additional_context)
+
+    return action
+
+    // allowed_company_ids
+    // console.log('call_action ', action_id, additional_context)
+
+    // this._odoo.action_load(action_id, additional_context)
   }
 
   // static async search_or_create(domain, vals) {
@@ -526,7 +550,7 @@ class BaseModel2 extends BaseModel {
 
     // 分步 处理, 不需要 先 更新 parent
     // if (this._from_record) {
-    //   // 1st, o2m update parent. so, value for onchange with parent
+    //   // 1st, o2m update2 parent. so, value for onchange with parent
     //   // console.log('trigger_onchange,22 ', this._name, this.id, field_name)
     //   this._update_parent1()
     // }
@@ -552,7 +576,7 @@ class BaseModel2 extends BaseModel {
     const onchange = await this._onchange2(...args)
     // console.log('trigger_onchange,13 ', this._name, this.id, field_name)
 
-    // 4th, update values_to_write
+    // 4th, update2 values_to_write
     // console.log('trigger_onchange,14 ', this._name, this.id, field_name)
     await this._after_onchange(onchange)
     // console.log('trigger_onchange,15 ', this._name, this.id, field_name)
@@ -702,7 +726,7 @@ class BaseModel2 extends BaseModel {
 
   async _after_commit() {
     await this._init_values()
-    for (const col of Object.keys(this._columns)) {
+    for (const col of this._fields) {
       await this._columns[col].after_commit(this)
     }
     this.event_onchange()
@@ -717,12 +741,262 @@ class BaseModel2 extends BaseModel {
   }
 }
 
-export class Model extends BaseModel2 {
+class RootModel extends BaseModel2 {
   constructor() {
     super()
   }
 
-  /* o2m CRUD */
+  _constructor_init(payload) {
+    const { fields, view } = payload
+    const { storage, from_record } = payload
+    const { fetch_one, fetch_all } = payload
+
+    const records = this
+
+    records._fields = fields || []
+    records._view = view
+
+    records._from_record = from_record
+
+    records._values = storage._values || {}
+    records._values_to_write = storage._values_to_write || {}
+    records._values_relation = storage._values_relation || {}
+    records._values_relation2 = storage._values_relation2 || {}
+
+    // TBD 这里是否只需要 fields 即可, 无需 _columns 全字段
+    // const fields2 = fields
+    const fields2 = this.constructor._columns
+    //
+    Object.keys(fields2).forEach(field => fields2[field]._init_storage(records))
+
+    // main read, set callback
+    records._callback_onchange = fetch_one
+    records._callback_onchange_all = fetch_all
+  }
+
+  static _browse_iterated(env, ids, payload = {}) {
+    // 切片 仅仅是切片, 不用于显示 form view,  显示 form view 通过 this._view,  异步获取
+    const { iterated } = payload
+
+    const records = new this()
+
+    records._env_local = env
+    records._ids = _normalize_ids(ids)
+
+    // 切片 后, 原本 有 callback_all, so define callbak for each record
+    // 如果是切片 1个以上? 目前 only call by getById1, getByIndex, 只有一个 切片
+    const fetch_one =
+      records._ids.length === 1
+        ? () => iterated.event_onchange_all()
+        : undefined
+
+    const to_payload = {
+      fields: iterated._fields,
+      view: iterated._view,
+      storage: {
+        _values: iterated._values,
+        _values_to_write: iterated._values_to_write,
+        _values_relation: iterated._values_relation,
+        _values_relation2: iterated._values_relation2
+      },
+
+      from_record: iterated._from_record,
+      fetch_one,
+      fetch_all: iterated._callback_onchange_all
+    }
+
+    records._constructor_init(to_payload)
+
+    return records
+  }
+
+  static async _view_get(payload = {}) {
+    const { view, view_type = 'form', view_ref } = payload
+
+    if (view) {
+      return view
+    }
+
+    if (view_type && view_ref) {
+      return this.env.view_get({ view_type, view_ref, Model: this })
+    }
+
+    if (this._default_view[view_type]) {
+      return this._default_view[view_type]
+    }
+
+    const default_view = await this.env.view_get({ view_type, Model: this })
+    this._default_view[view_type] = default_view
+
+    return default_view
+  }
+
+  static async search_browse(payload = {}) {
+    const { fields: fields2, view: view2 } = payload
+    const { view_type = 'tree', view_ref } = payload
+
+    const view = await this._view_get({ view: view2, view_type, view_ref })
+    const fields = fields2 || Object.keys(view._fields)
+    await this.update(fields)
+    const records = new this()
+
+    records._env_local = this.env
+
+    const to_payload = { ...payload, view, fields, storage: {} }
+    records._constructor_init(to_payload)
+
+    const payload2 = { ...payload }
+    delete payload2.view
+    const result = await records._init_values_by_search(payload2)
+
+    records._ids = result.records.map(item => item.id)
+    view.search_callback(result)
+
+    return records
+  }
+
+  static async browse(ids, payload) {
+    // 主页页面 调用, tree view / form view (read / edit / new)
+    // form_view or tree_view
+    // new
+    // console.log('xxx, browse:', this._name, ids, payload)
+
+    if (ids === undefined) {
+      throw 'call browse without ids'
+    }
+
+    return await this._browse_async(this.env, ids, payload)
+  }
+
+  // form view button call 之后, call this to 刷新页面
+  async browse_flash() {
+    await this._init_values()
+    for (const col of this._fields) {
+      await this._columns[col].browse_flash(this)
+    }
+    this.event_onchange()
+  }
+
+  static async _browse_async(env, ids, payload = {}) {
+    const { fields: fields2, view: view2 } = payload
+    const { view_type = 'form', view_ref } = payload
+    const view = await this._view_get({ view: view2, view_type, view_ref })
+    const fields = fields2 || Object.keys(view._fields)
+
+    await this.update(fields)
+
+    const records = new this()
+
+    records._env_local = env
+    records._ids = _normalize_ids(ids)
+
+    const to_payload = { ...payload, view, fields, storage: {} }
+    records._constructor_init(to_payload)
+
+    if (ids) {
+      await records._init_values()
+    } else {
+      await records._init_values_by_new()
+    }
+
+    // 按照约定, browse后, 要触发 callback, 返回数据
+    records.event_onchange()
+    records.event_onchange_all()
+
+    return records
+  }
+
+  /*  init values  */
+
+  _update_from_record(record) {
+    console.log('update_from_record, 1')
+    this._ids = Array.from(new Set([...this.ids, ...record.ids]))
+    Object.keys(this._columns).forEach(field =>
+      this._columns[field]._set_by_object(this, record)
+    )
+    return
+  }
+
+  _init_values_by_values(values) {
+    Object.keys(this._values).forEach(field_name => {
+      this._columns[field_name]._set_default(this)
+    })
+
+    Object.keys(values).forEach(field => {
+      const meta = this._columns[field]
+      const val = values[field]
+      meta._set_by_onchnge(this, val)
+    })
+  }
+
+  _init_values_get_fields() {
+    const columns = this.constructor._columns
+    const basic_fields = this._fields
+      .filter(field_name => field_name !== 'id')
+      .filter(field_name => columns[field_name].type !== 'binary')
+    return basic_fields
+  }
+
+  _init_values_set_fields(result) {
+    const columns = this.constructor._columns
+
+    result.forEach(row => {
+      Object.keys(row).forEach(field_name => {
+        if (field_name !== 'id') {
+          const meta = columns[field_name]
+          meta._set_by_init(this, row)
+        }
+      })
+    })
+  }
+
+  async _init_values_by_search(payload = {}) {
+    const { context = this.env.context } = payload
+    const fields = this._init_values_get_fields()
+    const payload2 = { ...payload, fields, context }
+    const result = await this.constructor.web_search_read({ ...payload2 })
+    // console.log(result)
+    this._init_values_set_fields(result.records)
+
+    return result
+  }
+
+  async _init_values(payload = {}) {
+    if (!this.ids.length) {
+      return
+    }
+
+    const fields = this._init_values_get_fields()
+    const { context = this.env.context } = payload
+    const result = await this.read(fields, {
+      context
+      // load: '_classic_read'
+      // load: '_classic_write'
+    })
+    // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
+    // 缺省 使用 _classic_read,  x2m 字段 返回 [ids]
+
+    // console.log(deep_copy(result))
+    this._init_values_set_fields(result)
+  }
+
+  async _init_values_by_new(/* payload = {} */) {
+    // console.log('xxx, _init_values_for_new_call_onchange1 1:', this._name)
+    // const { context = this.env.context } = payload
+    Object.keys(this._values).forEach(field_name => {
+      this._columns[field_name]._set_default(this)
+    })
+
+    const onchange = await this._onchange2({}, [], this.field_onchange)
+    await this._after_onchange(onchange)
+  }
+}
+
+class RelationModel extends RootModel {
+  constructor() {
+    super()
+  }
+
   async new() {
     //  o2m new, to be check
     if (!this._from_record) {
@@ -750,211 +1024,42 @@ export class Model extends BaseModel2 {
     return field.update(parent, record)
   }
 
-  _update_from_record(record) {
-    console.log('update_from_record, 1')
-    this._ids = Array.from(new Set([...this.ids, ...record.ids]))
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._set_by_object(this, record)
-    )
-
-    return
-  }
-
-  copy(payload) {
-    const records = this._copy_init(payload)
-    records._update_from_record(this)
-    return records
-  }
-
-  async new_copy(payload) {
-    const records = this._copy_init({ ...payload, isNew: 1 })
-    const ids = this._odoo._get_virtual_id()
-    records._ids = _normalize_ids(ids)
-    await records._init_values_by_new()
-    return records
-  }
-
-  _copy_init(payload = {}) {
-    const { fetch_one, fetch_all, isNew } = payload
-
-    const this_class = this.constructor
-
-    let MyCls = this.constructor
-
-    const env = this_class.env
-
-    if (isNew && this_class._views.form) {
-      const [parent, parent_field] = this._from_record
-        ? [this._from_record[0].constructor, this._from_record[1].name]
-        : [null, null]
-
-      MyCls = env.model(this_class._name, 'form', {
-        parant_reg_name: this_class._reg_name,
-        parent,
-        parent_field,
-        isSync: true,
-        view_info: this_class._views.form,
-        views: this_class._views
-      })
-    }
-
-    const records = new MyCls()
-    records._env_local = MyCls.env
-    records._ids = []
-    records._from_record = this._from_record
-
-    records._values = {}
-    records._values_to_write = {}
-    records._values_relation = {}
-    records._values_relation2 = {}
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    records._callback_onchange = fetch_one
-    records._callback_onchange_all = fetch_all
-    return records
-  }
-
-  static _browse_iterated(env, ids, payload = {}) {
-    const { iterated, fetch_one } = payload
-    // 切片后, 单条记录通常是用来 显示 form 的
-
-    let MyCls = this
-
-    if (!Array.isArray(ids) && this._views.form) {
-      const [parent, parent_field] = this._from_record
-        ? [this._from_record[0].constructor, this._from_record[1].name]
-        : [null, null]
-
-      MyCls = env.model(this._name, 'form', {
-        parant_reg_name: iterated._from_record[0]._reg_name,
-        parent,
-        parent_field,
-        isSync: true,
-        view_info: this._views.form,
-        views: this._views
-      })
-    }
-
-    const records = new MyCls()
-
+  static _browse_relation(env, ids, payload = {}) {
+    // 这个返回一个 空 壳子 record
+    const records = new this()
     records._env_local = env
     records._ids = _normalize_ids(ids)
 
-    records._values = iterated._values
-    records._values_to_write = iterated._values_to_write
-    records._values_relation = iterated._values_relation
-    records._values_relation2 = iterated._values_relation2
+    const { from_record } = payload
+    const [parent, field] = from_record
+    const storage = parent._values_relation[field.name]
+    const storage2 = parent._values_relation2[field.name]
 
-    records._from_record = iterated._from_record
-
-    if (fetch_one) {
-      // main call,
-      records._callback_onchange = fetch_one
-    } else if (iterated) {
-      // o2m 切片   需要处理 _callback_onchange_all
-      // 切片 后, 原本 有 callback_all, so define callbak for each record
-      if (iterated._callback_onchange_all) {
-        records._callback_onchange_all = iterated._callback_onchange_all
-        if (records._ids.length === 1) {
-          const callback = () => iterated.event_onchange_all()
-          records._callback_onchange = callback
-        } else {
-          // 如果是切片 1个以上? 目前 only call by getById1, getByIndex, 只有一个 切片
-        }
+    const to_payload = {
+      ...payload,
+      storage: {
+        _values: storage._values,
+        _values_to_write: storage._values_to_write,
+        _values_relation: storage._values_relation,
+        _values_relation2: storage2._values_relation2
       }
     }
 
-    return records
-  }
+    records._constructor_init(to_payload)
 
-  static async browse(ids, payload) {
-    // 主页页面 调用, tree view / form view (read / edit / new)
-    // form_view or tree_view
-    // new
-    // console.log('xxx, browse:', this._name, ids, payload)
-
-    if (ids === undefined) {
-      throw 'call browse without ids'
-    }
-
-    return await this._browse(this.env, ids, payload)
-  }
-
-  static async _browse(env, ids, payload = {}) {
-    const { fetch_one, fetch_all } = payload
-    await this.awaiter
-    const records = new this()
-    await records.awaiter
-    records._env_local = env
-
-    records._ids = _normalize_ids(ids)
-
-    records._values = {}
-    records._values_to_write = {}
-    records._values_relation = {}
-    records._values_relation2 = {}
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    // main read, set callback
-    records._callback_onchange = fetch_one
-    records._callback_onchange_all = fetch_all
-
-    if (ids) {
-      await records._init_values()
-    } else {
-      //
-      await records._init_values_by_new()
-    }
-
-    // 按照约定, browse后, 要触发 callback, 返回数据
-    records.event_onchange()
-    records.event_onchange_all()
-
-    return records
-  }
-
-  static _browse_relation(env, ids, payload = {}) {
-    // 这个返回一个 空 壳子 record
-    const { from_record } = payload
-    const [parent, field] = from_record
-    const records = new this()
-    records._env_local = env
-
-    records._ids = _normalize_ids(ids)
-
-    const storage = parent._values_relation[field.name]
-    records._values = storage._values
-    records._values_to_write = storage._values_to_write
-    records._values_relation = storage._values_relation
-    const storage2 = parent._values_relation2[field.name]
-    records._values_relation2 = storage2._values_relation2
-
-    Object.keys(this._columns).forEach(field =>
-      this._columns[field]._init_storage(records)
-    )
-
-    records._from_record = from_record
     return records
   }
 
   // m2m, o2m, async read
   static async _browse_relation_async(env, ids, payload = {}) {
-    const records = this._browse_relation(env, ids, payload)
-
     const { from_record } = payload
     const [parent, field] = from_record
-    // console.log('_browse_relation_async, ', this._name, parent)
 
-    if (parent._callback_onchange) {
-      const callback = () => parent.event_onchange(field.name)
-      records._callback_onchange_all = callback
-    }
+    const fetch_all = parent._callback_onchange
+      ? () => parent.event_onchange(field.name)
+      : undefined
+
+    const records = this._browse_relation(env, ids, { ...payload, fetch_all })
 
     await records._init_values()
     records.event_onchange_all()
@@ -962,15 +1067,14 @@ export class Model extends BaseModel2 {
     return records
   }
 
-  // o2m new
   static _browse_relation_o2m_new(env, ids, payload = {}) {
-    const records = this._browse_relation(env, ids, payload)
+    // o2m new
     const { iterated } = payload
+    const fetch_one = iterated._callback_onchange_all
+      ? () => iterated.event_onchange_all()
+      : undefined
 
-    if (iterated._callback_onchange_all) {
-      const callback = () => iterated.event_onchange_all()
-      records._callback_onchange = callback
-    }
+    const records = this._browse_relation(env, ids, { ...payload, fetch_one })
 
     const { values } = payload
     if (values) {
@@ -986,86 +1090,526 @@ export class Model extends BaseModel2 {
     }
   }
 
-  /*  init values  */
+  async browse_form_by_relation_tree(row_id, payload = {}) {
+    // o2m, from tree view, clicked, to open form view
+    const { editable } = payload
+    const action = this._view._action
+    const view = action.get_view('form')
+    const fields = Object.keys(view.fields)
 
-  _init_values_by_values(values) {
-    Object.keys(this._values).forEach(field_name => {
-      this._columns[field_name]._set_default(this)
-    })
+    if (editable) {
+      const from_record = this._from_record
 
-    Object.keys(values).forEach(field => {
-      const meta = this._columns[field]
-      const val = values[field]
-      meta._set_by_onchnge(this, val)
-    })
+      const records = new view.Model()
+      records._env_local = this.env
+
+      const ids = row_id || this._odoo._get_virtual_id()
+      records._ids = _normalize_ids(ids)
+
+      const to_payload = { ...payload, storage: {}, from_record, fields, view }
+      records._constructor_init(to_payload)
+
+      if (row_id) {
+        const old = this.getById(row_id)
+        records._update_from_record(old)
+        console.log('browse_form_by_relation_tree,', old, records)
+      } else {
+        await records._init_values_by_new()
+      }
+
+      records.event_onchange()
+
+      return records
+    } else {
+      return view.Model.browse(row_id, { ...payload, fields, view })
+    }
+  }
+}
+
+export class Model extends RelationModel {
+  constructor() {
+    super()
   }
 
-  async _init_values(paylaod = {}) {
-    // console.log('xx in _init_values1 :', this._name, this.ids)
-    const { partial_ids = [], context = this.env.context } = paylaod
+  get view_node() {
+    return this._view.view_node || {}
+  }
 
-    const columns = this.constructor._columns
-    const basic_fields = Object.keys(columns).reduce((acc, field_name) => {
-      // 应该特殊处理 二进制字段
-      const Field = columns[field_name]
-      if (Field.type !== 'binary') {
-        acc = [...acc, field_name]
+  get _view_type() {
+    return this._view._view_type || {}
+  }
+
+  get _view_info() {
+    return this._view._view_info || {}
+  }
+
+  get _model_id() {
+    return this.constructor._model_id
+  }
+
+  get_selection(field, payload) {
+    // console.log('get_selection', field, payload)
+    const meta = this._columns[field]
+    return meta.get_selection(this, payload)
+  }
+
+  static compute_domain(domain_in, record, debug) {
+    if (!Array.isArray(domain_in)) {
+      return domain_in
+    }
+    const domain = [...domain_in]
+
+    const AND = (v1, v2) => {
+      // console.log('AND', v1, v2)
+      if (debug) {
+        return v1 * v2
+      } else {
+        const val1 = compute_condition(v1)
+        const val2 = compute_condition(v2)
+
+        return val1 && val2
       }
-      return acc
-    }, [])
-
-    const ids = partial_ids.length ? partial_ids : this.ids
-
-    if (ids.length) {
-      const result = await this.read(basic_fields, {
-        context
-        // load: '_classic_read'
-        // load: '_classic_write'
-      })
-      // 缺省 使用 _classic_read,  m2o 字段 返回 [m2o.id, m2o.display_name]
-      // 缺省 使用 _classic_read,  x2m 字段 返回 [ids]
-
-      // console.log(deep_copy(result))
-
-      const ids_fetched = new Set()
-      result.forEach(row => {
-        ids_fetched.add(row.id)
-      })
-
-      result.forEach(row => {
-        ids_fetched.add(row.id)
-
-        Object.keys(row).forEach(field_name => {
-          if (field_name !== 'id') {
-            const meta = columns[field_name]
-            meta._set_by_init(this, row)
-          }
-        })
-      })
-
-      const ids_all = new Set(this.ids)
-
-      const ids_in_error = [
-        ...new Set([...ids_all].filter(n => !ids_fetched.has(n)))
-      ]
-
-      if (ids_in_error.length) {
-        const str = `There is no '${this._name}' record with IDs ${ids_in_error}.`
-        throw str
+    }
+    const OR = (v1, v2) => {
+      // console.log('OR', v1, v2)
+      if (debug) {
+        return v1 + v2
+      } else {
+        const val1 = compute_condition(v1)
+        const val2 = compute_condition(v2)
+        return val1 || val2
       }
-    } else {
+    }
+    const NOT = v1 => {
+      // console.log('NOT', v1)
+      if (debug) {
+        return -v1
+      } else {
+        return !v1
+      }
+    }
+
+    const OPTIONS = { '&': AND, '|': OR, '!': NOT }
+
+    // let index = 0
+
+    const EQU = (val1, val2) => {
+      // console.log('EQU', val1, ',', val2)
+
+      if (!Array.isArray(val1)) {
+        return val1 === val2
+      }
+
+      if (val1.length === 0 && val2.length === 0) {
+        return true
+      } else if (val1.length !== val2.length) {
+        return false
+      }
       //
+      throw 'TBD: EQU, array'
+    }
+
+    const IN = (val1, val2) => {
+      // console.log('IN', val1, ',', val2)
+      const ret = val2.includes(val1)
+      // console.log('IN', ret)
+      return ret
+    }
+
+    const compute_condition = condition => {
+      if (!Array.isArray(condition)) {
+        return condition
+      }
+      //
+      const [field, op, val] = condition
+      // console.log('xxxx', field, record[field], op, val)
+      const val1 = record[field]
+      switch (op) {
+        case '=':
+        case '==':
+          return EQU(val1, val)
+        case '!=':
+        case '<>':
+          // if(field===''){
+          //   //
+          // }
+
+          return !EQU(val1, val)
+        case '<':
+          return val1 < val
+        case '>':
+          return val1 > val
+        case '<=':
+          return val1 <= val
+        case '>=':
+          return val1 >= val
+        case 'in':
+          return IN(val1, val)
+        case 'not in':
+          return !IN(val1, val)
+        // case 'like':
+        // // return (fieldValue.toLowerCase().indexOf(this._data[2].toLowerCase()) >= 0);
+        // case '=like':
+        // // var regExp = new RegExp(this._data[2].toLowerCase().replace(/([.\[\]\{\}\+\*])/g, '\\\$1').replace(/%/g, '.*'));
+        // // return regExp.test(fieldValue.toLowerCase());
+        // case 'ilike':
+        // // return (fieldValue.indexOf(this._data[2]) >= 0);
+        // case '=ilike':
+        // return new RegExp(this._data[2].replace(/%/g, '.*'), 'i').test(fieldValue);
+        default:
+          throw 'error'
+        // throw new Error(_.str.sprintf(
+        //     "Domain %s uses an unsupported operator",
+        //     this._data
+        // ));
+        //
+      }
+    }
+
+    const fn = (domain, op) => {
+      // console.log('1st:index:', index, domain, op)
+      // index = index + 1
+      if (!domain.length) {
+        return [null]
+      } else if (op.length === 0 && domain.length === 1) {
+        const val = domain[0]
+        const val2 = compute_condition(val)
+        return [val2]
+        // return domain
+        // const val = domain[0]
+        // if (val === true || val === false) {
+        //   console.log('all ret,', domain)
+        //   return domain
+        // }
+      }
+
+      const one = domain.shift()
+      if (['&', '|', '!'].includes(one)) {
+        // console.log('2.1, &|!:', domain, op, one)
+        op.push(one)
+        const ret = fn(domain, op)
+        // console.log('2.1,&|!,1:', domain, op)
+        // console.log('2.1,&|!,ok:', ret)
+        return ret
+      } else {
+        // console.log('2.2:', domain, op, one)
+        if (op.length === 0) {
+          // op not(!&|)  and domain >1
+          // console.log('4 default &', domain, op, one)
+          op.push('&')
+          op.push(one)
+          // console.log('4 default & 1', domain, op)
+          const dm2 = fn(domain, op)
+          // console.log('4 default & ok', dm2, op)
+          return dm2
+          // return fn(dm2, op)
+        } else {
+          // console.log('3 comp:', domain, op, one)
+          const comp = op[op.length - 1]
+          if (comp === '!') {
+            // console.log('3.1 !,:', domain, op, one)
+            op.pop()
+            const ret = NOT(one)
+            // console.log('3.1 !,ok:', [ret, ...domain], op)
+            return fn([ret, ...domain], op)
+          } else if (comp === '&' || comp === '|') {
+            op.push(one)
+            return fn(domain, op)
+          } else {
+            // console.log('3.2 &|,:', domain, op, one)
+            const v1 = op.pop()
+            const c0 = op.pop()
+            const ret = OPTIONS[c0](v1, one)
+            // console.log('3.2 &|,ok:', [ret, ...domain], op)
+            return fn([ret, ...domain], op)
+          }
+        }
+      }
+    }
+
+    const ret = fn(domain, [])
+
+    const ret2 = ret[0]
+
+    // console.log('all,ok', ret2)
+
+    return ret2
+  }
+
+  compute_domain(domain_in, dataDict) {
+    // const record = this.fetch_one()
+    const record = dataDict || this.fetch_one()
+
+    return this.constructor.compute_domain(domain_in, record)
+  }
+
+  _view_required(node, dataDict) {
+    if (!node.attrs) {
+      return null
+    }
+    if (!node.attrs.modifiers) {
+      return null
+    }
+    const modifiers = JSON.parse(node.attrs.modifiers)
+    // console.log(node.attrs.name, modifiers)
+    if (modifiers.required !== undefined) {
+      const required = this.compute_domain(modifiers.required, dataDict)
+      return required
+    } else {
+      return null
     }
   }
 
-  async _init_values_by_new(/* paylaod = {} */) {
-    // console.log('xxx, _init_values_for_new_call_onchange1 1:', this._name)
-    // const { context = this.env.context } = paylaod
-    Object.keys(this._values).forEach(field_name => {
-      this._columns[field_name]._set_default(this)
-    })
+  _view_readonly(node, dataDict) {
+    if (!node.attrs) {
+      return null
+    }
 
-    const onchange = await this._onchange2({}, [], this.field_onchange)
-    await this._after_onchange(onchange)
+    if (!node.attrs.modifiers) {
+      return null
+    }
+
+    const modifiers = JSON.parse(node.attrs.modifiers)
+
+    if (modifiers.readonly !== undefined) {
+      const readonly = this.compute_domain(modifiers.readonly, dataDict)
+
+      return readonly
+    } else {
+      return null
+    }
   }
+
+  _view_invisible(node, dataDict) {
+    if (!node.attrs) {
+      return false
+    }
+
+    if (node.attrs.invisible) {
+      return node.attrs.invisible ? true : false
+    }
+
+    if (!node.attrs.modifiers) {
+      return null
+    }
+
+    const modifiers = JSON.parse(node.attrs.modifiers)
+
+    if (modifiers.invisible !== undefined) {
+      const invisible = this.compute_domain(modifiers.invisible, dataDict)
+      return invisible
+    } else {
+      return null
+    }
+  }
+
+  eval_safe(value_str) {
+    /*
+  // # 仅被 get_selection1 使用
+
+  // # 在多公司时, 用户可能 用 allowed_company_ids 中的一个
+  // # 允许 用户 在前端 自己在 allowed_company_ids 中 选择 默认的公司
+  // # 该选择 需要 存储在 本地 config 中
+
+  // #  全部 odoo 只有这4个 模型 在获取 fields_get时, 需要提供 globals_dict, 设置 domain
+  // #  其余的只是需要 company_id
+  // #  --- res.partner
+  // #  <-str---> state_id [('country_id', '=?', country_id)]
+
+  // #  --- sale.order.line
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+  // #  --- purchase.order.line
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+
+  // #  --- stock.move
+  // #  <-str---> product_uom [('category_id', '=', product_uom_category_id)]
+  */
+
+    const _get_company_id = () => {
+      const session_info = this._odoo.session_info
+      // # company_id = session_info['company_id']
+      const user_companies = session_info.user_companies
+      const current_company = user_companies.current_company[0]
+      // # allowed_companies = user_companies['allowed_companies']
+      // # allowed_company_ids = [com[0] for com in allowed_companies]
+      return current_company
+    }
+
+    const _get_values_for_domain = () => {
+      // const globals_fields = Globals_Dict
+
+      // console.log('globals_fields,xxxxxx', this._name, this)
+      // // console.log('globals_fields', instance.field_onchange)
+      // const values2 = instance.fetch_one1()
+
+      const globals_fields = this._fields
+
+      const values = globals_fields.reduce((acc, col) => {
+        const meta = this._columns[col]
+        if (meta) {
+          // console.log('vsls', col, meta)
+          if (meta.type !== 'many2many' && meta.type !== 'one2many') {
+            acc[col] = meta.raw_value(this)
+          }
+        }
+        return acc
+      }, {})
+
+      if (!values.company_id) {
+        values.company_id = _get_company_id()
+      }
+      if (this._from_record) {
+        const parent = this._from_record[0]
+        const p_vals = parent._fields.reduce((acc, col) => {
+          const meta = parent._columns[col]
+          if (meta) {
+            if (meta.type !== 'many2many' && meta.type !== 'one2many') {
+              // console.log('vsls', col, meta)
+              acc[col] = meta.raw_value(parent)
+            }
+          }
+          return acc
+        }, {})
+
+        values.parent = p_vals
+      }
+
+      return values
+    }
+
+    const domain = value_str || false
+
+    if (domain && typeof domain === 'string') {
+      const values = _get_values_for_domain()
+
+      const globals_dict = {
+        res_model_id: this._model_id,
+        allowed_company_ids: this._odoo.allowed_company_ids,
+        ...values
+      }
+
+      if (!is_virtual_id(this.id)) {
+        globals_dict.active_id = this.id
+      }
+
+      const domain2 = EVAL_SAFE(domain, globals_dict)
+      // console.log('domain2: ', domain2)
+      return domain2
+    } else {
+      return domain
+    }
+  }
+
+  _view_node_attrs_options(node) {
+    const res = this._view_node_attrs_base(node.attrs, ['options'])
+    return res.options
+  }
+
+  _view_node_attrs_context(node) {
+    const res = this._view_node_attrs_base(node.attrs, ['context'])
+    return res.context
+  }
+
+  _view_node_attrs_base(attrs, items) {
+    // console.log('eval_safe_python1', attrs)
+    // options: "{'no_open':True,'no_create': True}"
+    // context: "{'default_is_company': True, 'show_vat': True}"
+    // domain: "[('is_company', '=', True)]"
+
+    // const ss = {
+    //   default_parent_id: active_id,
+    //   default_street: street,
+    //   default_street2: street2,
+    //   default_city: city,
+    //   default_state_id: state_id,
+    //   default_zip: zip,
+    //   default_country_id: country_id,
+    //   default_lang: lang,
+    //   default_user_id: user_id,
+    //   default_type: 'other'
+    // }
+
+    const result = items.reduce((acc, cur) => {
+      const value = attrs[cur]
+      if (value) {
+        acc = {
+          ...acc,
+          [`${cur}_old`]: value,
+          [cur]: this.eval_safe(value)
+        }
+      }
+      return acc
+    }, {})
+
+    return result
+  }
+
+  form_validator(fld, rule, value, cb) {
+    // console.log(' form_validator ', fld, rule, value, cb)
+    const meta = this._columns[fld]
+    const ret = meta.validator(this, rule, value)
+    cb(ret)
+  }
+}
+
+const EVAL_SAFE = (domain, globals_dict = {}, locals_dict = {}) => {
+  const to_replaced = { '\\(': '[', '\\)': ']', False: 'false', True: 'true' }
+  to_replaced['function'] = 'function2'
+
+  let domain2 = domain
+  Object.keys(to_replaced).forEach(item => {
+    domain2 = domain2.replace(new RegExp(item, 'g'), to_replaced[item])
+  })
+
+  const kwargs = { ...globals_dict, ...locals_dict }
+
+  const parent_vals = kwargs.parent
+  delete kwargs.parent
+
+  const fn_str = []
+  fn_str.push('() => {')
+  Object.keys(kwargs).forEach(item => {
+    const vals = kwargs[item]
+    const is_str = typeof vals === 'string'
+    const is_arr = Array.isArray(vals)
+    const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
+    // console.log('fn eval 1:', item, vals, vals2)
+    const item2 = item === 'function' ? 'function2' : item
+    const str_to_push = `const ${item2} = ${vals2}`
+    // console.log('fn eval 1:', item, vals, vals2, str_to_push)
+    fn_str.push(str_to_push)
+  })
+
+  if (parent_vals) {
+    fn_str.push('const parent = {')
+    const p_str = []
+    Object.keys(parent_vals).forEach(item => {
+      const vals = parent_vals[item]
+      const is_str = typeof vals === 'string'
+      const is_arr = Array.isArray(vals)
+      const vals2 = is_str ? `'${vals}'` : is_arr ? `[${vals}]` : vals
+      // console.log('fn eval 1:', item, vals, vals2)
+      const item2 = item === 'function' ? 'function2' : item
+      const str_to_push = `${item2}: ${vals2}`
+      // console.log('fn eval 1:', item, vals, vals2, str_to_push)
+      p_str.push(str_to_push)
+    })
+    fn_str.push(p_str.join(',\n'))
+    fn_str.push('} ')
+  }
+
+  fn_str.push(`return ${domain2}`)
+  fn_str.push('}')
+
+  const fn_str2 = fn_str.join('\n')
+  // console.log('fn eval:', fn_str2)
+  // console.log('fn eval 222:', parent)
+
+  const fn = eval(fn_str2)
+  // console.log('fn eval fn::', fn)
+  const ret = fn()
+  // console.log(ret)
+
+  return ret
 }

@@ -6,11 +6,11 @@
 
     <span v-if="editable">
       <Button type="primary" @click="handleOnCommit">保存</Button>
-      <Button @click="editable = false">放弃</Button>
+      <Button @click="handleOnCancel">放弃</Button>
     </span>
 
     <span v-else>
-      <span v-if="['tree', 'kanban'].includes(view_type)">
+      <span v-if="['list', 'kanban'].includes(view_type)">
         <Button type="primary" @click="handleOnCreate">创建</Button>
         <Button @click="handleOnImport">导入</Button>
       </span>
@@ -23,6 +23,7 @@
     <Divider />
     <OView
       :record="record"
+      :node="node"
       :dataDict="dataDict"
       :view_type="view_type"
       :editable="editable"
@@ -85,42 +86,48 @@ export default {
     async init() {
       const query = this.$route.query
       console.log('web, init,', query)
-      const model = query.model
+      const action_ref = query.action_ref
       const view_type = query.view_type
-      const view_ref = query[`${view_type}_view_ref`]
 
-      const Model = api.env.model(model, view_type, view_ref)
+      this.node = {
+        children: [],
+        attrs: {}
+      }
+      this.view_type = view_type
+      this.record = {}
+
+      const action = await api.env.action(action_ref)
+      const view = action.get_view(view_type)
+
+      console.log('web, init,', view)
+      console.log('web init,', new Date().getTime())
 
       const tree_init = async () => {
-        const domain = []
-        const records = await Model.pageSearch(domain, { order: 'id' })
-        const page0 = await records.pageGoto(0)
-        const node = page0.view_node()
+        const records = await view.pageFirst()
+        const node = records.view_node
+        // console.log('web, init,', node)
         this.node = node
-        this.view_type = view_type
-        this.record = page0
+        this.record = records
       }
 
       const kanban_init = async () => {
-        const domain = []
-        const records = await Model.pageSearch(domain, { order: 'id' })
-        const page0 = await records.pageGoto(0)
-        const node = page0.view_node()
+        const records = await view.pageFirst()
+        const node = records.view_node
         this.node = node
-
-        this.view_type = view_type
-        this.record = page0
+        this.record = records
       }
 
       const form_init = async () => {
         const rid = Number(query.id)
-        // const deep_copy = node => {
-        //   return JSON.parse(JSON.stringify(node))
-        // }
+        const deep_copy = node => {
+          return JSON.parse(JSON.stringify(node))
+        }
+
+        // console.log('web, init form,', view)
 
         const callback = (
-          res //
-          // field
+          res, //
+          field
         ) => {
           // console.log('web callback,', field, deep_copy(res))
           // console.log('web callback,', field, this.record)
@@ -129,13 +136,12 @@ export default {
           // console.log('web, xxxxxx:', deep_copy(this.dataDict))
         }
 
-        const record = await Model.browse(rid, { fetch_one: callback })
+        console.log('web, init,', view)
+        const record = await view.browse(rid, { fetch_one: callback })
 
-        console.log('web, record,xxxxxx:', record)
-
-        const node = record.view_node()
+        const node = record.view_node
         this.node = node
-        this.view_type = view_type
+        console.log('web, record,xxxxxx:', record, deep_copy(node))
         this.record = record
       }
 
@@ -152,6 +158,7 @@ export default {
     },
 
     handleOnRowClick(row) {
+      console.log(row, this.$route)
       const query = this.$route.query
       const view_type = 'form'
       this.$router.push({
@@ -167,6 +174,12 @@ export default {
     handleOnEdit() {
       console.log(' handleOnEdit ')
       this.editable = true
+      this.keyIndex = this.keyIndex + 1
+    },
+
+    handleOnCancel() {
+      console.log(' handleOnCancel ')
+      this.editable = false
       this.keyIndex = this.keyIndex + 1
     },
 

@@ -25,6 +25,7 @@
 
   <span v-else>
     // no view
+    {{ view_type }}
   </span>
 </template>
 
@@ -70,6 +71,13 @@ export default {
         return {}
       }
     },
+
+    // node: {
+    //   type: Object,
+    //   default: () => {
+    //     return {}
+    //   }
+    // },
 
     dataDict: {
       type: Object,

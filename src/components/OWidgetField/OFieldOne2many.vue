@@ -3,17 +3,13 @@
 
   <!--  so, header pick_ids -->
 
-  <div v-if="!node.attrs.mode" :class="classNameO2m" :name="node.attrs.name">
+  <!-- <div v-if="!node.attrs.mode" :class="classNameO2m" :name="node.attrs.name">
     {{ o2m_view_type }}
     {{ value2 }}
-  </div>
+  </div> -->
+  <!-- v-else -->
 
-  <div
-    v-else
-    class="o_field_one2many o_field_widget o_field_x2many o_field_x2many_kanban"
-    :name="node.attrs.name"
-    :id="input_id"
-  >
+  <div :class="classNameO2m" :name="node.attrs.name" :id="input_id">
     <div class="o_cp_controller"></div>
     <!-- {{ o2m_view_type }}
     {{ value2 }} -->
@@ -48,6 +44,10 @@ export default {
 
   computed: {
     classNameO2m() {
+      // o_field_one2many o_field_widget o_field_x2many o_field_x2many_kanban
+      // o_field_one2many o_field_widget o_field_x2many o_field_x2many_list
+      // o_field_one2many o_field_widget
+
       const classList = []
       classList.push(`o_field_${this.meta.type}`)
       classList.push('o_field_widget')
@@ -75,8 +75,10 @@ export default {
   },
   async created() {},
   async mounted() {
+    // console.log('O2m,', this.record._name, this.node.attrs.name)
     const o2m_record = await this.record[`$$${this.node.attrs.name}`]
     this.o2m_record = o2m_record
+    // console.log(this.node.attrs.name, o2m_record)
     this.o2m_view_type = o2m_record._view_type
 
     // this.o2m_view_type = this.record._columns[

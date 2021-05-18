@@ -15,6 +15,10 @@
       <div>
         <img :src="image" alt="" />
       </div>
+      <button @click="toTest">
+        test
+      </button>
+
       <button @click="toTestApi">
         test Api
       </button>
@@ -53,14 +57,7 @@ export default {
     }
   },
   computed: {},
-  async created() {
-    // const Model = api.env.model('res.partner')
-    // const record = await Model.browse(9)
-    // const o2m = await record.$$child_ids
-    // const o2m1 = o2m.getByIndex(0)
-    // const nn = o2m1.view_node()
-    // console.log(nn)
-  },
+  async created() {},
 
   methods: {
     //
@@ -74,6 +71,9 @@ export default {
       })
     },
 
+    toTest() {
+      this.$router.replace({ path: '/test' })
+    },
     toTestApi() {
       this.$router.replace({ path: '/test/api2' })
     },

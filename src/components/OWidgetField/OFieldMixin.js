@@ -13,7 +13,7 @@ export default {
   computed: {
     value2: {
       get() {
-        return this.dataDict[this.node.attrs.name] || ''
+        return this.dataDict[this.node.attrs.name]
       },
       set(value) {
         this.value = value
@@ -69,7 +69,7 @@ export default {
   },
   methods: {
     async handleOnchange(value) {
-      console.log('minxin, handleOnchange', value, this.record, this.node)
+      console.log('minxin, handleOnchange', [value, this.record, this.node])
       const field = `$${this.node.attrs.name}`
       this.record[field] = value
       // await this.record.awaiter

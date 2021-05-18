@@ -9,6 +9,7 @@
         :dataDict="dataDict"
         :editable="editable"
         isHeader
+        @on-click="handleBtnClick"
       />
     </div>
 
@@ -57,7 +58,14 @@ export default {
     }
   },
 
-  async created() {}
+  async created() {},
+
+  methods: {
+    handleBtnClick(type, name) {
+      // console.log(type, name)
+      this.$emit('on-btn-click', type, name)
+    }
+  }
 }
 </script>
 

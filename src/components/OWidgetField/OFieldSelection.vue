@@ -1,5 +1,9 @@
 <template>
-  <div v-if="editable" :class="className" :name="node.attrs.name">
+  <div
+    v-if="editable && !readonly_modifier"
+    :class="className"
+    :name="node.attrs.name"
+  >
     <Select
       v-model="value2"
       clearable
@@ -38,6 +42,14 @@ export default {
   },
 
   computed: {
+    value2: {
+      get() {
+        return this.dataDict[this.node.attrs.name] || ''
+      },
+      set(value) {
+        this.value = value
+      }
+    },
     valueName() {
       return this.dataDict[`${this.node.attrs.name}__name`] || ''
     },

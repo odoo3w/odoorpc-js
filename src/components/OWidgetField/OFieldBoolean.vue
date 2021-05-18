@@ -1,13 +1,27 @@
 <template>
-  <div :class="className" :name="node.attrs.name">
-    <Checkbox v-model="value2" readonly @on-change="handleOnchange(value2)" />
-
+  <span v-if="editable && !readonly_modifier">
+    <div :class="className" :name="node.attrs.name">
+      <!-- <Checkbox v-model="value2" readonly @on-change="handleOnchange(value2)" /> -->
+      <i-switch
+        v-model="value2"
+        true-color="#13ce66"
+        false-color="#ff4949"
+        @on-change="handleOnchange(value2)"
+      />
+    </div>
+  </span>
+  <span v-else>
+    {{ node.attrs.name }}: {{ value2 }},
     <!-- <i-switch
       v-model="value2"
+      true-color="#13ce66"
+      false-color="#ff4949"
       :before-change="handleBeforeChange"
-      @on-change="handleOnchange(value2)"
     /> -->
-  </div>
+    <!-- <Switch v-model="switch1" @on-change="change" /> -->
+    <!-- {{ value2 }}
+    <Switch v-model="value2" :before-change="handleBeforeChange" /> -->
+  </span>
 </template>
 
 <script>

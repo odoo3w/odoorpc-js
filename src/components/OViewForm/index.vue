@@ -8,18 +8,31 @@
         :dataDict="dataDict"
         :node="child"
         :editable="editable"
+        @on-btn-click="handleBtnClick"
       />
     </div>
+
     <!-- <OViewFormItem v-if="node_chatter" :node="node_chatter" /> -->
+    <div>
+      //
+      <OModalForm
+        v-model="showModal"
+        :record="modal_record"
+        :node="modal_node"
+        :dataDict="modal_dataDict"
+        :editable="modal_editable"
+      />
+    </div>
   </div>
 </template>
 
 <script>
 import OViewFormItem from './OViewFormItem'
+import OModalForm from './OModalForm'
 
 export default {
   name: 'OViewForm',
-  components: { OViewFormItem },
+  components: { OViewFormItem, OModalForm },
 
   props: {
     editable: { type: Boolean, default: undefined },
@@ -45,16 +58,19 @@ export default {
 
   data() {
     return {
-      keyIndex: 0
-      // node2: this.record.view_node ? this.record.view_node() : {}
+      keyIndex: 0,
+      showModal: false,
+
+      modal_record: {},
+      modal_node: { attrs: {}, children: [] },
+      modal_dataDict: {},
+      modal_editable: false
     }
   },
 
   computed: {
     node() {
-      // console.log(' OView Form, get node,')
-      // return this.node2
-      return this.record.view_node ? this.record.view_node() : {}
+      return this.record.view_node || { children: [] }
     },
 
     className() {
@@ -95,17 +111,59 @@ export default {
   },
 
   mounted() {
-    const deep_copy = node => {
-      return JSON.parse(JSON.stringify(node))
-    }
-
-    console.log('OViewForm, node, xxxxxx:', deep_copy(this.node))
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OViewForm, node, xxxxxx:', deep_copy(this.node))
     // console.log('OViewForm, clss, xxxxxx:', this.record._name, this.record)
     // console.log('OViewForm, data, xxxxxx:', this.dataDict)
     // console.log('date 99,', new Date().getTime())
   },
 
-  methods: {}
+  methods: {
+    async handleBtnClick(type, name) {
+      console.log(type, name)
+      // this.$emit('on-btn-click', type, name)
+
+      if (type === 'object') {
+        console.log('onclick object call:', name)
+        await this.record.execute(name)
+        await this.record.browse_flash()
+      } else if (type === 'action') {
+        console.log('onclick action call:', name)
+        const action = await this.record.action_load(name)
+        console.log('btnClick ', action)
+        const view = action.get_view('form')
+        console.log('call_action ', view)
+
+        const callback = (
+          res //
+          // field
+        ) => {
+          // console.log('web callback,', field, deep_copy(res))
+          // console.log('web callback,', field, this.record)
+          this.modal_dataDict = { ...res }
+
+          // console.log('web, xxxxxx:', deep_copy(this.dataDict))
+        }
+
+        const modal_record = await view.browse(null, { fetch_one: callback })
+        console.log('call_action ', modal_record)
+        const modal_node = modal_record.view_node
+
+        const deep_copy = node => {
+          return JSON.parse(JSON.stringify(node))
+        }
+        console.log('call_action  2', deep_copy(modal_node))
+
+        this.modal_record = modal_record
+        this.modal_node = modal_node
+        this.modal_dataDict = modal_record.fetch_one()
+        this.modal_editable = true
+        this.showModal = true
+      }
+    }
+  }
 }
 </script>
 

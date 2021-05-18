@@ -15,6 +15,7 @@
       v-for="(child, index) in node.children"
       :key="index"
       :node="child"
+      :dataDict="dataDict"
       :record="record"
     />
   </button>
@@ -99,9 +100,10 @@ export default {
   },
 
   methods: {
-    btnClick() {
-      console.log('onclick', this.node.attrs)
-      console.log('onclick', this.record)
+    async btnClick() {
+      // console.log('onclick', this.node.attrs)
+      // console.log('onclick', this.record)
+      this.$emit('on-click', this.node.attrs.type, this.node.attrs.name)
     }
   }
 }

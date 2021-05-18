@@ -13,6 +13,7 @@
       :key="index3"
       :node="child_of_label"
       :record="record"
+      :dataDict="dataDict"
     />
   </label>
 </template>
@@ -69,6 +70,14 @@ export default {
 
       return classList.join(' ')
     }
+  },
+
+  mounted() {
+    // const deep_copy = node => {
+    //   return JSON.parse(JSON.stringify(node))
+    // }
+    // console.log('OFormLabel 2, node:', deep_copy(this.node))
+    // console.log('OFormLabel 2, data:', deep_copy(this.dataDict))
   },
 
   methods: {
